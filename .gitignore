@@ -33,6 +33,7 @@ web-build/
 
 # ── Build / Dist ──
 dist/
+!apps/mobile/dist/
 build/
 out/
 .next/

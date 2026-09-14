@@ -3,7 +3,7 @@ import {
   ScrollView, ActivityIndicator, Modal, TextInput,
   RefreshControl, Platform, KeyboardAvoidingView
 } from 'react-native';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '../app/context/AuthContext';
 import { useFeedParches, useCrearParche, useUnirmeAlParche } from '../hooks/useParches';
 
@@ -25,11 +25,19 @@ const TIPOS_PARCHE = [
 
 export default function ParchesScreen() {
   const { user } = useAuth();
-  const { data: parches, isLoading, refetch } = useFeedParches();
+  const { data: parches, isLoading, isError, refetch } = useFeedParches();
   const crearMutation = useCrearParche();
   const unirseMutation = useUnirmeAlParche();
   const [showModal, setShowModal] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [timedOut, setTimedOut] = useState(false);
+
+  // Timeout de seguridad: si pasan 8s cargando, mostrar botón de reintentar
+  useEffect(() => {
+    if (!isLoading) { setTimedOut(false); return; }
+    const t = setTimeout(() => setTimedOut(true), 8000);
+    return () => clearTimeout(t);
+  }, [isLoading]);
 
   // Form state
   const [titulo, setTitulo] = useState('');
@@ -102,6 +110,24 @@ export default function ParchesScreen() {
 
   const parchesList = Array.isArray(parches) ? parches : [];
   const abiertos = parchesList.filter((p: any) => p.estado !== 'cancelado');
+
+  if (isError || timedOut) {
+    return (
+      <View style={styles.center}>
+        <Text style={{ fontSize: 40, marginBottom: 16 }}>😕</Text>
+        <Text style={[styles.loadingText, { fontSize: 16, color: '#F0ECF6', marginBottom: 8 }]}>
+          No se pudieron cargar los parches
+        </Text>
+        <Text style={styles.loadingText}>Revisa que el servidor esté encendido</Text>
+        <TouchableOpacity
+          style={[styles.createBtn, { marginTop: 20 }]}
+          onPress={() => { setTimedOut(false); refetch(); }}
+        >
+          <Text style={styles.createBtnText}>🔄 Reintentar</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   if (isLoading) {
     return (

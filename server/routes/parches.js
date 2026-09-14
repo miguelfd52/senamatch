@@ -29,51 +29,47 @@ async function agregarMiembroChat(chatId, perfilId) {
 /**
  * GET /parches
  * Lista todos los parches de la comunidad visibles para todos los usuarios registrados.
+ * Cualquier usuario autenticado (con JWT válido) puede ver todos los parches abiertos.
  */
 router.get('/', auth, async (req, res) => {
   try {
-    const yo = req.perfil;
     const todos = await Parche.find({ estado: { $ne: 'cancelado' } })
       .sort({ creado: -1 })
       .lean();
 
-    // Obtener nombres y datos de los anfitriones
+    // Obtener nombres de los anfitriones
     const anfitrionesIds = [...new Set(todos.map(p => p.anfitrion).filter(Boolean))];
     const anfitriones = await Perfil.find({ _id: { $in: anfitrionesIds } }).lean();
     const anfitrionMap = new Map();
-    anfitriones.forEach(a => anfitrionMap.set(a._id, a.nombre));
+    anfitriones.forEach(a => anfitrionMap.set(String(a._id), a.nombre));
 
-    const visibles = [];
-
-    for (const p of todos) {
-      if (await puedoVerParche(yo, p) || p.anfitrion === req.uid || esStaff(yo)) {
-        visibles.push({
-          id: p._id,
-          anfitrion: p.anfitrion,
-          anfitrionNombre: anfitrionMap.get(p.anfitrion) || 'Usuario SENA',
-          titulo: p.titulo,
-          descripcion: p.descripcion,
-          tipo: p.tipo,
-          lugar: p.lugar,
-          inicio: p.inicio,
-          duracion: p.duracion,
-          cupo: p.cupo,
-          centro: p.centro,
-          esfera: p.esfera,
-          mixto: p.mixto,
-          aprobacion: p.aprobacion,
-          codigo: p.codigo,
-          estado: p.estado,
-          participantes: p.participantes || [],
-          solicitudes: p.solicitudes || [],
-          asistencia: p.asistencia,
-          creado: new Date(p.creado).getTime()
-        });
-      }
-    }
+    // Todos los usuarios autenticados pueden ver todos los parches abiertos
+    const visibles = todos.map(p => ({
+      id: p._id,
+      anfitrion: p.anfitrion,
+      anfitrionNombre: anfitrionMap.get(String(p.anfitrion)) || 'Usuario SENA',
+      titulo: p.titulo,
+      descripcion: p.descripcion,
+      tipo: p.tipo,
+      lugar: p.lugar,
+      inicio: p.inicio,
+      duracion: p.duracion,
+      cupo: p.cupo,
+      centro: p.centro,
+      esfera: p.esfera,
+      mixto: p.mixto,
+      aprobacion: p.aprobacion,
+      codigo: p.codigo,
+      estado: p.estado,
+      participantes: p.participantes || [],
+      solicitudes: p.solicitudes || [],
+      asistencia: p.asistencia,
+      creado: new Date(p.creado).getTime()
+    }));
 
     res.json(visibles);
   } catch (e) {
+    console.error('Error GET /parches:', e);
     res.status(500).json({ error: e.message });
   }
 });
