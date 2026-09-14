@@ -77,6 +77,11 @@ app.use('/parches',  parchesRoutes);
 app.use('/chats',    chatsRoutes);
 app.use('/',         miscRoutes); // bloqueos, reportes, config
 
+// ─── Health check ────────────────────────────────────────────────────────────
+app.get('/', (req, res) => {
+  res.json({ status: 'ok', name: 'sena-match-server', timestamp: new Date().toISOString() });
+});
+
 // ─── 404 ─────────────────────────────────────────────────────────────────────
 app.use((req, res) => {
   res.status(404).json({ error: 'Ruta no encontrada' });
