@@ -1,0 +1,31 @@
+{
+  "name": "sena-match-v3",
+  "private": true,
+  "version": "3.0.0",
+  "description": "Red social híbrida para la comunidad SENA: descubrimiento 1 a 1 y parches grupales efímeros",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n \"SERVER,MOBILE\" -c \"cyan,magenta\" \"npm run dev:server\" \"npm run dev:mobile\"",
+    "dev:mobile": "npm run start --workspace apps/mobile",
+    "dev:server": "npm run dev --prefix server",
+    "db:start": "supabase start",
+    "db:push": "supabase db push",
+    "db:reset": "supabase db reset",
+    "db:types": "supabase gen types typescript --local > packages/api/src/database.types.ts",
+    "db:test": "psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f supabase/tests/01_esferas_y_rls.test.sql",
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.5",
+    "eslint": "^9.13.0",
+    "typescript": "~5.3.3"
+  },
+  "dependencies": {
+    "mongodb": "^7.6.0",
+    "react-dom": "18.2.0",
+    "react-native-web": "~0.19.10"
+  }
+}

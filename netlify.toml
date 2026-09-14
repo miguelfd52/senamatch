@@ -1,0 +1,10 @@
+[build]
+  command = "cd apps/mobile && npx expo export --platform web"
+  publish = "apps/mobile/dist"
+
+# Expo Router es una aplicación de una sola página: toda ruta debe resolver
+# a index.html para que el enrutador de la app la gestione.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

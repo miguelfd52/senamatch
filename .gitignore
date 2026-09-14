@@ -1,0 +1,90 @@
+# ===========================
+# SENA-MATCH .gitignore
+# ===========================
+
+# ── Variables de entorno (¡MUY IMPORTANTE - nunca subir!) ──
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+*.env
+server/.env
+apps/**/.env
+
+# ── node_modules (en todos los niveles) ──
+node_modules/
+**/node_modules/
+
+# ── Expo / React Native ──
+.expo/
+.expo-shared/
+apps/mobile/.expo/
+apps/mobile/dist/
+apps/mobile/build/
+apps/mobile/web-build/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+web-build/
+
+# ── Build / Dist ──
+dist/
+build/
+out/
+.next/
+.nuxt/
+.output/
+
+# ── Logs ──
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+logs/
+
+# ── Cache y temporales ──
+.cache/
+.turbo/
+.DS_Store
+Thumbs.db
+*.tmp
+*.temp
+
+# ── IDEs y editores ──
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ── Cobertura de pruebas ──
+coverage/
+*.lcov
+.nyc_output/
+
+# ── Supabase local ──
+supabase/.branches/
+supabase/.temp/
+
+# ── Metro bundler ──
+.metro-health-check*
+
+# ── Package lock duplicados (solo si usas yarn o pnpm en el root) ──
+# package-lock.json   <-- déjalo, es útil para reproducibilidad
+
+# ── Archivos generados automáticamente ──
+*.tsbuildinfo
+.eslintcache
+
+# ── Certificados y llaves ──
+*.pem
+*.crt
+*.cert

@@ -1,0 +1,179 @@
+/**
+ * Rutas de autenticación.
+ * v2: Contraseña tradicional (bcryptjs) + JWT.
+ * Las rutas OTP se mantienen al final para compatibilidad con dev-login.
+ */
+const express = require('express');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
+const { rolPorDominio } = require('../helpers/reglas');
+const Perfil = require('../models/Perfil');
+
+const router = express.Router();
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+const CORREOS_VALIDOS = /@gmail\.com$|@misena\.edu\.co$|@sena\.edu\.co$/i;
+
+function rolPorCorreo(correo) {
+  if (/@sena\.edu\.co$/i.test(correo)) return 'instructor';
+  if (/@misena\.edu\.co$/i.test(correo) || /@gmail\.com$/i.test(correo)) return 'aprendiz';
+  return null;
+}
+
+function firmarToken(perfil) {
+  return jwt.sign(
+    { uid: perfil._id, correo: perfil.correo, rol: perfil.rol },
+    process.env.JWT_SECRET,
+    { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+  );
+}
+
+function perfilPublico(perfil) {
+  return {
+    id: perfil._id,
+    correo: perfil.correo,
+    nombre: perfil.nombre,
+    rol: perfil.rol,
+  };
+}
+
+// ─── POST /auth/register ─────────────────────────────────────────────────────
+
+/**
+ * Crea una cuenta nueva con nombre, correo y contraseña.
+ * Devuelve { token, user }.
+ */
+router.post('/register', async (req, res) => {
+  try {
+    const nombre = (req.body.nombre || '').trim();
+    const correo = (req.body.email || '').trim().toLowerCase();
+    const password = req.body.password || '';
+
+    // Validaciones básicas
+    if (!nombre || nombre.length < 2) {
+      return res.status(400).json({ error: 'El nombre debe tener al menos 2 caracteres' });
+    }
+    if (!CORREOS_VALIDOS.test(correo)) {
+      return res.status(400).json({ error: 'Solo se admiten correos @gmail.com, @misena.edu.co o @sena.edu.co' });
+    }
+    if (password.length < 8) {
+      return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres' });
+    }
+
+    // Verificar que el correo no esté en uso
+    const existe = await Perfil.findOne({ correo });
+    if (existe) {
+      return res.status(409).json({ error: 'Ya existe una cuenta con ese correo' });
+    }
+
+    const rol = rolPorCorreo(correo);
+    const hash = await bcrypt.hash(password, 12);
+    const id = crypto.randomUUID();
+
+    const perfil = await Perfil.create({
+      _id: id,
+      correo,
+      nombre,
+      rol,
+      password_hash: hash,
+    });
+
+    const token = firmarToken(perfil);
+    res.status(201).json({ ok: true, token, user: perfilPublico(perfil) });
+  } catch (e) {
+    console.error('Error en /auth/register:', e);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// ─── POST /auth/login ────────────────────────────────────────────────────────
+
+/**
+ * Inicia sesión con correo y contraseña.
+ * Devuelve { token, user }.
+ */
+router.post('/login', async (req, res) => {
+  try {
+    const correo = (req.body.email || '').trim().toLowerCase();
+    const password = req.body.password || '';
+
+    if (!correo || !password) {
+      return res.status(400).json({ error: 'Correo y contraseña son obligatorios' });
+    }
+
+    const perfil = await Perfil.findOne({ correo }).select('+password_hash');
+    if (!perfil || !perfil.password_hash) {
+      // Respuesta deliberadamente vaga: no revelar si el correo existe
+      return res.status(401).json({ error: 'Correo o contraseña incorrectos' });
+    }
+
+    const coincide = await bcrypt.compare(password, perfil.password_hash);
+    if (!coincide) {
+      return res.status(401).json({ error: 'Correo o contraseña incorrectos' });
+    }
+
+    const token = firmarToken(perfil);
+    res.json({ ok: true, token, user: perfilPublico(perfil) });
+  } catch (e) {
+    console.error('Error en /auth/login:', e);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// ─── Rutas OTP (mantenidas para compatibilidad) ──────────────────────────────
+
+const otpStore = new Map();
+
+function generarOTP() {
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
+
+router.post('/otp', async (req, res) => {
+  try {
+    const correo = (req.body.email || '').trim().toLowerCase();
+    const rol = rolPorDominio(correo);
+    if (!rol) {
+      return res.status(400).json({ error: 'Solo se admiten correos @misena.edu.co o @sena.edu.co' });
+    }
+    const code = generarOTP();
+    otpStore.set(correo, { code, expires: Date.now() + 10 * 60 * 1000 });
+
+    let perfil = await Perfil.findOne({ correo });
+    if (!perfil) {
+      perfil = await Perfil.create({ _id: crypto.randomUUID(), correo, nombre: correo.split('@')[0], rol });
+    }
+    console.log(`\n  📧 OTP para ${correo}: ${code}\n`);
+    res.json({ ok: true, message: 'Código enviado' });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post('/verify', async (req, res) => {
+  try {
+    const correo = (req.body.email || '').trim().toLowerCase();
+    const token = (req.body.token || '').trim();
+    if (!correo || !token) return res.status(400).json({ error: 'Faltan correo o código' });
+
+    const stored = otpStore.get(correo);
+    if (!stored) return res.status(400).json({ error: 'No hay código pendiente para ese correo' });
+    if (Date.now() > stored.expires) {
+      otpStore.delete(correo);
+      return res.status(400).json({ error: 'El código expiró' });
+    }
+    if (stored.code !== token) return res.status(400).json({ error: 'Código incorrecto' });
+
+    otpStore.delete(correo);
+    const perfil = await Perfil.findOne({ correo });
+    if (!perfil) return res.status(400).json({ error: 'Perfil no encontrado' });
+
+    const jwtToken = firmarToken(perfil);
+    res.json({ ok: true, token: jwtToken, user: perfilPublico(perfil) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+module.exports = router;
