@@ -13,6 +13,7 @@ import {
   useComentarPublicacion,
   Publicacion
 } from '../hooks/usePublicaciones';
+import { openImagePickerAndUpload } from '../lib/cloudinary';
 import SenaMatchLogo from './SenaMatchLogo';
 
 const ACCENT = '#FF6B4A';
@@ -58,6 +59,8 @@ export default function HomeScreen({ esfera }: Props) {
   const [nuevaFotoUrl, setNuevaFotoUrl] = useState('');
   const [fotoPreview, setFotoPreview] = useState('');
   const [formError, setFormError] = useState('');
+  const [fotoUploading, setFotoUploading] = useState(false);
+  const [fotoError, setFotoError] = useState('');
 
   // Estados de comentarios abiertos por ID de publicación
   const [comentariosAbiertos, setComentariosAbiertos] = useState<{ [pubId: string]: boolean }>({});
@@ -74,11 +77,33 @@ export default function HomeScreen({ esfera }: Props) {
     setNuevaFotoUrl('');
     setFotoPreview('');
     setFormError('');
+    setFotoError('');
+    setFotoUploading(false);
     setModalVisible(true);
   };
 
   const handleCerrarModal = () => {
+    if (fotoUploading) return;
     setModalVisible(false);
+  };
+
+  const handlePickFotoPub = () => {
+    setFotoError('');
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      openImagePickerAndUpload({
+        onProgress: (loading) => setFotoUploading(loading),
+        onPreview: (dataUrl) => setFotoPreview(dataUrl),
+        onSuccess: (secureUrl) => {
+          setNuevaFotoUrl(secureUrl);
+          setFotoPreview(secureUrl);
+          setFotoError('');
+        },
+        onError: (msg) => {
+          setFotoError(msg);
+          if (!nuevaFotoUrl) setFotoPreview('');
+        },
+      });
+    }
   };
 
   const handlePublicar = async () => {
@@ -86,17 +111,28 @@ export default function HomeScreen({ esfera }: Props) {
       setFormError('Escribe algo para publicar.');
       return;
     }
+    if (fotoUploading) {
+      setFormError('Espera a que termine de subirse la foto.');
+      return;
+    }
+
+    // NUNCA guardar base64 en MongoDB
+    let finalFoto: string | null = null;
+    if (nuevaFotoUrl.trim() && !nuevaFotoUrl.startsWith('data:')) {
+      finalFoto = nuevaFotoUrl.trim();
+    }
 
     setFormError('');
     try {
       await crearMutation.mutateAsync({
         texto: nuevoTexto.trim(),
-        fotoUrl: nuevaFotoUrl.trim() || null,
+        fotoUrl: finalFoto,
       });
       setModalVisible(false);
       setNuevoTexto('');
       setNuevaFotoUrl('');
       setFotoPreview('');
+      setFotoError('');
     } catch (err: any) {
       setFormError(err.message || 'Error al publicar. Inténtalo de nuevo.');
     }
@@ -398,18 +434,48 @@ export default function HomeScreen({ esfera }: Props) {
               onChangeText={setNuevoTexto}
             />
 
-            <Text style={styles.modalFieldLabel}>URL de foto (opcional)</Text>
+            <Text style={styles.modalFieldLabel}>Foto de la publicación (opcional)</Text>
+            
+            {/* Botón para seleccionar y subir a Cloudinary */}
+            {Platform.OS === 'web' && (
+              <TouchableOpacity
+                style={[styles.modalPickPhotoBtn, fotoUploading && styles.modalPickPhotoBtnDisabled]}
+                onPress={fotoUploading ? undefined : handlePickFotoPub}
+                activeOpacity={fotoUploading ? 1 : 0.8}
+              >
+                {fotoUploading ? (
+                  <View style={styles.modalUploadingRow}>
+                    <ActivityIndicator size="small" color={ACCENT} style={{ marginRight: 8 }} />
+                    <Text style={styles.modalPickPhotoBtnText}>Subiendo foto a Cloudinary…</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.modalPickPhotoBtnText}>
+                    📁 Subir foto desde tu dispositivo (JPG/PNG/WebP · máx 3 MB)
+                  </Text>
+                )}
+              </TouchableOpacity>
+            )}
+
+            {fotoError ? (
+              <View style={styles.formErrorBanner}>
+                <Text style={styles.formErrorText}>⚠️ {fotoError}</Text>
+              </View>
+            ) : null}
+
+            <Text style={styles.modalFieldHint}>O pega una URL pública de imagen:</Text>
             <TextInput
               style={styles.modalUrlInput}
               placeholder="https://images.unsplash.com/... o enlace directo de imagen"
               placeholderTextColor="#786E8A"
-              value={nuevaFotoUrl}
+              value={nuevaFotoUrl.startsWith('data:') ? '' : nuevaFotoUrl}
               onChangeText={(text) => {
                 setNuevaFotoUrl(text);
                 setFotoPreview(text.trim());
+                setFotoError('');
               }}
               autoCapitalize="none"
               autoCorrect={false}
+              editable={!fotoUploading}
             />
 
             {/* Vista previa de foto si existe */}
@@ -421,15 +487,18 @@ export default function HomeScreen({ esfera }: Props) {
                   style={styles.previewImage}
                   resizeMode="cover"
                 />
-                <TouchableOpacity
-                  style={styles.btnEliminarFoto}
-                  onPress={() => {
-                    setNuevaFotoUrl('');
-                    setFotoPreview('');
-                  }}
-                >
-                  <Text style={styles.btnEliminarFotoText}>✕ Quitar imagen</Text>
-                </TouchableOpacity>
+                {!fotoUploading && (
+                  <TouchableOpacity
+                    style={styles.btnEliminarFoto}
+                    onPress={() => {
+                      setNuevaFotoUrl('');
+                      setFotoPreview('');
+                      setFotoError('');
+                    }}
+                  >
+                    <Text style={styles.btnEliminarFotoText}>✕ Quitar imagen</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             ) : null}
 
@@ -438,16 +507,17 @@ export default function HomeScreen({ esfera }: Props) {
                 style={styles.modalCancelBtn}
                 onPress={handleCerrarModal}
                 activeOpacity={0.8}
+                disabled={fotoUploading}
               >
                 <Text style={styles.modalCancelBtnText}>Cancelar</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.modalSubmitBtn, crearMutation.isPending && styles.btnDisabled]}
+                style={[styles.modalSubmitBtn, (crearMutation.isPending || fotoUploading) && styles.btnDisabled]}
                 onPress={handlePublicar}
-                disabled={crearMutation.isPending}
+                disabled={crearMutation.isPending || fotoUploading}
                 activeOpacity={0.85}
               >
-                {crearMutation.isPending ? (
+                {crearMutation.isPending || fotoUploading ? (
                   <ActivityIndicator color="#FFFFFF" size="small" />
                 ) : (
                   <Text style={styles.modalSubmitBtnText}>Publicar</Text>
@@ -950,6 +1020,34 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#3A3247',
     marginBottom: 14,
+  },
+  modalPickPhotoBtn: {
+    backgroundColor: 'rgba(255, 107, 74, 0.15)',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 107, 74, 0.3)',
+  },
+  modalPickPhotoBtnDisabled: {
+    opacity: 0.6,
+  },
+  modalPickPhotoBtnText: {
+    color: ACCENT,
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  modalUploadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalFieldHint: {
+    fontSize: 12,
+    color: '#8D83A0',
+    marginBottom: 6,
   },
   previewContainer: {
     marginBottom: 14,

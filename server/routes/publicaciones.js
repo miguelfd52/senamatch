@@ -73,11 +73,11 @@ router.post('/', auth, async (req, res) => {
       return res.status(400).json({ error: 'El texto no puede superar los 1000 caracteres' });
     }
 
-    // Validar fotoUrl si viene
+    // Validar fotoUrl si viene (no permitir base64)
     let fotoLimpia = null;
     if (fotoUrl && typeof fotoUrl === 'string') {
       const trimmed = fotoUrl.trim();
-      if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:image/')) {
+      if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
         fotoLimpia = trimmed;
       }
     }

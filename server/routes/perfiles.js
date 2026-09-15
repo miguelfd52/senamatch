@@ -179,6 +179,18 @@ router.patch('/:id', auth, async (req, res) => {
 
     if (cambios.visto) cambios.visto = new Date(cambios.visto);
     if (cambios.ficha === '') cambios.ficha = null;
+    if (cambios.foto_url !== undefined) {
+      if (typeof cambios.foto_url === 'string') {
+        const trimmed = cambios.foto_url.trim();
+        if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+          cambios.foto_url = trimmed;
+        } else {
+          cambios.foto_url = null; // Rechazar data: base64 o URLs no válidas
+        }
+      } else {
+        cambios.foto_url = null;
+      }
+    }
 
     await Perfil.findByIdAndUpdate(req.params.id, { $set: cambios });
     const actualizado = await Perfil.findById(req.params.id).lean({ virtuals: true });

@@ -3,10 +3,11 @@ import {
   ScrollView, ActivityIndicator, TextInput,
   KeyboardAvoidingView, Platform, Alert, Image
 } from 'react-native';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../app/context/AuthContext';
 import { usePerfil, useEditarPerfil } from '../hooks/useParches';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { openImagePickerAndUpload, CloudinaryError } from '../lib/cloudinary';
 
 const ACCENT = '#FF6B4A';
 const BG = '#16121D';
@@ -45,6 +46,8 @@ export default function ProfileScreen() {
   const [bio, setBio] = useState('');
   const [fotoUrl, setFotoUrl] = useState('');
   const [fotoPreview, setFotoPreview] = useState('');
+  const [fotoUploading, setFotoUploading] = useState(false);
+  const [fotoError, setFotoError] = useState('');
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
   const [selectedEmoji, setSelectedEmoji] = useState('😊');
   const [saved, setSaved] = useState(false);
@@ -82,27 +85,26 @@ export default function ProfileScreen() {
   };
 
   const handlePickImage = () => {
+    setFotoError('');
     if (Platform.OS === 'web' && typeof document !== 'undefined') {
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = 'image/*';
-      input.onchange = (e: any) => {
-        const file = e.target?.files?.[0];
-        if (file) {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            const dataUrl = reader.result as string;
-            setFotoPreview(dataUrl);
-            setFotoUrl(dataUrl);
-          };
-          reader.readAsDataURL(file);
-        }
-      };
-      input.click();
+      openImagePickerAndUpload({
+        onProgress: (loading) => setFotoUploading(loading),
+        onPreview: (dataUrl) => setFotoPreview(dataUrl),
+        onSuccess: (secureUrl) => {
+          setFotoUrl(secureUrl);
+          setFotoPreview(secureUrl);
+          setFotoError('');
+        },
+        onError: (msg) => {
+          setFotoError(msg);
+          // Si falla, limpiar preview base64 para no guardar base64
+          setFotoPreview(fotoUrl); // restaurar la URL previa válida
+        },
+      });
     } else {
       Alert.alert(
         'Foto de perfil',
-        'Pega la URL de tu imagen en el campo de abajo o usa una URL directa',
+        'Pega la URL pública de tu imagen en el campo de abajo.',
         [{ text: 'Entendido' }]
       );
     }
@@ -110,8 +112,13 @@ export default function ProfileScreen() {
 
   const handleSave = async () => {
     if (nombre.trim().length < 2) return;
+    if (fotoUploading) return; // Esperar que termine el upload
 
-    const finalFoto = fotoUrl.trim() || null;
+    // Nunca guardar base64 en MongoDB
+    let finalFoto: string | null = null;
+    if (fotoUrl.trim() && !fotoUrl.startsWith('data:')) {
+      finalFoto = fotoUrl.trim();
+    }
 
     editMutation.mutate(
       {
@@ -130,6 +137,7 @@ export default function ProfileScreen() {
         onSuccess: async (data: any) => {
           setEditing(false);
           setSaved(true);
+          setFotoError('');
           if (data && user) {
             const token = await AsyncStorage.getItem('jwt_token');
             if (token) {
@@ -239,36 +247,54 @@ export default function ProfileScreen() {
           {editing ? (
             <>
               <View style={styles.photoUrlSection}>
+                {/* Botón de subida */}
                 <TouchableOpacity
-                  style={styles.pickPhotoBtn}
-                  onPress={handlePickImage}
-                  activeOpacity={0.8}
+                  style={[styles.pickPhotoBtn, fotoUploading && styles.pickPhotoBtnDisabled]}
+                  onPress={fotoUploading ? undefined : handlePickImage}
+                  activeOpacity={fotoUploading ? 1 : 0.8}
                 >
-                  <Text style={styles.pickPhotoBtnText}>
-                    {Platform.OS === 'web' ? '📁 Seleccionar foto de tu dispositivo' : '📷 Cambiar foto'}
-                  </Text>
+                  {fotoUploading ? (
+                    <View style={styles.uploadingRow}>
+                      <ActivityIndicator size="small" color={ACCENT} style={{ marginRight: 8 }} />
+                      <Text style={styles.pickPhotoBtnText}>Subiendo a Cloudinary…</Text>
+                    </View>
+                  ) : (
+                    <Text style={styles.pickPhotoBtnText}>
+                      {Platform.OS === 'web' ? '📁 Seleccionar foto (JPG/PNG/WebP · máx 3 MB)' : '📷 Cambiar foto'}
+                    </Text>
+                  )}
                 </TouchableOpacity>
 
-                <Text style={styles.photoUrlHint}>O ingresa una URL pública de imagen:</Text>
+                {/* Error de validación / upload */}
+                {fotoError ? (
+                  <View style={styles.fotoErrorBanner}>
+                    <Text style={styles.fotoErrorText}>⚠️ {fotoError}</Text>
+                  </View>
+                ) : null}
+
+                <Text style={styles.photoUrlHint}>O pega una URL pública (https://…):</Text>
                 <TextInput
                   style={styles.input}
                   value={fotoUrl.startsWith('data:') ? '' : fotoUrl}
                   onChangeText={(text) => {
                     setFotoUrl(text);
                     setFotoPreview(text);
+                    setFotoError('');
                   }}
                   placeholder="https://ejemplo.com/foto.jpg"
                   placeholderTextColor="#786E8A"
                   autoCapitalize="none"
                   autoCorrect={false}
+                  editable={!fotoUploading}
                 />
 
-                {displayFoto ? (
+                {displayFoto && !fotoUploading ? (
                   <TouchableOpacity
                     style={styles.removePhotoBtn}
                     onPress={() => {
                       setFotoUrl('');
                       setFotoPreview('');
+                      setFotoError('');
                     }}
                   >
                     <Text style={styles.removePhotoText}>🗑️ Quitar foto (usar avatar emoji)</Text>
@@ -412,13 +438,19 @@ export default function ProfileScreen() {
 
         {/* Save / Sign out */}
         {editing ? (
-          editMutation.isPending ? (
-            <ActivityIndicator color={ACCENT} style={{ marginVertical: 20 }} />
+          (editMutation.isPending || fotoUploading) ? (
+            <View style={{ alignItems: 'center', marginVertical: 20 }}>
+              <ActivityIndicator color={ACCENT} />
+              {fotoUploading && (
+                <Text style={styles.uploadingLabel}>Subiendo foto a Cloudinary…</Text>
+              )}
+            </View>
           ) : (
             <TouchableOpacity
-              style={styles.saveBtn}
+              style={[styles.saveBtn, fotoUploading && styles.saveBtnDisabled]}
               onPress={handleSave}
               activeOpacity={0.85}
+              disabled={fotoUploading}
             >
               <Text style={styles.saveBtnText}>Guardar cambios</Text>
             </TouchableOpacity>
@@ -518,7 +550,24 @@ const styles = StyleSheet.create({
     borderRadius: 10, alignItems: 'center', marginBottom: 8,
     borderWidth: 1, borderColor: 'rgba(255,107,74,0.3)',
   },
+  pickPhotoBtnDisabled: {
+    opacity: 0.6,
+  },
   pickPhotoBtnText: { color: ACCENT, fontWeight: '700', fontSize: 14 },
+  uploadingRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+  },
+  uploadingLabel: {
+    color: '#8D83A0', fontSize: 13, marginTop: 8, textAlign: 'center',
+  },
+  fotoErrorBanner: {
+    backgroundColor: 'rgba(255, 91, 110, 0.12)',
+    borderWidth: 1, borderColor: 'rgba(255, 91, 110, 0.3)',
+    borderRadius: 8, padding: 10, marginBottom: 8,
+  },
+  fotoErrorText: {
+    color: '#FF5B6E', fontSize: 13, fontWeight: '600',
+  },
   photoUrlHint: { color: '#786E8A', fontSize: 12, marginBottom: 6 },
   removePhotoBtn: {
     marginTop: 8, paddingVertical: 6, alignItems: 'center',
@@ -605,6 +654,9 @@ const styles = StyleSheet.create({
   saveBtn: {
     backgroundColor: ACCENT, padding: 16, borderRadius: 12,
     alignItems: 'center', marginTop: 8,
+  },
+  saveBtnDisabled: {
+    opacity: 0.5,
   },
   saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   signOutBtn: {
