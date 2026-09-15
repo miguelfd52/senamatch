@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { api, ApiError } from '../../lib/api';
 import { useAuth } from '../context/AuthContext';
+import SenaMatchLogo from '../../components/SenaMatchLogo';
 
 const CORREO_RE = /^[^\s@]+@(gmail\.com|misena\.edu\.co|sena\.edu\.co)$/i;
 
@@ -65,10 +66,9 @@ export default function RegistroScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        {/* Cabecera */}
+        {/* Cabecera con Logo 3D */}
         <View style={styles.header}>
-          <Text style={styles.logo}>SENA Match</Text>
-          <Text style={styles.tagline}>Crea tu cuenta y conecta</Text>
+          <SenaMatchLogo size={52} textSize={28} subtitle="Crea tu cuenta y conecta" />
         </View>
 
         {/* Formulario */}

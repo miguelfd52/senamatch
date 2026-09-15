@@ -12,6 +12,7 @@ const perfilesRoutes = require('./routes/perfiles');
 const swipesRoutes   = require('./routes/swipes');
 const parchesRoutes  = require('./routes/parches');
 const chatsRoutes    = require('./routes/chats');
+const publicacionesRoutes = require('./routes/publicaciones');
 const miscRoutes     = require('./routes/misc');
 
 const app = express();
@@ -108,6 +109,7 @@ app.use('/perfiles', perfilesRoutes);
 app.use('/swipes',   swipesRoutes);
 app.use('/parches',  parchesRoutes);
 app.use('/chats',    chatsRoutes);
+app.use('/publicaciones', publicacionesRoutes);
 app.use('/',         miscRoutes); // bloqueos, reportes, config
 
 // ─── Health check ────────────────────────────────────────────────────────────

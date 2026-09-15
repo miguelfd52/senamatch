@@ -1,5 +1,6 @@
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
+import SenaMatchLogo from '../components/SenaMatchLogo';
 
 export default function WelcomeScreen() {
   const router = useRouter();
@@ -7,10 +8,12 @@ export default function WelcomeScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.card}>
-        {/* Marca */}
+        {/* Marca con Logo 3D */}
         <View style={styles.brand}>
+          <View style={{ marginBottom: 14 }}>
+            <SenaMatchLogo size={64} textSize={32} />
+          </View>
           <Text style={styles.logoBadge}>Comunidad SENA</Text>
-          <Text style={styles.logo}>SENA Match</Text>
           <Text style={styles.slogan}>
             Descubre personas por afinidad{'\n'}y arma tu parche 🎯
           </Text>

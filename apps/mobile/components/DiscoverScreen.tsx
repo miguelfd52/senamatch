@@ -32,19 +32,6 @@ export default function DiscoverScreen() {
     refetch();
   }, [refetch]);
 
-  if (mode === 'people') {
-    return (
-      <View style={{ flex: 1, backgroundColor: BG }}>
-        <PeopleScreen
-          onOpenChat={() => {
-            router.push('/chats');
-          }}
-          onBack={() => setMode('cards')}
-        />
-      </View>
-    );
-  }
-
   // Filter out own profile
   const cards = Array.isArray(perfiles)
     ? perfiles.filter((p: any) => p && p.id !== user?.id)
@@ -84,6 +71,19 @@ export default function DiscoverScreen() {
       );
     });
   }, [currentCard, swipeMutation, animateAction]);
+
+  if (mode === 'people') {
+    return (
+      <View style={{ flex: 1, backgroundColor: BG }}>
+        <PeopleScreen
+          onOpenChat={() => {
+            router.push('/chats');
+          }}
+          onBack={() => setMode('cards')}
+        />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>

@@ -5,6 +5,8 @@ import {
 } from 'react-native';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 
+import SenaMatchLogo from './SenaMatchLogo';
+
 const ACCENT = '#FF6B4A';
 const INACTIVE = '#8D83A0';
 const NAVBAR_BG = '#171324';
@@ -25,13 +27,13 @@ function ResponsiveTabBar({ state, navigation }: BottomTabBarProps) {
     return (
       <View style={styles.desktopNavbar}>
         <View style={styles.desktopNavInner}>
-          {/* Marca / Logo */}
+          {/* Marca / Logo 3D */}
           <TouchableOpacity
             style={styles.brandWrap}
             onPress={() => navigation.navigate('index')}
             activeOpacity={0.8}
           >
-            <Text style={styles.brandLogo}>SENA Match</Text>
+            <SenaMatchLogo size={32} textSize={19} showText={true} />
             <View style={styles.brandBadge}>
               <Text style={styles.brandBadgeText}>Comunidad 🇨🇴</Text>
             </View>

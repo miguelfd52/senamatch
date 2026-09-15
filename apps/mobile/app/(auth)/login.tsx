@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { api, ApiError } from '../../lib/api';
 import { useAuth } from '../context/AuthContext';
+import SenaMatchLogo from '../../components/SenaMatchLogo';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -53,10 +54,9 @@ export default function LoginScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        {/* Logo / Marca */}
+        {/* Logo / Marca 3D */}
         <View style={styles.header}>
-          <Text style={styles.logo}>SENA Match</Text>
-          <Text style={styles.tagline}>Conecta con tu comunidad SENA</Text>
+          <SenaMatchLogo size={52} textSize={28} subtitle="Conecta con tu comunidad SENA" />
         </View>
 
         {/* Formulario */}
