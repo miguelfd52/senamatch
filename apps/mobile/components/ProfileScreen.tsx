@@ -1,7 +1,7 @@
 import {
   View, Text, StyleSheet, TouchableOpacity,
   ScrollView, ActivityIndicator, TextInput,
-  KeyboardAvoidingView, Platform, Alert
+  KeyboardAvoidingView, Platform, Alert, Image
 } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../app/context/AuthContext';
@@ -14,12 +14,12 @@ const CARD = '#1E1A2B';
 const SUCCESS = '#5FE0B4';
 
 const INTERESES_OPCIONES = [
-  '🎮 Gaming', '⚽ Fútbol', '🎵 Música', '📚 Lectura',
-  '🎬 Cine', '💻 Programación', '🎨 Arte', '📷 Fotografía',
-  '🏋️ Gym', '🍳 Cocina', '✈️ Viajes', '🐱 Mascotas',
+  'ðŸŽ® Gaming', 'âš½ FÃºtbol', 'ðŸŽµ MÃºsica', 'ðŸ“š Lectura',
+  'ðŸŽ¬ Cine', 'ðŸ’» ProgramaciÃ³n', 'ðŸŽ¨ Arte', 'ðŸ“· FotografÃ­a',
+  'ðŸ‹ï¸ Gym', 'ðŸ³ Cocina', 'âœˆï¸ Viajes', 'ðŸ± Mascotas',
 ];
 
-const EMOJIS = ['😊', '😎', '🤓', '🦊', '🐱', '🐶', '🦄', '🌟', '🔥', '🎯', '💪', '🎓'];
+const EMOJIS = ['ðŸ˜Š', 'ðŸ˜Ž', 'ðŸ¤“', 'ðŸ¦Š', 'ðŸ±', 'ðŸ¶', 'ðŸ¦„', 'ðŸŒŸ', 'ðŸ”¥', 'ðŸŽ¯', 'ðŸ’ª', 'ðŸŽ“'];
 
 export default function ProfileScreen() {
   const { user, signOut, signIn } = useAuth();
@@ -34,11 +34,14 @@ export default function ProfileScreen() {
   const [ficha, setFicha] = useState('');
   const [jornada, setJornada] = useState('');
   const [bio, setBio] = useState('');
+  const [fotoUrl, setFotoUrl] = useState('');
+  const [fotoPreview, setFotoPreview] = useState('');
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
-  const [selectedEmoji, setSelectedEmoji] = useState('😊');
+  const [selectedEmoji, setSelectedEmoji] = useState('ðŸ˜Š');
   const [saved, setSaved] = useState(false);
   // Timeout: si en 3s no carga la API, mostramos pantalla con datos del contexto
   const [timedOut, setTimedOut] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (!isLoading) return;
@@ -56,7 +59,10 @@ export default function ProfileScreen() {
       setJornada((perfil as any).jornada || '');
       setBio((perfil as any).bio || '');
       setSelectedInterests((perfil as any).intereses || []);
-      setSelectedEmoji((perfil as any).avatarEmoji || '😊');
+      setSelectedEmoji((perfil as any).avatarEmoji || 'ðŸ˜Š');
+      const foto = (perfil as any).fotoUrl || '';
+      setFotoUrl(foto);
+      setFotoPreview(foto);
     }
   }, [perfil]);
 
@@ -66,6 +72,43 @@ export default function ProfileScreen() {
         ? prev.filter(i => i !== interest)
         : [...prev, interest]
     );
+  };
+
+  const handlePickImage = () => {
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      // Crear input de archivo nativo para web
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.onchange = (e: any) => {
+        const file = e.target?.files?.[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const dataUrl = reader.result as string;
+            setFotoPreview(dataUrl);
+            setFotoUrl(dataUrl);
+          };
+          reader.readAsDataURL(file);
+        }
+      };
+      input.click();
+    } else {
+      // En mÃ³vil, mostrar alerta para que el usuario pegue una URL
+      Alert.alert(
+        'Foto de perfil',
+        'Pega la URL de tu imagen (ej. enlace de Google Drive, Imgur, etc.)',
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Aceptar',
+            onPress: () => {
+              // La URL se escribe manualmente en el campo
+            },
+          },
+        ]
+      );
+    }
   };
 
   const handleSave = async () => {
@@ -81,6 +124,7 @@ export default function ProfileScreen() {
         bio: bio.trim() || null,
         intereses: selectedInterests,
         avatarEmoji: selectedEmoji,
+        fotoUrl: fotoUrl.trim() || null,
       },
       {
         onSuccess: async (data: any) => {
@@ -108,12 +152,12 @@ export default function ProfileScreen() {
     signOut();
   };
 
-  // Solo mostrar spinner durante los primeros 3 segundos; después mostramos lo que tengamos
+  // Solo mostrar spinner durante los primeros 3 segundos; despuÃ©s mostramos lo que tengamos
   if (isLoading && !timedOut) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color={ACCENT} />
-        <Text style={styles.loadingText}>Cargando perfil…</Text>
+        <Text style={styles.loadingText}>Cargando perfilâ€¦</Text>
       </View>
     );
   }
@@ -122,6 +166,8 @@ export default function ProfileScreen() {
   const rolLabel = p?.rol
     ? p.rol.charAt(0).toUpperCase() + p.rol.slice(1)
     : user?.rol || '';
+
+  const displayFoto = fotoPreview || p?.fotoUrl || '';
 
   return (
     <KeyboardAvoidingView
@@ -138,7 +184,7 @@ export default function ProfileScreen() {
               onPress={() => setEditing(true)}
               activeOpacity={0.8}
             >
-              <Text style={styles.editBtnText}>✏️ Editar</Text>
+              <Text style={styles.editBtnText}>âœï¸ Editar</Text>
             </TouchableOpacity>
           ) : (
             <TouchableOpacity
@@ -154,17 +200,73 @@ export default function ProfileScreen() {
         {/* Success message */}
         {saved && (
           <View style={styles.savedBanner}>
-            <Text style={styles.savedText}>✅ Perfil actualizado</Text>
+            <Text style={styles.savedText}>âœ… Perfil actualizado</Text>
           </View>
         )}
 
-        {/* Avatar + Name */}
+        {/* Avatar + Photo + Name */}
         <View style={styles.profileCard}>
-          <View style={styles.avatarLarge}>
-            <Text style={styles.avatarEmojiLarge}>{selectedEmoji}</Text>
-          </View>
+          {/* Profile photo or emoji avatar */}
+          {displayFoto ? (
+            <TouchableOpacity
+              onPress={editing ? handlePickImage : undefined}
+              activeOpacity={editing ? 0.7 : 1}
+              style={styles.photoContainer}
+            >
+              <Image
+                source={{ uri: displayFoto }}
+                style={styles.profilePhoto}
+                resizeMode="cover"
+              />
+              {editing && (
+                <View style={styles.photoOverlay}>
+                  <Text style={styles.photoOverlayText}>ðŸ“· Cambiar</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              onPress={editing ? handlePickImage : undefined}
+              activeOpacity={editing ? 0.7 : 1}
+              style={styles.avatarLarge}
+            >
+              <Text style={styles.avatarEmojiLarge}>{selectedEmoji}</Text>
+              {editing && (
+                <View style={styles.photoOverlaySmall}>
+                  <Text style={styles.photoOverlayTextSmall}>ðŸ“·</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          )}
+
           {editing ? (
             <>
+              {/* Foto URL input para mÃ³vil */}
+              <View style={styles.photoUrlSection}>
+                <TouchableOpacity
+                  style={styles.pickPhotoBtn}
+                  onPress={handlePickImage}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.pickPhotoBtnText}>
+                    {Platform.OS === 'web' ? 'ðŸ“ Subir foto desde archivo' : 'ðŸ“· Cambiar foto'}
+                  </Text>
+                </TouchableOpacity>
+                <Text style={styles.photoUrlHint}>O pega la URL de una imagen:</Text>
+                <TextInput
+                  style={styles.input}
+                  value={fotoUrl.startsWith('data:') ? '' : fotoUrl}
+                  onChangeText={(text) => {
+                    setFotoUrl(text);
+                    setFotoPreview(text);
+                  }}
+                  placeholder="https://ejemplo.com/mi-foto.jpg"
+                  placeholderTextColor="#786E8A"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              </View>
+
               <Text style={styles.fieldLabel}>Nombre</Text>
               <TextInput
                 style={styles.input}
@@ -187,7 +289,7 @@ export default function ProfileScreen() {
 
         {/* Info Card */}
         <View style={styles.infoCard}>
-          <InfoRow icon="📧" label="Correo" value={p?.correo || user?.correo || '—'} />
+          <InfoRow icon="ðŸ“§" label="Correo" value={p?.correo || user?.correo || 'â€”'} />
           
           {editing ? (
             <>
@@ -229,10 +331,10 @@ export default function ProfileScreen() {
             </>
           ) : (
             <>
-              {p?.programa && <InfoRow icon="📚" label="Programa" value={p.programa} />}
-              {p?.ficha && <InfoRow icon="🏷️" label="Ficha" value={p.ficha} />}
-              {p?.jornada && <InfoRow icon="🕐" label="Jornada" value={p.jornada} />}
-              {p?.centro && <InfoRow icon="🏫" label="Centro" value={String(p.centro)} />}
+              {p?.programa && <InfoRow icon="ðŸ“š" label="Programa" value={p.programa} />}
+              {p?.ficha && <InfoRow icon="ðŸ·ï¸" label="Ficha" value={p.ficha} />}
+              {p?.jornada && <InfoRow icon="ðŸ•" label="Jornada" value={p.jornada} />}
+              {p?.centro && <InfoRow icon="ðŸ«" label="Centro" value={String(p.centro)} />}
             </>
           )}
         </View>
@@ -265,12 +367,12 @@ export default function ProfileScreen() {
               onChangeText={setBio}
               maxLength={400}
               multiline
-              placeholder="Cuéntales algo sobre ti…"
+              placeholder="CuÃ©ntales algo sobre tiâ€¦"
               placeholderTextColor="#786E8A"
             />
           ) : (
             <Text style={styles.bioText}>
-              {p?.bio || 'Aún no has agregado una bio. ¡Edita tu perfil para contarles sobre ti!'}
+              {p?.bio || 'AÃºn no has agregado una bio. Â¡Edita tu perfil para contarles sobre ti!'}
             </Text>
           )}
         </View>
@@ -318,7 +420,7 @@ export default function ProfileScreen() {
             onPress={handleSignOut}
             activeOpacity={0.8}
           >
-            <Text style={styles.signOutText}>Cerrar sesión</Text>
+            <Text style={styles.signOutText}>Cerrar sesiÃ³n</Text>
           </TouchableOpacity>
         )}
 
@@ -384,6 +486,41 @@ const styles = StyleSheet.create({
     alignItems: 'center', borderWidth: 1, borderColor: '#2D2640',
     marginBottom: 16,
   },
+
+  // Photo
+  photoContainer: {
+    width: 100, height: 100, borderRadius: 50,
+    overflow: 'hidden', marginBottom: 16,
+    borderWidth: 3, borderColor: ACCENT,
+  },
+  profilePhoto: {
+    width: '100%', height: '100%',
+  },
+  photoOverlay: {
+    position: 'absolute', bottom: 0, left: 0, right: 0,
+    backgroundColor: 'rgba(0,0,0,0.55)', paddingVertical: 4,
+    alignItems: 'center',
+  },
+  photoOverlayText: { color: '#fff', fontSize: 11, fontWeight: '700' },
+  photoOverlaySmall: {
+    position: 'absolute', bottom: -2, right: -2,
+    backgroundColor: ACCENT, width: 28, height: 28,
+    borderRadius: 14, justifyContent: 'center', alignItems: 'center',
+    borderWidth: 2, borderColor: CARD,
+  },
+  photoOverlayTextSmall: { fontSize: 14 },
+  photoUrlSection: {
+    width: '100%', marginBottom: 12,
+  },
+  pickPhotoBtn: {
+    backgroundColor: 'rgba(255,107,74,0.15)',
+    paddingVertical: 10, paddingHorizontal: 16,
+    borderRadius: 10, alignItems: 'center', marginBottom: 8,
+    borderWidth: 1, borderColor: 'rgba(255,107,74,0.3)',
+  },
+  pickPhotoBtnText: { color: ACCENT, fontWeight: '700', fontSize: 14 },
+  photoUrlHint: { color: '#786E8A', fontSize: 12, marginBottom: 6 },
+
   avatarLarge: {
     width: 80, height: 80, borderRadius: 40,
     backgroundColor: 'rgba(255,107,74,0.15)',

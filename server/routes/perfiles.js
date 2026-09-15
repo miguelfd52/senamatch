@@ -52,6 +52,7 @@ router.get('/', auth, async (req, res) => {
       nacimiento: r.nacimiento, bio: r.bio,
       intereses: r.intereses || [], intenciones: r.intenciones || [],
       avatarEmoji: r.avatar_emoji, avatarColor: r.avatar_color,
+      fotoUrl: r.foto_url || null,
       asistencias: r.asistencias || 0, inasistencias: r.inasistencias || 0,
       demo: r.demo, creado: new Date(r.creado).getTime(),
       visto: new Date(r.visto).getTime()
@@ -110,6 +111,7 @@ router.get('/comunidad', auth, async (req, res) => {
         bio: p.bio || '',
         avatarEmoji: p.avatar_emoji || '😊',
         avatarColor: p.avatar_color || '#FF6B4A',
+        fotoUrl: p.foto_url || null,
         intereses: p.intereses || [],
         creado: p.creado ? new Date(p.creado).getTime() : Date.now()
       });
@@ -138,6 +140,7 @@ router.get('/:id', auth, async (req, res) => {
       nacimiento: r.nacimiento, bio: r.bio,
       intereses: r.intereses || [], intenciones: r.intenciones || [],
       avatarEmoji: r.avatar_emoji, avatarColor: r.avatar_color,
+      fotoUrl: r.foto_url || null,
       asistencias: r.asistencias || 0, inasistencias: r.inasistencias || 0,
       demo: r.demo, creado: new Date(r.creado).getTime(),
       visto: new Date(r.visto).getTime()
@@ -161,15 +164,16 @@ router.patch('/:id', auth, async (req, res) => {
     // Columnas que el cliente puede escribir (como el GRANT de Supabase)
     const permitidas = [
       'nombre', 'centro', 'programa', 'ficha', 'jornada', 'nacimiento',
-      'bio', 'intereses', 'intenciones', 'avatar_emoji', 'avatar_color', 'visto',
+      'bio', 'intereses', 'intenciones', 'avatar_emoji', 'avatar_color', 'foto_url', 'visto',
       // Aliases que usa el frontend
-      'avatarEmoji', 'avatarColor'
+      'avatarEmoji', 'avatarColor', 'fotoUrl'
     ];
 
     const cambios = {};
     for (const k of Object.keys(req.body)) {
       if (k === 'avatarEmoji') cambios.avatar_emoji = req.body[k];
       else if (k === 'avatarColor') cambios.avatar_color = req.body[k];
+      else if (k === 'fotoUrl') cambios.foto_url = req.body[k];
       else if (permitidas.includes(k)) cambios[k] = req.body[k];
     }
 
@@ -186,6 +190,7 @@ router.patch('/:id', auth, async (req, res) => {
       jornada: actualizado.jornada, nacimiento: actualizado.nacimiento, bio: actualizado.bio,
       intereses: actualizado.intereses || [], intenciones: actualizado.intenciones || [],
       avatarEmoji: actualizado.avatar_emoji, avatarColor: actualizado.avatar_color,
+      fotoUrl: actualizado.foto_url || null,
       asistencias: actualizado.asistencias || 0, inasistencias: actualizado.inasistencias || 0,
       demo: actualizado.demo, creado: new Date(actualizado.creado).getTime(),
       visto: new Date(actualizado.visto).getTime()

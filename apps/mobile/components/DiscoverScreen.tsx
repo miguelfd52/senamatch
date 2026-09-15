@@ -20,7 +20,7 @@ const INTENCIONES = ['amistad', 'estudio', 'deporte'] as const;
 export default function DiscoverScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  const { data: perfiles, isLoading, refetch } = usePerfiles();
+  const { data: perfiles, isLoading, isError, refetch } = usePerfiles();
   const [currentIdx, setCurrentIdx] = useState(0);
   const [mode, setMode] = useState<'cards' | 'people'>('cards');
   const [intencion] = useState<typeof INTENCIONES[number]>('amistad');
@@ -88,6 +88,34 @@ export default function DiscoverScreen() {
       <View style={styles.center}>
         <ActivityIndicator size="large" color={ACCENT} />
         <Text style={styles.loadingText}>Cargando perfiles…</Text>
+      </View>
+    );
+  }
+
+  if (isError) {
+    return (
+      <View style={styles.center}>
+        <Text style={styles.emptyEmoji}>⚠️</Text>
+        <Text style={styles.emptyTitle}>Error al cargar perfiles</Text>
+        <Text style={styles.emptySubtitle}>
+          No se pudieron obtener los perfiles. Verifica tu conexión e inténtalo de nuevo.
+        </Text>
+        <View style={styles.emptyActions}>
+          <TouchableOpacity
+            style={styles.retryBtn}
+            onPress={() => { setCurrentIdx(0); refetch(); }}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.retryText}>🔄 Reintentar</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.communityBtn}
+            onPress={() => setMode('people')}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.communityBtnText}>👥 Ver toda la comunidad</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }

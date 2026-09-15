@@ -39,6 +39,7 @@ const perfilSchema = new mongoose.Schema({
     type: String, default: null,
     validate: { validator: v => v === null || /^#[0-9A-Fa-f]{6}$/.test(v), message: 'Color inválido' }
   },
+  foto_url: { type: String, default: null },
   asistencias: { type: Number, default: 0, min: 0 },
   inasistencias: { type: Number, default: 0, min: 0 },
   demo: { type: Boolean, default: false },
