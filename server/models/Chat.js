@@ -11,5 +11,4 @@ const chatSchema = new mongoose.Schema({
 }, { _id: false, timestamps: false });
 
 chatSchema.index({ miembros: 1 });
-
-module.exports = mongoose.model('Chat', chatSchema, 'chats');
+module.exports = mongoose.models.Chat || mongoose.model('Chat', chatSchema, 'chats');

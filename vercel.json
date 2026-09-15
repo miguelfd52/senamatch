@@ -6,8 +6,6 @@
   "framework": null,
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
-  ],
-  "env": {
-    "EXPO_PUBLIC_API_URL": "https://senamatch-server.railway.app"
-  }
+  ]
 }
+

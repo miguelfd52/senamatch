@@ -139,7 +139,7 @@ export default function TabsLayout() {
 
   return (
     <Tabs
-      tabBar={(props) => <ResponsiveTabBar {...props} />}
+      tabBar={(props: any) => <ResponsiveTabBar {...props} />}
       screenOptions={{
         headerShown: false,
         sceneContainerStyle: {
@@ -221,7 +221,6 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 12,
     position: 'relative',
-    transition: 'all 0.2s ease' as any,
   },
   desktopTabItemActive: {
     backgroundColor: '#261F36',

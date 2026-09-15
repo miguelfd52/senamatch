@@ -31,7 +31,17 @@ export default function LoginScreen() {
       await signIn(response.token, response.user);
       // _layout.tsx redirige automáticamente según rol
     } catch (e: any) {
-      setError(e instanceof ApiError ? e.message : 'Error de conexión. Verifica tu servidor.');
+      console.error('Error al iniciar sesión:', e);
+      const status = e?.status ?? (e instanceof ApiError ? e.status : null);
+      const rawMsg = (e?.message || '').toLowerCase();
+
+      if (status === 401 || rawMsg.includes('incorrecto') || rawMsg.includes('correo o contrase')) {
+        setError('Correo o contraseña incorrectos');
+      } else if (status === 400 && e?.message) {
+        setError(e.message);
+      } else {
+        setError('No pudimos iniciar sesión en este momento. Inténtalo nuevamente.');
+      }
     } finally {
       setLoading(false);
     }
@@ -74,13 +84,21 @@ export default function LoginScreen() {
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
-          {loading ? (
-            <ActivityIndicator color="#FF6B4A" style={styles.loader} />
-          ) : (
-            <TouchableOpacity style={styles.btnPrimary} onPress={handleLogin} activeOpacity={0.85}>
+          <TouchableOpacity
+            style={[styles.btnPrimary, loading && styles.btnDisabled]}
+            onPress={handleLogin}
+            activeOpacity={0.85}
+            disabled={loading}
+          >
+            {loading ? (
+              <View style={styles.loadingRow}>
+                <ActivityIndicator color="#FFFFFF" size="small" style={{ marginRight: 8 }} />
+                <Text style={styles.btnPrimaryText}>Iniciando sesión…</Text>
+              </View>
+            ) : (
               <Text style={styles.btnPrimaryText}>Iniciar sesión</Text>
-            </TouchableOpacity>
-          )}
+            )}
+          </TouchableOpacity>
         </View>
 
         {/* Divisor */}
@@ -143,6 +161,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#FF6B4A',
     padding: 15, borderRadius: 10,
     alignItems: 'center', marginTop: 4,
+  },
+  btnDisabled: {
+    opacity: 0.75,
+  },
+  loadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   btnPrimaryText: {
     color: '#fff', fontSize: 16, fontWeight: '700',

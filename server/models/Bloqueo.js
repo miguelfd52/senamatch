@@ -5,5 +5,4 @@ const bloqueoSchema = new mongoose.Schema({
   ids: { type: [String], default: [] },
   ts: { type: Date, default: Date.now }
 }, { _id: false, timestamps: false });
-
-module.exports = mongoose.model('Bloqueo', bloqueoSchema, 'bloqueos');
+module.exports = mongoose.models.Bloqueo || mongoose.model('Bloqueo', bloqueoSchema, 'bloqueos');

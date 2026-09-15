@@ -11,5 +11,4 @@ const matchSchema = new mongoose.Schema({
 
 matchSchema.index({ a: 1, activo: 1 });
 matchSchema.index({ b: 1, activo: 1 });
-
-module.exports = mongoose.model('Match', matchSchema, 'matches');
+module.exports = mongoose.models.Match || mongoose.model('Match', matchSchema, 'matches');

@@ -27,4 +27,4 @@ const parcheSchema = new mongoose.Schema({
 
 parcheSchema.index({ centro: 1, esfera: 1, inicio: 1, estado: 1 });
 
-module.exports = mongoose.model('Parche', parcheSchema, 'parches');
+module.exports = mongoose.models.Parche || mongoose.model('Parche', parcheSchema, 'parches');

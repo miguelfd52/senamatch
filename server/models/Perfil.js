@@ -55,5 +55,4 @@ perfilSchema.set('toJSON', { virtuals: true });
 perfilSchema.set('toObject', { virtuals: true });
 
 perfilSchema.index({ centro: 1, estado: 1 });
-
-module.exports = mongoose.model('Perfil', perfilSchema, 'perfiles');
+module.exports = mongoose.models.Perfil || mongoose.model('Perfil', perfilSchema, 'perfiles');

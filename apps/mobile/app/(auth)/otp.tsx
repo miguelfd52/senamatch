@@ -20,10 +20,10 @@ export default function OtpScreen() {
       await signIn(response.token, response.user);
       // El _layout.tsx redirigirá automáticamente a la pantalla correspondiente
     } catch (e: any) {
-      if (e instanceof ApiError) {
+      if (e instanceof ApiError || e?.name === 'ApiError') {
         setError(e.message);
       } else {
-        setError('Error al verificar el código');
+        setError(e?.message || 'Error al verificar el código');
       }
     } finally {
       setLoading(false);

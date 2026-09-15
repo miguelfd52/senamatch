@@ -4,20 +4,48 @@ import { Platform } from 'react-native';
 // En Expo Web el navegador y el backend viven en el mismo equipo: usar
 // localhost evita que Windows bloquee la conexión hacia su propia IP Wi-Fi.
 // En Expo Go se conserva la IP de la red definida en .env.
-const getApiUrl = () => {
-  if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location?.hostname) {
-    const host = window.location.hostname;
-    return `http://${host}:3001`;
-  }
-  return process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001';
-};
+// Obtener la URL de la API según el entorno
+export const getApiUrl = () => {
+  const envUrl = process.env.EXPO_PUBLIC_API_URL ? process.env.EXPO_PUBLIC_API_URL.trim() : '';
 
-const API_URL = getApiUrl();
+  // 1. En entorno Web:
+  if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location) {
+    const host = window.location.hostname;
+    const isLocalhost = host === 'localhost' || host === '127.0.0.1';
+
+    // En desarrollo local en navegador:
+    if (isLocalhost) {
+      // Si el desarrollador definió una URL específica local, usarla; si no, localhost:3001
+      if (envUrl && (envUrl.includes('localhost') || envUrl.includes('127.0.0.1'))) {
+        return envUrl.replace(/\/$/, '');
+      }
+      return 'http://localhost:3001';
+    }
+
+    // En producción Web (ej. https://senamatch-k9dt.vercel.app):
+    // Debe usar EXPO_PUBLIC_API_URL configurado en producción (Vercel)
+    if (envUrl) {
+      return envUrl.replace(/\/$/, '');
+    }
+
+    // Fallback de producción: nunca devolver localhost en dominios públicos
+    return window.location.origin;
+  }
+
+  // 2. En entorno Móvil nativo / Expo Go:
+  if (envUrl) {
+    return envUrl.replace(/\/$/, '');
+  }
+
+  // Fallback desarrollo local móvil
+  return 'http://localhost:3001';
+};
 
 export class ApiError extends Error {
   constructor(public message: string, public status: number) {
     super(message);
     this.name = 'ApiError';
+    Object.setPrototypeOf(this, ApiError.prototype);
   }
 }
 
@@ -30,10 +58,19 @@ async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
     headers.set('Authorization', `Bearer ${token}`);
   }
 
-  const response = await fetch(`${API_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  const baseUrl = getApiUrl();
+  const url = `${baseUrl}${endpoint}`;
+
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      ...options,
+      headers,
+    });
+  } catch (netErr: any) {
+    console.error('Fetch connection failed:', url, netErr);
+    throw new ApiError('No pudimos iniciar sesión en este momento. Inténtalo nuevamente.', 0);
+  }
 
   if (!response.ok) {
     let errorMessage = 'Error en el servidor';

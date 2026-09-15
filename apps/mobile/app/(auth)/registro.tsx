@@ -43,7 +43,17 @@ export default function RegistroScreen() {
       await signIn(response.token, response.user);
       // _layout.tsx redirige automáticamente según rol
     } catch (e: any) {
-      setError(e instanceof ApiError ? e.message : 'Error de conexión. Verifica tu servidor.');
+      console.error('Error en registro:', e);
+      const status = e?.status ?? (e instanceof ApiError ? e.status : null);
+      const rawMsg = (e?.message || '').toLowerCase();
+
+      if (status === 409 || rawMsg.includes('existe')) {
+        setError('Ya existe una cuenta con ese correo');
+      } else if (status === 400 && e?.message) {
+        setError(e.message);
+      } else {
+        setError('No pudimos registrar tu cuenta en este momento. Inténtalo nuevamente.');
+      }
     } finally {
       setLoading(false);
     }
@@ -112,13 +122,21 @@ export default function RegistroScreen() {
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
-          {loading ? (
-            <ActivityIndicator color="#FF6B4A" style={styles.loader} />
-          ) : (
-            <TouchableOpacity style={styles.btnPrimary} onPress={handleRegistro} activeOpacity={0.85}>
+          <TouchableOpacity
+            style={[styles.btnPrimary, loading && styles.btnDisabled]}
+            onPress={handleRegistro}
+            activeOpacity={0.85}
+            disabled={loading}
+          >
+            {loading ? (
+              <View style={styles.loadingRow}>
+                <ActivityIndicator color="#FFFFFF" size="small" style={{ marginRight: 8 }} />
+                <Text style={styles.btnPrimaryText}>Creando cuenta…</Text>
+              </View>
+            ) : (
               <Text style={styles.btnPrimaryText}>Crear cuenta</Text>
-            </TouchableOpacity>
-          )}
+            )}
+          </TouchableOpacity>
         </View>
 
         {/* Enlace a login */}
@@ -181,6 +199,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#FF6B4A',
     padding: 15, borderRadius: 10,
     alignItems: 'center', marginTop: 4,
+  },
+  btnDisabled: {
+    opacity: 0.75,
+  },
+  loadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   btnPrimaryText: {
     color: '#fff', fontSize: 16, fontWeight: '700',
