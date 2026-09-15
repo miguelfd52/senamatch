@@ -1,7 +1,7 @@
 import {
   View, Text, StyleSheet, TouchableOpacity,
   ScrollView, ActivityIndicator, Animated,
-  Dimensions, Platform
+  Dimensions, Platform, Image
 } from 'react-native';
 import { useState, useRef, useCallback } from 'react';
 import { useRouter } from 'expo-router';
@@ -20,12 +20,17 @@ const INTENCIONES = ['amistad', 'estudio', 'deporte'] as const;
 export default function DiscoverScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  const { data: perfiles, isLoading, isError, refetch } = usePerfiles();
+  const { data: perfiles, isLoading, isError, error, refetch } = usePerfiles();
   const [currentIdx, setCurrentIdx] = useState(0);
   const [mode, setMode] = useState<'cards' | 'people'>('cards');
   const [intencion] = useState<typeof INTENCIONES[number]>('amistad');
   const swipeMutation = useSwipe(intencion);
   const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  const handleRetry = useCallback(() => {
+    setCurrentIdx(0);
+    refetch();
+  }, [refetch]);
 
   if (mode === 'people') {
     return (
@@ -42,7 +47,7 @@ export default function DiscoverScreen() {
 
   // Filter out own profile
   const cards = Array.isArray(perfiles)
-    ? perfiles.filter((p: any) => p.id !== user?.id)
+    ? perfiles.filter((p: any) => p && p.id !== user?.id)
     : [];
 
   const currentCard = cards[currentIdx] as any;
@@ -69,10 +74,7 @@ export default function DiscoverScreen() {
       swipeMutation.mutate(
         { target: currentCard.id, dir },
         {
-          onSuccess: (res: any) => {
-            if (res?.match) {
-              // Could show a match celebration
-            }
+          onSuccess: (_res: any) => {
             setCurrentIdx(prev => prev + 1);
           },
           onError: () => {
@@ -83,84 +85,19 @@ export default function DiscoverScreen() {
     });
   }, [currentCard, swipeMutation, animateAction]);
 
-  if (isLoading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={ACCENT} />
-        <Text style={styles.loadingText}>Cargando perfiles…</Text>
-      </View>
-    );
-  }
-
-  if (isError) {
-    return (
-      <View style={styles.center}>
-        <Text style={styles.emptyEmoji}>⚠️</Text>
-        <Text style={styles.emptyTitle}>Error al cargar perfiles</Text>
-        <Text style={styles.emptySubtitle}>
-          No se pudieron obtener los perfiles. Verifica tu conexión e inténtalo de nuevo.
-        </Text>
-        <View style={styles.emptyActions}>
-          <TouchableOpacity
-            style={styles.retryBtn}
-            onPress={() => { setCurrentIdx(0); refetch(); }}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.retryText}>🔄 Reintentar</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.communityBtn}
-            onPress={() => setMode('people')}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.communityBtnText}>👥 Ver toda la comunidad</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  }
-
-  if (!cards.length || currentIdx >= cards.length) {
-    return (
-      <View style={styles.center}>
-        <Text style={styles.emptyEmoji}>🔍</Text>
-        <Text style={styles.emptyTitle}>Sin perfiles por ahora</Text>
-        <Text style={styles.emptySubtitle}>
-          No hay más personas en el swipe en este momento. ¡Puedes explorar y chatear con todas las personas registradas en la comunidad!
-        </Text>
-        <View style={styles.emptyActions}>
-          <TouchableOpacity
-            style={styles.retryBtn}
-            onPress={() => { setCurrentIdx(0); refetch(); }}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.retryText}>Actualizar</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.communityBtn}
-            onPress={() => setMode('people')}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.communityBtnText}>👥 Ver toda la comunidad</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  }
-
-  const intereses = currentCard.intereses || [];
-  const avatarEmoji = currentCard.avatarEmoji || '😊';
-  const avatarColor = currentCard.avatarColor || ACCENT;
-
   return (
     <View style={styles.container}>
-      {/* Header */}
+      {/* Header — siempre visible */}
       <View style={styles.header}>
         <View>
           <Text style={styles.headerTitle}>Descubrir</Text>
-          <Text style={styles.headerCount}>
-            {currentIdx + 1} / {cards.length}
-          </Text>
+          {cards.length > 0 && currentIdx < cards.length ? (
+            <Text style={styles.headerCount}>
+              {currentIdx + 1} / {cards.length}
+            </Text>
+          ) : (
+            <Text style={styles.headerCount}>SENA Match</Text>
+          )}
         </View>
 
         <TouchableOpacity
@@ -172,79 +109,150 @@ export default function DiscoverScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Card */}
-      <View style={styles.cardContainer}>
-        <Animated.View
-          style={[styles.card, { transform: [{ scale: scaleAnim }] }]}
-        >
-          {/* Avatar */}
-          <View style={[styles.avatarArea, { backgroundColor: avatarColor + '20' }]}>
-            <Text style={styles.avatarEmoji}>{avatarEmoji}</Text>
+      {/* Contenido según estado */}
+      {isLoading ? (
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={ACCENT} />
+          <Text style={styles.loadingText}>Cargando perfiles…</Text>
+        </View>
+      ) : isError ? (
+        <View style={styles.center}>
+          <Text style={styles.emptyEmoji}>⚠️</Text>
+          <Text style={styles.emptyTitle}>Error al cargar perfiles</Text>
+          <Text style={styles.emptySubtitle}>
+            {error instanceof Error ? error.message : 'No se pudieron obtener los perfiles. Verifica tu conexión e inténtalo de nuevo.'}
+          </Text>
+          <View style={styles.emptyActions}>
+            <TouchableOpacity
+              style={styles.retryBtn}
+              onPress={handleRetry}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.retryText}>🔄 Reintentar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.communityBtn}
+              onPress={() => setMode('people')}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.communityBtnText}>👥 Ver toda la comunidad</Text>
+            </TouchableOpacity>
           </View>
+        </View>
+      ) : !cards.length || currentIdx >= cards.length ? (
+        <View style={styles.center}>
+          <Text style={styles.emptyEmoji}>🔍</Text>
+          <Text style={styles.emptyTitle}>Aún no hay perfiles para mostrar</Text>
+          <Text style={styles.emptySubtitle}>
+            No hay más perfiles disponibles en este momento. Puedes volver a revisar o explorar la lista completa de la comunidad.
+          </Text>
+          <View style={styles.emptyActions}>
+            <TouchableOpacity
+              style={styles.retryBtn}
+              onPress={handleRetry}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.retryText}>🔄 Reintentar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.communityBtn}
+              onPress={() => setMode('people')}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.communityBtnText}>👥 Ver toda la comunidad</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : (
+        <>
+          {/* Card */}
+          <View style={styles.cardContainer}>
+            <Animated.View
+              style={[styles.card, { transform: [{ scale: scaleAnim }] }]}
+            >
+              {/* Avatar o Foto */}
+              {(currentCard.fotoUrl || currentCard.foto) ? (
+                <Image
+                  source={{ uri: currentCard.fotoUrl || currentCard.foto }}
+                  style={styles.avatarPhoto}
+                  resizeMode="cover"
+                />
+              ) : (
+                <View
+                  style={[
+                    styles.avatarArea,
+                    { backgroundColor: (currentCard.avatarColor || ACCENT) + '20' }
+                  ]}
+                >
+                  <Text style={styles.avatarEmoji}>{currentCard.avatarEmoji || '😊'}</Text>
+                </View>
+              )}
 
-          {/* Info */}
-          <View style={styles.cardInfo}>
-            <Text style={styles.cardName}>{currentCard.nombre}</Text>
-            <View style={styles.rolBadge}>
-              <Text style={styles.rolBadgeText}>
-                {currentCard.rol?.charAt(0).toUpperCase() + currentCard.rol?.slice(1)}
-              </Text>
-            </View>
+              {/* Info */}
+              <View style={styles.cardInfo}>
+                <Text style={styles.cardName}>{currentCard.nombre}</Text>
+                <View style={styles.rolBadge}>
+                  <Text style={styles.rolBadgeText}>
+                    {currentCard.rol ? (currentCard.rol.charAt(0).toUpperCase() + currentCard.rol.slice(1)) : 'Aprendiz'}
+                  </Text>
+                </View>
 
-            {currentCard.bio ? (
-              <Text style={styles.bio} numberOfLines={3}>{currentCard.bio}</Text>
-            ) : null}
+                {currentCard.bio ? (
+                  <Text style={styles.bio} numberOfLines={3}>{currentCard.bio}</Text>
+                ) : null}
 
-            {currentCard.programa ? (
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>📚</Text>
-                <Text style={styles.infoValue}>{currentCard.programa}</Text>
-              </View>
-            ) : null}
-
-            {currentCard.jornada ? (
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>🕐</Text>
-                <Text style={styles.infoValue}>Jornada {currentCard.jornada}</Text>
-              </View>
-            ) : null}
-
-            {/* Intereses */}
-            {intereses.length > 0 && (
-              <View style={styles.tagsRow}>
-                {intereses.slice(0, 5).map((tag: string, i: number) => (
-                  <View key={i} style={styles.tag}>
-                    <Text style={styles.tagText}>{tag}</Text>
+                {currentCard.programa ? (
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>📚</Text>
+                    <Text style={styles.infoValue}>{currentCard.programa}</Text>
                   </View>
-                ))}
+                ) : null}
+
+                {currentCard.jornada ? (
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>🕐</Text>
+                    <Text style={styles.infoValue}>Jornada {currentCard.jornada}</Text>
+                  </View>
+                ) : null}
+
+                {/* Intereses */}
+                {Array.isArray(currentCard.intereses) && currentCard.intereses.length > 0 && (
+                  <View style={styles.tagsRow}>
+                    {currentCard.intereses.slice(0, 5).map((tag: string, i: number) => (
+                      <View key={i} style={styles.tag}>
+                        <Text style={styles.tagText}>{tag}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
               </View>
-            )}
+            </Animated.View>
           </View>
-        </Animated.View>
-      </View>
 
-      {/* Actions */}
-      <View style={styles.actions}>
-        <TouchableOpacity
-          style={styles.passBtn}
-          onPress={() => handleSwipe('pass')}
-          activeOpacity={0.75}
-          disabled={swipeMutation.isPending}
-        >
-          <Text style={styles.passBtnEmoji}>👋</Text>
-          <Text style={styles.passBtnText}>Pasar</Text>
-        </TouchableOpacity>
+          {/* Actions */}
+          <View style={styles.actions}>
+            <TouchableOpacity
+              style={styles.passBtn}
+              onPress={() => handleSwipe('pass')}
+              activeOpacity={0.75}
+              disabled={swipeMutation.isPending}
+            >
+              <Text style={styles.passBtnEmoji}>👋</Text>
+              <Text style={styles.passBtnText}>Pasar</Text>
+            </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.likeBtn}
-          onPress={() => handleSwipe('like')}
-          activeOpacity={0.75}
-          disabled={swipeMutation.isPending}
-        >
-          <Text style={styles.likeBtnEmoji}>❤️</Text>
-          <Text style={styles.likeBtnText}>Me interesa</Text>
-        </TouchableOpacity>
-      </View>
+            <TouchableOpacity
+              style={styles.likeBtn}
+              onPress={() => handleSwipe('like')}
+              activeOpacity={0.75}
+              disabled={swipeMutation.isPending}
+            >
+              <Text style={styles.likeBtnEmoji}>❤️</Text>
+              <Text style={styles.likeBtnText}>Me interesa</Text>
+            </TouchableOpacity>
+          </View>
+        </>
+      )}
     </View>
   );
 }
@@ -257,11 +265,11 @@ const styles = StyleSheet.create({
   },
   loadingText: { color: '#786E8A', marginTop: 16, fontSize: 15 },
 
-  // Empty
+  // Empty & Error
   emptyEmoji: { fontSize: 56, marginBottom: 16 },
-  emptyTitle: { fontSize: 20, fontWeight: '700', color: '#F0ECF6', marginBottom: 8 },
-  emptySubtitle: { fontSize: 14, color: '#786E8A', textAlign: 'center', lineHeight: 22, maxWidth: 320 },
-  emptyActions: { flexDirection: 'row', gap: 12, marginTop: 24, alignItems: 'center' },
+  emptyTitle: { fontSize: 20, fontWeight: '700', color: '#F0ECF6', marginBottom: 8, textAlign: 'center' },
+  emptySubtitle: { fontSize: 14, color: '#786E8A', textAlign: 'center', lineHeight: 22, maxWidth: 360 },
+  emptyActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 24, justifyContent: 'center', alignItems: 'center' },
   retryBtn: {
     backgroundColor: '#282234',
     paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12,
@@ -278,8 +286,8 @@ const styles = StyleSheet.create({
   // Header
   header: {
     flexDirection: 'row', justifyContent: 'space-between',
-    alignItems: 'center', paddingHorizontal: 24, paddingTop: Platform.OS === 'web' ? 95 : 52,
-    maxWidth: 600, width: '100%', alignSelf: 'center',
+    alignItems: 'center', paddingHorizontal: 24, paddingTop: Platform.OS === 'web' ? 24 : 52,
+    paddingBottom: 12, maxWidth: 600, width: '100%', alignSelf: 'center',
   },
   headerTitle: { fontSize: 24, fontWeight: '800', color: '#F0ECF6' },
   headerCount: { fontSize: 14, color: '#786E8A', fontWeight: '600', marginTop: 2 },
@@ -297,6 +305,11 @@ const styles = StyleSheet.create({
     width: CARD_W, overflow: 'hidden',
     borderWidth: 1, borderColor: '#2D2640',
     shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 20, elevation: 8,
+  },
+  avatarPhoto: {
+    width: '100%',
+    height: 200,
+    backgroundColor: '#282234',
   },
   avatarArea: {
     height: 140, justifyContent: 'center', alignItems: 'center',
@@ -329,6 +342,7 @@ const styles = StyleSheet.create({
   actions: {
     flexDirection: 'row', gap: 16,
     padding: 24, paddingBottom: 16, justifyContent: 'center',
+    maxWidth: 600, width: '100%', alignSelf: 'center',
   },
   passBtn: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',

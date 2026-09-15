@@ -1,7 +1,7 @@
 import {
   View, Text, StyleSheet, TouchableOpacity,
   ScrollView, ActivityIndicator, TextInput,
-  RefreshControl, Platform
+  RefreshControl, Platform, Image
 } from 'react-native';
 import { useState, useCallback, useEffect } from 'react';
 import { useUsuariosComunidad, useCrearChatDirecto } from '../hooks/useParches';
@@ -160,14 +160,22 @@ export default function PeopleScreen({ onOpenChat, onBack }: Props) {
             return (
               <View key={user.id} style={styles.userCard}>
                 {/* Avatar */}
-                <View
-                  style={[
-                    styles.avatar,
-                    { backgroundColor: (user.avatarColor || ACCENT) + '20' }
-                  ]}
-                >
-                  <Text style={styles.avatarEmoji}>{user.avatarEmoji || '😊'}</Text>
-                </View>
+                {(user.fotoUrl || user.foto) ? (
+                  <Image
+                    source={{ uri: user.fotoUrl || user.foto }}
+                    style={styles.avatar}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <View
+                    style={[
+                      styles.avatar,
+                      { backgroundColor: (user.avatarColor || ACCENT) + '20' }
+                    ]}
+                  >
+                    <Text style={styles.avatarEmoji}>{user.avatarEmoji || '😊'}</Text>
+                  </View>
+                )}
 
                 {/* Info */}
                 <View style={styles.userInfo}>
