@@ -18,12 +18,19 @@ const TIPOS_VALIDOS = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 const TIPO_NOMBRES = 'JPG, JPEG, PNG o WebP';
 const MAX_BYTES = 3 * 1024 * 1024; // 3 MB
 
-function getCloudName() {
-  return process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME || 'jsts4pi6';
+function getCloudName(): string {
+  const envVal = process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME;
+  const clean = envVal ? String(envVal).trim().replace(/^['"]|['"]$/g, '') : '';
+  if (!clean || clean.toLowerCase() === 'senamatch') {
+    return 'jsts4pi6';
+  }
+  return clean;
 }
 
-function getUploadPreset() {
-  return process.env.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET || 'senamatch_images';
+function getUploadPreset(): string {
+  const envVal = process.env.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+  const clean = envVal ? String(envVal).trim().replace(/^['"]|['"]$/g, '') : '';
+  return clean || 'senamatch_images';
 }
 
 /**
