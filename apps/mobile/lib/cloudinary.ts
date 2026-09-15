@@ -47,7 +47,11 @@ export async function uploadFileToCloudinary(file: File): Promise<CloudinaryResu
   const uploadPreset = getUploadPreset();
   const url = `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`;
 
-  const form = new FormData();
+  // En web, forzar el uso del FormData nativo del navegador (window.FormData)
+  const form = (typeof window !== 'undefined' && (window as any).FormData)
+    ? new (window as any).FormData()
+    : new FormData();
+
   form.append('file', file);
   form.append('upload_preset', uploadPreset);
   form.append('folder', 'senamatch');
@@ -63,12 +67,18 @@ export async function uploadFileToCloudinary(file: File): Promise<CloudinaryResu
   }
 
   if (!response.ok) {
-    let msg = `Error del servidor Cloudinary (${response.status})`;
+    let errorMsg = `HTTP ${response.status}`;
     try {
       const errData = await response.json();
-      msg = errData?.error?.message || msg;
-    } catch { /* ignorar */ }
-    throw new CloudinaryError(`Error al subir la imagen: ${msg}`);
+      if (errData?.error?.message) {
+        errorMsg = errData.error.message;
+      }
+    } catch {
+      // Ignorar fallo de parseo JSON
+    }
+    // Registrar solo status y mensaje para diagnóstico, sin claves ni datos privados
+    console.error(`[Cloudinary] status: ${response.status}, message: ${errorMsg}`);
+    throw new CloudinaryError(`Error al subir la imagen (${response.status}): ${errorMsg}`);
   }
 
   const data = await response.json() as CloudinaryResult;
@@ -107,7 +117,10 @@ export async function uploadDataUrlToCloudinary(dataUrl: string): Promise<Cloudi
     throw new CloudinaryError(`La imagen supera el límite de 3 MB (~${sizeMB} MB estimado). Comprime la imagen e inténtalo de nuevo.`);
   }
 
-  const form = new FormData();
+  const form = (typeof window !== 'undefined' && (window as any).FormData)
+    ? new (window as any).FormData()
+    : new FormData();
+
   form.append('file', dataUrl);
   form.append('upload_preset', uploadPreset);
   form.append('folder', 'senamatch');
@@ -120,12 +133,17 @@ export async function uploadDataUrlToCloudinary(dataUrl: string): Promise<Cloudi
   }
 
   if (!response.ok) {
-    let msg = `Error del servidor Cloudinary (${response.status})`;
+    let errorMsg = `HTTP ${response.status}`;
     try {
       const errData = await response.json();
-      msg = errData?.error?.message || msg;
-    } catch { /* ignorar */ }
-    throw new CloudinaryError(`Error al subir la imagen: ${msg}`);
+      if (errData?.error?.message) {
+        errorMsg = errData.error.message;
+      }
+    } catch {
+      // Ignorar fallo de parseo JSON
+    }
+    console.error(`[Cloudinary] status: ${response.status}, message: ${errorMsg}`);
+    throw new CloudinaryError(`Error al subir la imagen (${response.status}): ${errorMsg}`);
   }
 
   const data = await response.json() as CloudinaryResult;
