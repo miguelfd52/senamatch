@@ -1,17 +1,21 @@
 import {
   View, Text, StyleSheet, TouchableOpacity,
   ScrollView, ActivityIndicator, TextInput,
-  FlatList, KeyboardAvoidingView, Platform,
-  RefreshControl
+  KeyboardAvoidingView, Platform, RefreshControl,
+  Image
 } from 'react-native';
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useAuth } from '../app/context/AuthContext';
 import { useBandeja, useConversacion, useEnviarMensaje } from '../hooks/useParches';
+import { api } from '../lib/api';
 import PeopleScreen from './PeopleScreen';
+import PublicProfileModal from './PublicProfileModal';
 
-const ACCENT = '#FF6B4A';
-const BG = '#16121D';
-const CARD = '#1E1A2B';
+const ACCENT = '#39A900';
+const BG = '#0F0C18';
+const CARD = '#161B22';
+const CARD_BORDER = '#263238';
+const DANGER = '#FF5B6E';
 
 export default function ChatsScreen() {
   const [selectedChat, setSelectedChat] = useState<string | null>(null);
@@ -61,6 +65,7 @@ function ChatsList({
 }) {
   const { data: chats, isLoading, refetch } = useBandeja();
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -69,15 +74,13 @@ function ChatsList({
   }, [refetch]);
 
   const chatsList = Array.isArray(chats) ? chats : [];
-
-  // Sort by last message time
   const sorted = [...chatsList].sort((a: any, b: any) => (b.ultimo || 0) - (a.ultimo || 0));
 
   if (isLoading) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color={ACCENT} />
-        <Text style={styles.loadingText}>Cargando chats…</Text>
+        <Text style={styles.loadingText}>Cargando conversaciones…</Text>
       </View>
     );
   }
@@ -87,7 +90,7 @@ function ChatsList({
       <View style={styles.header}>
         <View style={{ flex: 1 }}>
           <Text style={styles.headerTitle}>Chats</Text>
-          <Text style={styles.headerSubtitle}>Tus conversaciones directas y parches</Text>
+          <Text style={styles.headerSubtitle}>Tus conversaciones directas y de parches</Text>
         </View>
         <TouchableOpacity
           style={styles.newChatBtn}
@@ -95,7 +98,7 @@ function ChatsList({
           activeOpacity={0.85}
         >
           <Text style={styles.newChatBtnEmoji}>➕</Text>
-          <Text style={styles.newChatBtnText}>Nueva persona</Text>
+          <Text style={styles.newChatBtnText}>Nueva conversación</Text>
         </TouchableOpacity>
       </View>
 
@@ -104,7 +107,7 @@ function ChatsList({
           <Text style={styles.emptyEmoji}>💬</Text>
           <Text style={styles.emptyTitle}>Sin conversaciones activas</Text>
           <Text style={styles.emptySubtitle}>
-            Encuentra a personas registradas en SENA Match y comienza a chatear con ellas.
+            Encuentra a personas registradas en SENA Match o crea un parche para comenzar a chatear.
           </Text>
           <TouchableOpacity
             style={styles.explorePeopleBtn}
@@ -112,7 +115,7 @@ function ChatsList({
             activeOpacity={0.85}
           >
             <Text style={styles.explorePeopleBtnEmoji}>👥</Text>
-            <Text style={styles.explorePeopleBtnText}>Ver personas para chatear</Text>
+            <Text style={styles.explorePeopleBtnText}>Explorar comunidad para chatear</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -142,37 +145,49 @@ function ChatsList({
             const isDirect = chat.tipo === 'directo';
             const otro = chat.otroUsuario;
             const chatTitle = otro?.nombre || chat.titulo || (isParche ? 'Chat de parche' : 'Conversación');
-            const avatarEmoji = otro?.avatarEmoji || (isParche ? '🎯' : '💬');
-            const avatarBg = otro?.avatarColor ? (otro.avatarColor + '25') : undefined;
+            const unread = chat.unreadCount || 0;
 
             return (
               <TouchableOpacity
                 key={chat.id}
-                style={styles.chatCard}
+                style={[styles.chatCard, unread > 0 && styles.chatCardUnread]}
                 onPress={() => onSelect(chat.id)}
                 activeOpacity={0.7}
               >
-                <View
-                  style={[
-                    styles.chatAvatar,
-                    isParche && styles.chatAvatarParche,
-                    avatarBg ? { backgroundColor: avatarBg } : null
-                  ]}
+                {/* Avatar */}
+                <TouchableOpacity
+                  onPress={() => otro?.id && setSelectedProfileId(otro.id)}
+                  activeOpacity={0.8}
                 >
-                  <Text style={styles.chatAvatarEmoji}>
-                    {avatarEmoji}
-                  </Text>
-                </View>
+                  {otro?.fotoUrl ? (
+                    <Image source={{ uri: otro.fotoUrl }} style={styles.chatAvatarPhoto} resizeMode="cover" />
+                  ) : (
+                    <View
+                      style={[
+                        styles.chatAvatar,
+                        isParche && styles.chatAvatarParche,
+                        { backgroundColor: (otro?.avatarColor || ACCENT) + '25' }
+                      ]}
+                    >
+                      <Text style={styles.chatAvatarEmoji}>
+                        {otro?.avatarEmoji || (isParche ? '🎯' : '💬')}
+                      </Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+
                 <View style={styles.chatInfo}>
                   <View style={styles.chatTopRow}>
-                    <Text style={styles.chatName} numberOfLines={1}>
+                    <Text style={[styles.chatName, unread > 0 && styles.chatNameUnread]} numberOfLines={1}>
                       {chatTitle}
                     </Text>
                     <Text style={styles.chatTime}>{lastTime}</Text>
                   </View>
-                  <Text style={styles.chatPreview} numberOfLines={1}>
+
+                  <Text style={[styles.chatPreview, unread > 0 && styles.chatPreviewUnread]} numberOfLines={1}>
                     {lastText}
                   </Text>
+
                   <View style={styles.chatMeta}>
                     <Text style={styles.chatBadge}>
                       {isParche ? '🎯 Parche' : isDirect ? '👤 Directo' : '❤️ Match'}
@@ -186,6 +201,11 @@ function ChatsList({
                         {chat.miembros?.length || 0} miembros
                       </Text>
                     )}
+                    {unread > 0 ? (
+                      <View style={styles.unreadCounter}>
+                        <Text style={styles.unreadCounterText}>{unread}</Text>
+                      </View>
+                    ) : null}
                   </View>
                 </View>
               </TouchableOpacity>
@@ -194,6 +214,17 @@ function ChatsList({
           <View style={{ height: 24 }} />
         </ScrollView>
       )}
+
+      {/* Perfil público modal si se pulsa sobre el avatar */}
+      <PublicProfileModal
+        userId={selectedProfileId}
+        visible={!!selectedProfileId}
+        onClose={() => setSelectedProfileId(null)}
+        onOpenChat={(id) => {
+          setSelectedProfileId(null);
+          onSelect(id);
+        }}
+      />
     </View>
   );
 }
@@ -207,13 +238,23 @@ function ConversacionView({ chatId, onBack }: { chatId: string; onBack: () => vo
   const { data: chatData, isLoading } = useConversacion(chatId);
   const enviarMutation = useEnviarMensaje(chatId);
   const [texto, setTexto] = useState('');
+  const [errorEnvio, setErrorEnvio] = useState<string | null>(null);
+  const [mensajeFallido, setMensajeFallido] = useState<string | null>(null);
+  const [selectedParticipantId, setSelectedParticipantId] = useState<string | null>(null);
+
   const scrollRef = useRef<ScrollView>(null);
 
   const chat = chatData as any;
   const mensajes = chat?.mensajes || [];
 
+  // Marcar mensajes como leídos al abrir la conversación
   useEffect(() => {
-    // Auto scroll to bottom when new messages arrive
+    if (chatId) {
+      api.post(`/chats/${chatId}/leer`).catch(() => {});
+    }
+  }, [chatId, mensajes.length]);
+
+  useEffect(() => {
     if (scrollRef.current && mensajes.length > 0) {
       setTimeout(() => {
         scrollRef.current?.scrollToEnd({ animated: false });
@@ -221,15 +262,29 @@ function ConversacionView({ chatId, onBack }: { chatId: string; onBack: () => vo
     }
   }, [mensajes.length]);
 
-  const handleEnviar = () => {
-    const txt = texto.trim();
+  const handleEnviar = (textoAEnviar?: string) => {
+    const txt = (textoAEnviar || texto).trim();
     if (!txt) return;
+
+    setErrorEnvio(null);
+    setMensajeFallido(null);
+
     enviarMutation.mutate(txt, {
       onSuccess: () => {
         setTexto('');
-        setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 200);
+        setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 150);
       },
+      onError: (err: any) => {
+        setErrorEnvio(err?.message || 'No se pudo enviar el mensaje. Revisa tu conexión.');
+        setMensajeFallido(txt);
+      }
     });
+  };
+
+  const handleReintentar = () => {
+    if (mensajeFallido) {
+      handleEnviar(mensajeFallido);
+    }
   };
 
   if (isLoading) {
@@ -242,24 +297,31 @@ function ConversacionView({ chatId, onBack }: { chatId: string; onBack: () => vo
 
   const isParche = chat?.tipo === 'parche';
   const chatTitle = chat?.titulo || (isParche ? 'Chat de parche' : 'Conversación');
+  const otro = chat?.otroUsuario;
 
   return (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={90}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
       {/* Top bar */}
       <View style={styles.convHeader}>
         <TouchableOpacity onPress={onBack} style={styles.backBtn} activeOpacity={0.7}>
           <Text style={styles.backText}>‹ Volver</Text>
         </TouchableOpacity>
-        <View style={styles.convTitleWrap}>
+
+        <TouchableOpacity
+          style={styles.convTitleWrap}
+          onPress={() => otro?.id && setSelectedParticipantId(otro.id)}
+          activeOpacity={otro?.id ? 0.8 : 1}
+        >
           <Text style={styles.convTitle} numberOfLines={1}>{chatTitle}</Text>
           <Text style={styles.convSubtitle}>
-            {isParche ? 'Parche grupal' : (chat?.otroUsuario?.rol ? `${chat.otroUsuario.rol} • SENA` : 'En línea')}
+            {isParche ? 'Parche grupal' : (otro?.rol ? `${otro.rol} • SENA` : 'En línea')}
           </Text>
-        </View>
+        </TouchableOpacity>
+
         <View style={{ width: 50 }} />
       </View>
 
@@ -270,7 +332,7 @@ function ConversacionView({ chatId, onBack }: { chatId: string; onBack: () => vo
         contentContainerStyle={styles.messagesContent}
       >
         {mensajes.map((msg: any, i: number) => {
-          const isMine = msg.de === user?.id;
+          const isMine = String(msg.de) === String(user?.id);
           const isSystem = msg.de === null;
 
           if (isSystem) {
@@ -300,29 +362,46 @@ function ConversacionView({ chatId, onBack }: { chatId: string; onBack: () => vo
         })}
       </ScrollView>
 
+      {/* Banner de error de envío */}
+      {errorEnvio ? (
+        <View style={styles.errorEnvioBanner}>
+          <Text style={styles.errorEnvioText}>⚠️ {errorEnvio}</Text>
+          <TouchableOpacity onPress={handleReintentar} style={styles.retryEnvioBtn}>
+            <Text style={styles.retryEnvioBtnText}>Reintentar</Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
+
       {/* Input */}
       <View style={styles.inputBar}>
         <TextInput
           style={styles.msgInput}
-          placeholder="Escribe un mensaje…"
+          placeholder="Escribe un mensaje respetuoso…"
           placeholderTextColor="#786E8A"
           value={texto}
           onChangeText={setTexto}
           maxLength={500}
           returnKeyType="send"
-          onSubmitEditing={handleEnviar}
+          onSubmitEditing={() => handleEnviar()}
         />
         <TouchableOpacity
           style={[styles.sendBtn, !texto.trim() && styles.sendBtnDisabled]}
-          onPress={handleEnviar}
+          onPress={() => handleEnviar()}
           disabled={!texto.trim() || enviarMutation.isPending}
-          activeOpacity={0.8}
+          activeOpacity={0.85}
         >
           <Text style={styles.sendBtnText}>
             {enviarMutation.isPending ? '…' : '➤'}
           </Text>
         </TouchableOpacity>
       </View>
+
+      {/* Modal de perfil público */}
+      <PublicProfileModal
+        userId={selectedParticipantId}
+        visible={!!selectedParticipantId}
+        onClose={() => setSelectedParticipantId(null)}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -333,7 +412,7 @@ const styles = StyleSheet.create({
     flex: 1, backgroundColor: BG,
     justifyContent: 'center', alignItems: 'center',
   },
-  loadingText: { color: '#786E8A', marginTop: 16, fontSize: 15 },
+  loadingText: { color: '#8D83A0', marginTop: 16, fontSize: 15 },
 
   // Header
   header: {
@@ -411,35 +490,59 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 16,
     borderWidth: 1,
-    borderColor: '#2D2640',
+    borderColor: CARD_BORDER,
     shadowColor: '#000',
     shadowOpacity: 0.2,
     shadowRadius: 10,
   },
+  chatCardUnread: {
+    borderColor: 'rgba(57, 169, 0, 0.4)',
+    backgroundColor: '#1B2420',
+  },
   chatAvatar: {
     width: 50, height: 50, borderRadius: 25,
-    backgroundColor: 'rgba(255,107,74,0.1)',
     justifyContent: 'center', alignItems: 'center',
   },
-  chatAvatarParche: { backgroundColor: 'rgba(95,224,180,0.1)' },
+  chatAvatarPhoto: {
+    width: 50, height: 50, borderRadius: 25,
+    borderWidth: 2, borderColor: ACCENT,
+  },
+  chatAvatarParche: { backgroundColor: 'rgba(57,169,0,0.15)' },
   chatAvatarEmoji: { fontSize: 24 },
   chatInfo: { flex: 1 },
   chatTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   chatName: { fontSize: 15, fontWeight: '700', color: '#F0ECF6', flex: 1, marginRight: 8 },
+  chatNameUnread: { fontWeight: '900', color: '#FFFFFF' },
   chatTime: { fontSize: 12, color: '#786E8A' },
   chatPreview: { fontSize: 13, color: '#786E8A', marginTop: 4 },
-  chatMeta: { flexDirection: 'row', gap: 12, marginTop: 8 },
+  chatPreviewUnread: { color: '#DDF4D5', fontWeight: '600' },
+  chatMeta: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 8 },
   chatBadge: { fontSize: 11, color: '#786E8A' },
   chatRole: { fontSize: 11, color: ACCENT, fontWeight: '700' },
   chatMembers: { fontSize: 11, color: '#786E8A' },
+  unreadCounter: {
+    backgroundColor: ACCENT,
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    marginLeft: 'auto',
+  },
+  unreadCounterText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '800',
+  },
 
   convHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 24, paddingTop: Platform.OS === 'web' ? 95 : 52, paddingBottom: 16,
-    backgroundColor: CARD, borderBottomWidth: 1, borderBottomColor: '#2D2640',
+    backgroundColor: CARD, borderBottomWidth: 1, borderBottomColor: CARD_BORDER,
   },
   backBtn: { padding: 4 },
-  backText: { color: ACCENT, fontSize: 16, fontWeight: '600' },
+  backText: { color: ACCENT, fontSize: 16, fontWeight: '700' },
   convTitleWrap: { flex: 1, alignItems: 'center', marginHorizontal: 8 },
   convTitle: {
     fontSize: 16, fontWeight: '700', color: '#F0ECF6',
@@ -453,8 +556,8 @@ const styles = StyleSheet.create({
 
   systemMsg: { alignSelf: 'center', marginVertical: 8 },
   systemMsgText: {
-    fontSize: 12, color: '#786E8A', fontStyle: 'italic',
-    backgroundColor: '#282234', paddingHorizontal: 14, paddingVertical: 6,
+    fontSize: 12, color: '#8D83A0', fontStyle: 'italic',
+    backgroundColor: '#1E252F', paddingHorizontal: 14, paddingVertical: 6,
     borderRadius: 12, overflow: 'hidden',
   },
 
@@ -469,26 +572,55 @@ const styles = StyleSheet.create({
   },
   msgOther: {
     alignSelf: 'flex-start',
-    backgroundColor: '#282234',
+    backgroundColor: '#1E252F',
     borderBottomLeftRadius: 4,
   },
   msgText: { fontSize: 14, color: '#F0ECF6', lineHeight: 20 },
   msgTextMine: { color: '#fff' },
   msgTime: {
-    fontSize: 10, color: 'rgba(255,255,255,0.5)',
+    fontSize: 10, color: 'rgba(255,255,255,0.6)',
     marginTop: 4, textAlign: 'right',
+  },
+
+  errorEnvioBanner: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 91, 110, 0.15)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 91, 110, 0.3)',
+  },
+  errorEnvioText: {
+    color: DANGER,
+    fontSize: 12,
+    fontWeight: '600',
+    flex: 1,
+  },
+  retryEnvioBtn: {
+    backgroundColor: DANGER,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginLeft: 8,
+  },
+  retryEnvioBtnText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '700',
   },
 
   // Input bar
   inputBar: {
     flexDirection: 'row', gap: 10, padding: 12,
-    backgroundColor: CARD, borderTopWidth: 1, borderTopColor: '#2D2640',
+    backgroundColor: CARD, borderTopWidth: 1, borderTopColor: CARD_BORDER,
     alignItems: 'center',
   },
   msgInput: {
-    flex: 1, backgroundColor: '#282234',
+    flex: 1, backgroundColor: '#1E252F',
     color: '#F0ECF6', fontSize: 15,
-    borderWidth: 1, borderColor: '#3A3247',
+    borderWidth: 1, borderColor: '#2D3748',
     paddingHorizontal: 14, paddingVertical: 10,
     borderRadius: 20,
   },
@@ -496,6 +628,6 @@ const styles = StyleSheet.create({
     width: 44, height: 44, borderRadius: 22,
     backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center',
   },
-  sendBtnDisabled: { backgroundColor: '#3A3247' },
+  sendBtnDisabled: { backgroundColor: '#2D3748' },
   sendBtnText: { fontSize: 18, color: '#fff' },
 });

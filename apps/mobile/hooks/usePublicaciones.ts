@@ -25,14 +25,20 @@ export interface Publicacion {
   };
   likesCount: number;
   likedPorMi: boolean;
+  esMio?: boolean;
   comentarios: Comentario[];
   creado: number;
 }
 
-export function usePublicaciones() {
+export function usePublicaciones(page: number = 1) {
   return useQuery<Publicacion[]>({
-    queryKey: ['publicaciones'],
-    queryFn: () => api.get('/publicaciones') as Promise<Publicacion[]>,
+    queryKey: ['publicaciones', page],
+    queryFn: async () => {
+      const res: any = await api.get(`/publicaciones?page=${page}&limit=30`);
+      if (Array.isArray(res)) return res;
+      if (res && Array.isArray(res.publicaciones)) return res.publicaciones;
+      return [];
+    },
     staleTime: 1000 * 15,
   });
 }
@@ -42,6 +48,27 @@ export function useCrearPublicacion() {
   return useMutation({
     mutationFn: (data: { texto: string; fotoUrl?: string | null }) =>
       api.post('/publicaciones', data) as Promise<Publicacion>,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['publicaciones'] });
+    },
+  });
+}
+
+export function useEditarPublicacion() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, texto }: { id: string; texto: string }) =>
+      api.patch(`/publicaciones/${id}`, { texto }) as Promise<Publicacion>,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['publicaciones'] });
+    },
+  });
+}
+
+export function useEliminarPublicacion() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete(`/publicaciones/${id}`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['publicaciones'] });
     },
@@ -59,11 +86,11 @@ export function useLikePublicacion() {
       }>,
     onMutate: async (publicacionId) => {
       await qc.cancelQueries({ queryKey: ['publicaciones'] });
-      const anterior = qc.getQueryData<Publicacion[]>(['publicaciones']);
+      const anterior = qc.getQueryData<Publicacion[]>(['publicaciones', 1]);
 
       if (anterior) {
         qc.setQueryData<Publicacion[]>(
-          ['publicaciones'],
+          ['publicaciones', 1],
           anterior.map(p => {
             if (p.id === publicacionId) {
               const nuevoLiked = !p.likedPorMi;
@@ -81,7 +108,7 @@ export function useLikePublicacion() {
     },
     onError: (_err, _id, context) => {
       if (context?.anterior) {
-        qc.setQueryData(['publicaciones'], context.anterior);
+        qc.setQueryData(['publicaciones', 1], context.anterior);
       }
     },
     onSettled: () => {

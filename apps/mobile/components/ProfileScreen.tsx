@@ -9,10 +9,11 @@ import { usePerfil, useEditarPerfil } from '../hooks/useParches';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { openImagePickerAndUpload, CloudinaryError } from '../lib/cloudinary';
 
-const ACCENT = '#FF6B4A';
-const BG = '#16121D';
-const CARD = '#1E1A2B';
-const SUCCESS = '#5FE0B4';
+const ACCENT = '#39A900';
+const BG = '#0F0C18';
+const CARD = '#161B22';
+const CARD_BORDER = '#263238';
+const SUCCESS = '#00E5A3';
 
 const INTERESES_OPCIONES = [
   '🎮 Gaming', '⚽ Fútbol', '🎵 Música', '📚 Lectura',

@@ -169,9 +169,9 @@ const styles = StyleSheet.create({
   },
   tagline: { fontSize: 15, color: '#786E8A', marginTop: 6 },
   card: {
-    backgroundColor: '#1E1A2B',
+    backgroundColor: '#161B22',
     borderRadius: 16, padding: 24,
-    borderWidth: 1, borderColor: '#2D2640',
+    borderWidth: 1, borderColor: '#263238',
     shadowColor: '#000', shadowOpacity: 0.3,
     shadowRadius: 12, elevation: 4,
   },
@@ -180,9 +180,9 @@ const styles = StyleSheet.create({
     fontWeight: '600', marginBottom: 6,
   },
   input: {
-    backgroundColor: '#282234',
+    backgroundColor: '#1E252F',
     color: '#F0ECF6', fontSize: 16,
-    borderWidth: 1, borderColor: '#3A3247',
+    borderWidth: 1, borderColor: '#2D3748',
     padding: 13, borderRadius: 10,
     marginBottom: 16,
   },
@@ -196,7 +196,7 @@ const styles = StyleSheet.create({
   },
   loader: { marginVertical: 8 },
   btnPrimary: {
-    backgroundColor: '#FF6B4A',
+    backgroundColor: '#39A900',
     padding: 15, borderRadius: 10,
     alignItems: 'center', marginTop: 4,
   },
@@ -213,5 +213,5 @@ const styles = StyleSheet.create({
   },
   linkBtn: { alignItems: 'center', marginTop: 24 },
   linkText: { color: '#786E8A', fontSize: 15 },
-  linkAccent: { color: '#FF6B4A', fontWeight: '700' },
+  linkAccent: { color: '#39A900', fontWeight: '700' },
 });

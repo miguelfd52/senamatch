@@ -98,6 +98,9 @@ export const api = {
     
   patch: (endpoint: string, body?: any, options?: RequestInit) => 
     fetchWithAuth(endpoint, { ...options, method: 'PATCH', body: JSON.stringify(body) }),
+
+  put: (endpoint: string, body?: any, options?: RequestInit) => 
+    fetchWithAuth(endpoint, { ...options, method: 'PUT', body: JSON.stringify(body) }),
     
   delete: (endpoint: string, options?: RequestInit) => 
     fetchWithAuth(endpoint, { ...options, method: 'DELETE' }),

@@ -3,13 +3,18 @@ import {
   View, Text, StyleSheet, TouchableOpacity,
   Platform, useWindowDimensions
 } from 'react-native';
+import { useState, useEffect } from 'react';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 
 import SenaMatchLogo from './SenaMatchLogo';
+import NotificacionesModal from './NotificacionesModal';
+import AdminPanelModal from './AdminPanelModal';
+import { useAuth } from '../app/context/AuthContext';
+import { api } from '../lib/api';
 
-const ACCENT = '#FF6B4A';
+const ACCENT = '#39A900';
 const INACTIVE = '#8D83A0';
-const NAVBAR_BG = '#171324';
+const NAVBAR_BG = '#161B22';
 
 const TABS_META: Record<string, { title: string; emoji: string }> = {
   index: { title: 'Inicio', emoji: '🏠' },
@@ -19,7 +24,19 @@ const TABS_META: Record<string, { title: string; emoji: string }> = {
   perfil: { title: 'Perfil', emoji: '👤' },
 };
 
-function ResponsiveTabBar({ state, navigation }: BottomTabBarProps) {
+function ResponsiveTabBar({
+  state,
+  navigation,
+  unreadNotifs,
+  onOpenNotifs,
+  onOpenAdmin,
+  esStaffUser
+}: BottomTabBarProps & {
+  unreadNotifs: number;
+  onOpenNotifs: () => void;
+  onOpenAdmin: () => void;
+  esStaffUser: boolean;
+}) {
   const { width } = useWindowDimensions();
   const isDesktop = Platform.OS === 'web' && width >= 768;
 
@@ -80,13 +97,40 @@ function ResponsiveTabBar({ state, navigation }: BottomTabBarProps) {
                 </TouchableOpacity>
               );
             })}
+
+            {/* Botón de Notificaciones en Desktop */}
+            <TouchableOpacity
+              onPress={onOpenNotifs}
+              style={styles.desktopNotifBtn}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.desktopTabEmoji}>🔔</Text>
+              {unreadNotifs > 0 ? (
+                <View style={styles.desktopNotifBadge}>
+                  <Text style={styles.desktopNotifBadgeText}>
+                    {unreadNotifs > 9 ? '9+' : unreadNotifs}
+                  </Text>
+                </View>
+              ) : null}
+            </TouchableOpacity>
+
+            {/* Acceso Staff / Admin si aplica */}
+            {esStaffUser ? (
+              <TouchableOpacity
+                onPress={onOpenAdmin}
+                style={styles.desktopAdminBtn}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.desktopAdminText}>🛡️ Panel Admin</Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
         </View>
       </View>
     );
   }
 
-  // Versión móvil clásica en la parte inferior
+  // Versión móvil en la parte inferior
   return (
     <View style={styles.mobileTabBar}>
       {state.routes.map((route, index) => {
@@ -131,36 +175,105 @@ function ResponsiveTabBar({ state, navigation }: BottomTabBarProps) {
           </TouchableOpacity>
         );
       })}
+
+      {/* Botón de Notificaciones Móvil */}
+      <TouchableOpacity
+        onPress={onOpenNotifs}
+        style={styles.mobileTabItem}
+        activeOpacity={0.7}
+      >
+        <View style={styles.mobileIconWrap}>
+          <Text style={styles.mobileIconText}>🔔</Text>
+          {unreadNotifs > 0 ? (
+            <View style={styles.mobileNotifBadge}>
+              <Text style={styles.mobileNotifBadgeText}>
+                {unreadNotifs > 9 ? '9+' : unreadNotifs}
+              </Text>
+            </View>
+          ) : null}
+        </View>
+        <Text style={styles.mobileTabLabel}>Avisos</Text>
+      </TouchableOpacity>
     </View>
   );
 }
 
 export default function TabsLayout() {
+  const { user } = useAuth();
   const { width } = useWindowDimensions();
   const isDesktop = Platform.OS === 'web' && width >= 768;
 
+  const [unreadNotifs, setUnreadNotifs] = useState(0);
+  const [showNotifsModal, setShowNotifsModal] = useState(false);
+  const [showAdminModal, setShowAdminModal] = useState(false);
+
+  const esStaffUser = !!(user?.rol && ['admin', 'moderador', 'bienestar'].includes(user.rol as string));
+
+  // Sondeo periódico de notificaciones
+  useEffect(() => {
+    let activo = true;
+    const consultar = async () => {
+      try {
+        const res: any = await api.get('/notificaciones');
+        if (activo && res && typeof res.unreadCount === 'number') {
+          setUnreadNotifs(res.unreadCount);
+        }
+      } catch {
+        // Ignorar si no está autenticado aún
+      }
+    };
+
+    consultar();
+    const interval = setInterval(consultar, 20_000);
+    return () => {
+      activo = false;
+      clearInterval(interval);
+    };
+  }, []);
+
   return (
-    <Tabs
-      tabBar={(props: any) => <ResponsiveTabBar {...props} />}
-      screenOptions={{
-        headerShown: false,
-        sceneContainerStyle: {
-          paddingTop: isDesktop ? 72 : 0,
-          backgroundColor: '#0F0C18',
-        },
-      }}
-    >
-      <Tabs.Screen name="index" options={{ title: 'Inicio' }} />
-      <Tabs.Screen name="descubrir" options={{ title: 'Descubrir' }} />
-      <Tabs.Screen name="parches" options={{ title: 'Parches' }} />
-      <Tabs.Screen name="chats" options={{ title: 'Chats' }} />
-      <Tabs.Screen name="perfil" options={{ title: 'Perfil' }} />
-    </Tabs>
+    <>
+      <Tabs
+        tabBar={(props: any) => (
+          <ResponsiveTabBar
+            {...props}
+            unreadNotifs={unreadNotifs}
+            onOpenNotifs={() => setShowNotifsModal(true)}
+            onOpenAdmin={() => setShowAdminModal(true)}
+            esStaffUser={esStaffUser}
+          />
+        )}
+        screenOptions={{
+          headerShown: false,
+          sceneContainerStyle: {
+            paddingTop: isDesktop ? 72 : 0,
+            backgroundColor: '#0F0C18',
+          },
+        }}
+      >
+        <Tabs.Screen name="index" options={{ title: 'Inicio' }} />
+        <Tabs.Screen name="descubrir" options={{ title: 'Descubrir' }} />
+        <Tabs.Screen name="parches" options={{ title: 'Parches' }} />
+        <Tabs.Screen name="chats" options={{ title: 'Chats' }} />
+        <Tabs.Screen name="perfil" options={{ title: 'Perfil' }} />
+      </Tabs>
+
+      {/* Modales globales de Notificaciones y Panel Admin */}
+      <NotificacionesModal
+        visible={showNotifsModal}
+        onClose={() => setShowNotifsModal(false)}
+        onNotifCountChange={(c) => setUnreadNotifs(c)}
+      />
+
+      <AdminPanelModal
+        visible={showAdminModal}
+        onClose={() => setShowAdminModal(false)}
+      />
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  // Desktop Navbar (Top bar)
   desktopNavbar: {
     position: 'absolute' as any,
     top: 0,
@@ -173,7 +286,7 @@ const styles = StyleSheet.create({
     zIndex: 1000,
     justifyContent: 'center',
     shadowColor: '#000',
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.35,
     shadowRadius: 15,
     elevation: 8,
   },
@@ -191,22 +304,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
-  brandLogo: {
-    fontSize: 24,
-    fontWeight: '900',
-    color: ACCENT,
-    letterSpacing: -0.5,
-  },
   brandBadge: {
-    backgroundColor: 'rgba(255,107,74,0.12)',
+    backgroundColor: 'rgba(57, 169, 0, 0.15)',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: 'rgba(255,107,74,0.3)',
+    borderColor: 'rgba(57, 169, 0, 0.35)',
   },
   brandBadgeText: {
-    color: '#F0ECF6',
+    color: '#DDF4D5',
     fontSize: 12,
     fontWeight: '700',
   },
@@ -219,8 +326,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
     borderRadius: 12,
     position: 'relative',
   },
@@ -236,7 +343,7 @@ const styles = StyleSheet.create({
     color: INACTIVE,
   },
   desktopTabTextActive: {
-    color: '#F0ECF6',
+    color: '#FFFFFF',
     fontWeight: '700',
   },
   activePillGlow: {
@@ -248,14 +355,52 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: ACCENT,
   },
+  desktopNotifBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 12,
+    position: 'relative',
+    backgroundColor: '#221B30',
+  },
+  desktopNotifBadge: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    backgroundColor: ACCENT,
+    borderRadius: 9,
+    minWidth: 18,
+    height: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  desktopNotifBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '900',
+  },
+  desktopAdminBtn: {
+    backgroundColor: '#1E281E',
+    borderWidth: 1,
+    borderColor: ACCENT,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+    marginLeft: 6,
+  },
+  desktopAdminText: {
+    color: ACCENT,
+    fontWeight: '800',
+    fontSize: 13,
+  },
 
   // Mobile Tab bar (Bottom)
   mobileTabBar: {
-    backgroundColor: '#171324',
+    backgroundColor: NAVBAR_BG,
     borderTopWidth: 1,
     borderTopColor: '#2D2640',
-    height: 76,
-    paddingBottom: 16,
+    height: 74,
+    paddingBottom: 14,
     paddingTop: 8,
     flexDirection: 'row',
     justifyContent: 'space-around',
@@ -276,9 +421,10 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
+    position: 'relative',
   },
   mobileIconWrapActive: {
-    backgroundColor: 'rgba(255, 107, 74, 0.15)',
+    backgroundColor: 'rgba(57, 169, 0, 0.15)',
   },
   mobileIconText: {
     fontSize: 20,
@@ -292,5 +438,22 @@ const styles = StyleSheet.create({
   mobileTabLabelActive: {
     color: ACCENT,
     fontWeight: '700',
+  },
+  mobileNotifBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -4,
+    backgroundColor: ACCENT,
+    borderRadius: 8,
+    minWidth: 16,
+    height: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 3,
+  },
+  mobileNotifBadgeText: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: '900',
   },
 });

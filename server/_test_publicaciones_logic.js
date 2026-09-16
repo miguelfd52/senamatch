@@ -5,6 +5,8 @@ const jwt = require('jsonwebtoken');
 const express = require('express');
 const Publicacion = require('./models/Publicacion');
 const Perfil = require('./models/Perfil');
+const Bloqueo = require('./models/Bloqueo');
+Bloqueo.findById = async () => null;
 
 const pubDb = new Map();
 const perfilDb = new Map();
@@ -30,12 +32,19 @@ Publicacion.find = () => {
   const items = Array.from(pubDb.values()).sort((a, b) => b.creado - a.creado);
   return {
     sort: () => ({
+      skip: () => ({
+        limit: () => ({
+          lean: () => Promise.resolve(items),
+        }),
+      }),
       limit: () => ({
         lean: () => Promise.resolve(items),
       }),
     }),
   };
 };
+
+Publicacion.countDocuments = async () => pubDb.size;
 
 Publicacion.create = async (data) => {
   const doc = {

@@ -1,7 +1,7 @@
 import {
   View, Text, StyleSheet, TouchableOpacity,
   ScrollView, ActivityIndicator, RefreshControl,
-  TextInput, Image, Platform, Modal
+  TextInput, Image, Platform, Modal, Alert
 } from 'react-native';
 import { useState, useCallback } from 'react';
 import { useRouter } from 'expo-router';
@@ -9,17 +9,23 @@ import { useAuth } from '../app/context/AuthContext';
 import {
   usePublicaciones,
   useCrearPublicacion,
+  useEditarPublicacion,
+  useEliminarPublicacion,
   useLikePublicacion,
   useComentarPublicacion,
   Publicacion
 } from '../hooks/usePublicaciones';
 import { openImagePickerAndUpload } from '../lib/cloudinary';
+import { api } from '../lib/api';
 import SenaMatchLogo from './SenaMatchLogo';
+import PublicProfileModal from './PublicProfileModal';
 
-const ACCENT = '#FF6B4A';
-const BG = '#16121D';
-const CARD = '#1E1A2B';
-const CARD_BORDER = '#2D2640';
+const ACCENT = '#39A900';
+const ACCENT_DARK = '#1F6B00';
+const BG = '#0F0C18';
+const CARD = '#161B22';
+const CARD_BORDER = '#263238';
+const DANGER = '#FF5B6E';
 
 interface Props {
   esfera: 'aprendices' | 'equipo';
@@ -50,6 +56,8 @@ export default function HomeScreen({ esfera }: Props) {
   } = usePublicaciones();
 
   const crearMutation = useCrearPublicacion();
+  const editarMutation = useEditarPublicacion();
+  const eliminarMutation = useEliminarPublicacion();
   const likeMutation = useLikePublicacion();
   const comentarMutation = useComentarPublicacion();
 
@@ -61,6 +69,18 @@ export default function HomeScreen({ esfera }: Props) {
   const [formError, setFormError] = useState('');
   const [fotoUploading, setFotoUploading] = useState(false);
   const [fotoError, setFotoError] = useState('');
+
+  // Modal de edición
+  const [editingPubId, setEditingPubId] = useState<string | null>(null);
+  const [editText, setEditText] = useState('');
+  const [editError, setEditError] = useState('');
+
+  // Perfil público universal
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+
+  // Reporte rápido de post
+  const [reportingPubId, setReportingPubId] = useState<string | null>(null);
+  const [reportReason, setReportReason] = useState('Contenido inapropiado');
 
   // Estados de comentarios abiertos por ID de publicación
   const [comentariosAbiertos, setComentariosAbiertos] = useState<{ [pubId: string]: boolean }>({});
@@ -116,7 +136,6 @@ export default function HomeScreen({ esfera }: Props) {
       return;
     }
 
-    // NUNCA guardar base64 en MongoDB
     let finalFoto: string | null = null;
     if (nuevaFotoUrl.trim() && !nuevaFotoUrl.startsWith('data:')) {
       finalFoto = nuevaFotoUrl.trim();
@@ -135,6 +154,70 @@ export default function HomeScreen({ esfera }: Props) {
       setFotoError('');
     } catch (err: any) {
       setFormError(err.message || 'Error al publicar. Inténtalo de nuevo.');
+    }
+  };
+
+  const handleStartEdit = (pub: Publicacion) => {
+    setEditingPubId(pub.id);
+    setEditText(pub.texto);
+    setEditError('');
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingPubId || !editText.trim()) return;
+    setEditError('');
+    try {
+      await editarMutation.mutateAsync({ id: editingPubId, texto: editText.trim() });
+      setEditingPubId(null);
+    } catch (err: any) {
+      setEditError(err?.message || 'Error al guardar los cambios');
+    }
+  };
+
+  const handleDelete = (pubId: string) => {
+    const doDelete = async () => {
+      try {
+        await eliminarMutation.mutateAsync(pubId);
+      } catch (err: any) {
+        if (Platform.OS === 'web' && typeof window !== 'undefined') {
+          window.alert(err?.message || 'Error al eliminar');
+        }
+      }
+    };
+
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      if (window.confirm('¿Seguro que deseas eliminar esta publicación?')) {
+        doDelete();
+      }
+    } else {
+      Alert.alert(
+        'Eliminar publicación',
+        '¿Seguro que deseas eliminar esta publicación?',
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          { text: 'Eliminar', style: 'destructive', onPress: doDelete }
+        ]
+      );
+    }
+  };
+
+  const handleEnviarReportePost = async () => {
+    if (!reportingPubId) return;
+    try {
+      await api.post('/reportes', {
+        targetId: reportingPubId,
+        targetType: 'publicacion',
+        reason: reportReason,
+        description: 'Reporte generado desde el feed principal'
+      });
+      setReportingPubId(null);
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        window.alert('Publicación reportada para moderación.');
+      }
+    } catch (err: any) {
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        window.alert(err?.message || 'Error al reportar');
+      }
     }
   };
 
@@ -184,19 +267,23 @@ export default function HomeScreen({ esfera }: Props) {
         </TouchableOpacity>
       </View>
 
-      {/* Tarjeta de saludo / Crear post directo */}
+      {/* Composer Card */}
       <View style={styles.composerCard}>
         <View style={styles.composerHeader}>
-          <View style={styles.myAvatar}>
+          <TouchableOpacity
+            style={styles.myAvatar}
+            onPress={() => user?.id && setSelectedUserId(user.id)}
+            activeOpacity={0.8}
+          >
             <Text style={styles.myAvatarEmoji}>{user?.rol === 'aprendiz' ? '🎓' : '🏫'}</Text>
-          </View>
+          </TouchableOpacity>
           <TouchableOpacity
             style={styles.composerFakeInput}
             onPress={handleAbrirModal}
             activeOpacity={0.7}
           >
             <Text style={styles.composerPlaceholder}>
-              ¿Qué quieres compartir hoy, {user?.nombre?.split(' ')[0] || 'amigo'}?
+              ¿Qué quieres compartir hoy, {user?.nombre?.split(' ')[0] || 'compañero'}?
             </Text>
           </TouchableOpacity>
         </View>
@@ -229,7 +316,7 @@ export default function HomeScreen({ esfera }: Props) {
         </View>
       </View>
 
-      {/* Título de la sección del feed */}
+      {/* Feed Header */}
       <View style={styles.feedHeader}>
         <Text style={styles.feedTitle}>Novedades de la comunidad</Text>
         <Text style={styles.feedBadge}>Feed en vivo ✨</Text>
@@ -272,12 +359,17 @@ export default function HomeScreen({ esfera }: Props) {
           const abiertos = comentariosAbiertos[pub.id] || false;
           const autorFoto = pub.autor?.fotoUrl;
           const autorEmoji = pub.autor?.avatarEmoji || '😊';
+          const esAutor = String(pub.autor?.id) === String(user?.id) || !!pub.esMio;
 
           return (
             <View key={pub.id} style={styles.postCard}>
-              {/* Cabecera del post: Autor y Fecha */}
+              {/* Cabecera del post */}
               <View style={styles.postHeader}>
-                <View style={styles.postAuthorWrap}>
+                <TouchableOpacity
+                  style={styles.postAuthorWrap}
+                  onPress={() => setSelectedUserId(pub.autor?.id)}
+                  activeOpacity={0.8}
+                >
                   {autorFoto ? (
                     <Image
                       source={{ uri: autorFoto }}
@@ -285,7 +377,7 @@ export default function HomeScreen({ esfera }: Props) {
                       resizeMode="cover"
                     />
                   ) : (
-                    <View style={[styles.authorAvatarCircle, { backgroundColor: pub.autor?.avatarColor || '#FF6B4A' }]}>
+                    <View style={[styles.authorAvatarCircle, { backgroundColor: (pub.autor?.avatarColor || ACCENT) + '25' }]}>
                       <Text style={styles.authorAvatarEmoji}>{autorEmoji}</Text>
                     </View>
                   )}
@@ -300,6 +392,36 @@ export default function HomeScreen({ esfera }: Props) {
                       <Text style={styles.postTime}>· {formatearTiempo(pub.creado)}</Text>
                     </View>
                   </View>
+                </TouchableOpacity>
+
+                {/* Opciones del post (Editar/Eliminar si es propio, o Reportar) */}
+                <View style={styles.postOptionsRow}>
+                  {esAutor ? (
+                    <>
+                      <TouchableOpacity
+                        onPress={() => handleStartEdit(pub)}
+                        style={styles.btnPostOption}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.btnPostOptionText}>✏️</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => handleDelete(pub.id)}
+                        style={styles.btnPostOption}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[styles.btnPostOptionText, { color: DANGER }]}>🗑️</Text>
+                      </TouchableOpacity>
+                    </>
+                  ) : (
+                    <TouchableOpacity
+                      onPress={() => setReportingPubId(pub.id)}
+                      style={styles.btnPostOption}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.btnPostOptionText}>🚩</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               </View>
 
@@ -317,7 +439,7 @@ export default function HomeScreen({ esfera }: Props) {
                 </View>
               ) : null}
 
-              {/* Barra de interacción: Likes y Comentarios */}
+              {/* Barra de interacción */}
               <View style={styles.interactionBar}>
                 <TouchableOpacity
                   style={[styles.actionButton, pub.likedPorMi && styles.actionButtonLiked]}
@@ -342,7 +464,7 @@ export default function HomeScreen({ esfera }: Props) {
                 </TouchableOpacity>
               </View>
 
-              {/* Sección de comentarios (desplegable) */}
+              {/* Comentarios */}
               {abiertos && (
                 <View style={styles.commentsSection}>
                   <View style={styles.commentsDivider} />
@@ -350,20 +472,27 @@ export default function HomeScreen({ esfera }: Props) {
                   {pub.comentarios && pub.comentarios.length > 0 ? (
                     pub.comentarios.map(com => (
                       <View key={com.id} style={styles.commentItem}>
-                        {com.autorFotoUrl ? (
-                          <Image
-                            source={{ uri: com.autorFotoUrl }}
-                            style={styles.commentAvatarPhoto}
-                            resizeMode="cover"
-                          />
-                        ) : (
-                          <View style={styles.commentAvatar}>
-                            <Text style={styles.commentAvatarEmoji}>{com.autorAvatarEmoji || '😊'}</Text>
-                          </View>
-                        )}
+                        <TouchableOpacity
+                          onPress={() => setSelectedUserId(com.autorId)}
+                          activeOpacity={0.8}
+                        >
+                          {com.autorFotoUrl ? (
+                            <Image
+                              source={{ uri: com.autorFotoUrl }}
+                              style={styles.commentAvatarPhoto}
+                              resizeMode="cover"
+                            />
+                          ) : (
+                            <View style={styles.commentAvatar}>
+                              <Text style={styles.commentAvatarEmoji}>{com.autorAvatarEmoji || '😊'}</Text>
+                            </View>
+                          )}
+                        </TouchableOpacity>
                         <View style={styles.commentBubble}>
                           <View style={styles.commentTop}>
-                            <Text style={styles.commentAuthor}>{com.autorNombre}</Text>
+                            <TouchableOpacity onPress={() => setSelectedUserId(com.autorId)}>
+                              <Text style={styles.commentAuthor}>{com.autorNombre}</Text>
+                            </TouchableOpacity>
                             <Text style={styles.commentTime}>{formatearTiempo(com.creado)}</Text>
                           </View>
                           <Text style={styles.commentText}>{com.texto}</Text>
@@ -374,7 +503,7 @@ export default function HomeScreen({ esfera }: Props) {
                     <Text style={styles.noCommentsText}>Aún no hay comentarios. ¡Sé el primero en opinar!</Text>
                   )}
 
-                  {/* Formulario para agregar comentario */}
+                  {/* Formulario comentario */}
                   <View style={styles.newCommentRow}>
                     <TextInput
                       style={styles.newCommentInput}
@@ -436,7 +565,6 @@ export default function HomeScreen({ esfera }: Props) {
 
             <Text style={styles.modalFieldLabel}>Foto de la publicación (opcional)</Text>
             
-            {/* Botón para seleccionar y subir a Cloudinary */}
             {Platform.OS === 'web' && (
               <TouchableOpacity
                 style={[styles.modalPickPhotoBtn, fotoUploading && styles.modalPickPhotoBtnDisabled]}
@@ -465,7 +593,7 @@ export default function HomeScreen({ esfera }: Props) {
             <Text style={styles.modalFieldHint}>O pega una URL pública de imagen:</Text>
             <TextInput
               style={styles.modalUrlInput}
-              placeholder="https://images.unsplash.com/... o enlace directo de imagen"
+              placeholder="https://... enlace directo HTTPS de imagen"
               placeholderTextColor="#786E8A"
               value={nuevaFotoUrl.startsWith('data:') ? '' : nuevaFotoUrl}
               onChangeText={(text) => {
@@ -478,10 +606,9 @@ export default function HomeScreen({ esfera }: Props) {
               editable={!fotoUploading}
             />
 
-            {/* Vista previa de foto si existe */}
             {fotoPreview ? (
               <View style={styles.previewContainer}>
-                <Text style={styles.previewLabel}>Vista previa de imagen:</Text>
+                <Text style={styles.previewLabel}>Vista previa:</Text>
                 <Image
                   source={{ uri: fotoPreview }}
                   style={styles.previewImage}
@@ -528,6 +655,113 @@ export default function HomeScreen({ esfera }: Props) {
         </View>
       </Modal>
 
+      {/* MODAL EDITAR PUBLICACIÓN */}
+      <Modal
+        visible={!!editingPubId}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setEditingPubId(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Editar publicación</Text>
+              <TouchableOpacity onPress={() => setEditingPubId(null)} style={styles.modalCloseBtn}>
+                <Text style={styles.modalCloseText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            {editError ? (
+              <View style={styles.formErrorBanner}>
+                <Text style={styles.formErrorText}>{editError}</Text>
+              </View>
+            ) : null}
+
+            <TextInput
+              style={styles.modalTextInput}
+              multiline
+              maxLength={1000}
+              value={editText}
+              onChangeText={setEditText}
+            />
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
+                onPress={() => setEditingPubId(null)}
+              >
+                <Text style={styles.modalCancelBtnText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalSubmitBtn, editarMutation.isPending && styles.btnDisabled]}
+                onPress={handleSaveEdit}
+                disabled={editarMutation.isPending}
+              >
+                <Text style={styles.modalSubmitBtnText}>
+                  {editarMutation.isPending ? 'Guardando…' : 'Guardar cambios'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* MODAL REPORTAR PUBLICACIÓN */}
+      <Modal
+        visible={!!reportingPubId}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setReportingPubId(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Reportar publicación</Text>
+              <TouchableOpacity onPress={() => setReportingPubId(null)} style={styles.modalCloseBtn}>
+                <Text style={styles.modalCloseText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.modalFieldLabel}>Selecciona el motivo del reporte:</Text>
+            {['Contenido inapropiado', 'Spam o publicidad', 'Acoso o lenguaje ofensivo', 'Información falsa'].map(m => (
+              <TouchableOpacity
+                key={m}
+                style={[styles.reportOptionBtn, reportReason === m && styles.reportOptionBtnActive]}
+                onPress={() => setReportReason(m)}
+              >
+                <Text style={[styles.reportOptionText, reportReason === m && styles.reportOptionTextActive]}>{m}</Text>
+              </TouchableOpacity>
+            ))}
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
+                onPress={() => setReportingPubId(null)}
+              >
+                <Text style={styles.modalCancelBtnText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalSubmitBtn, { backgroundColor: DANGER }]}
+                onPress={handleEnviarReportePost}
+              >
+                <Text style={styles.modalSubmitBtnText}>Enviar reporte</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal Universal de Perfil Público */}
+      <PublicProfileModal
+        userId={selectedUserId}
+        visible={!!selectedUserId}
+        onClose={() => setSelectedUserId(null)}
+        onOpenChat={(chatId) => {
+          setSelectedUserId(null);
+          router.push('/chats');
+        }}
+      />
+
       <View style={{ height: 60 }} />
     </ScrollView>
   );
@@ -552,7 +786,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     paddingBottom: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#251E33',
+    borderBottomColor: '#263238',
   },
   btnCrearTop: {
     backgroundColor: ACCENT,
@@ -566,7 +800,7 @@ const styles = StyleSheet.create({
   },
   btnCrearTopText: {
     color: '#FFFFFF',
-    fontWeight: '700',
+    fontWeight: '800',
     fontSize: 14,
   },
 
@@ -588,7 +822,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(255, 107, 74, 0.15)',
+    backgroundColor: 'rgba(57, 169, 0, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1.5,
@@ -599,12 +833,12 @@ const styles = StyleSheet.create({
   },
   composerFakeInput: {
     flex: 1,
-    backgroundColor: '#282234',
+    backgroundColor: '#1E252F',
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: '#3A3247',
+    borderColor: '#2D3748',
   },
   composerPlaceholder: {
     color: '#8D83A0',
@@ -616,7 +850,7 @@ const styles = StyleSheet.create({
     marginTop: 14,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#282136',
+    borderTopColor: '#263238',
   },
   composerActionBtn: {
     flexDirection: 'row',
@@ -706,7 +940,7 @@ const styles = StyleSheet.create({
   errorTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#FF5B6E',
+    color: DANGER,
     marginBottom: 6,
   },
   errorSubtitle: {
@@ -716,7 +950,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   retryBtn: {
-    backgroundColor: '#2D2640',
+    backgroundColor: '#282234',
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 10,
@@ -749,6 +983,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    flex: 1,
   },
   authorAvatarPhoto: {
     width: 44,
@@ -779,19 +1014,31 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   authorBadge: {
-    backgroundColor: 'rgba(255, 107, 74, 0.12)',
+    backgroundColor: 'rgba(57, 169, 0, 0.15)',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
   },
   authorBadgeText: {
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: '800',
     color: ACCENT,
   },
   postTime: {
     fontSize: 12,
     color: '#8D83A0',
+  },
+  postOptionsRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  btnPostOption: {
+    padding: 6,
+    borderRadius: 6,
+    backgroundColor: '#1E252F',
+  },
+  btnPostOptionText: {
+    fontSize: 14,
   },
   postText: {
     fontSize: 15,
@@ -807,7 +1054,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#120F1A',
     marginBottom: 14,
     borderWidth: 1,
-    borderColor: '#2D2640',
+    borderColor: CARD_BORDER,
   },
   postImage: {
     width: '100%',
@@ -821,7 +1068,7 @@ const styles = StyleSheet.create({
     gap: 14,
     paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: '#282136',
+    borderTopColor: '#263238',
   },
   actionButton: {
     flexDirection: 'row',
@@ -833,7 +1080,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.04)',
   },
   actionButtonLiked: {
-    backgroundColor: 'rgba(255, 107, 74, 0.14)',
+    backgroundColor: 'rgba(57, 169, 0, 0.15)',
   },
   actionIcon: {
     fontSize: 16,
@@ -854,7 +1101,7 @@ const styles = StyleSheet.create({
   },
   commentsDivider: {
     height: 1,
-    backgroundColor: '#282136',
+    backgroundColor: '#263238',
     marginBottom: 12,
   },
   commentItem: {
@@ -871,7 +1118,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#282234',
+    backgroundColor: '#1E252F',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -880,7 +1127,7 @@ const styles = StyleSheet.create({
   },
   commentBubble: {
     flex: 1,
-    backgroundColor: '#241D30',
+    backgroundColor: '#1E252F',
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 12,
@@ -919,14 +1166,14 @@ const styles = StyleSheet.create({
   },
   newCommentInput: {
     flex: 1,
-    backgroundColor: '#282234',
+    backgroundColor: '#1E252F',
     color: '#F0ECF6',
     fontSize: 13,
     paddingHorizontal: 14,
     paddingVertical: 9,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#3A3247',
+    borderColor: '#2D3748',
   },
   btnSendComment: {
     backgroundColor: ACCENT,
@@ -955,7 +1202,7 @@ const styles = StyleSheet.create({
     maxWidth: 540,
     width: '100%',
     borderWidth: 1,
-    borderColor: '#3A3247',
+    borderColor: CARD_BORDER,
     shadowColor: '#000',
     shadowOpacity: 0.4,
     shadowRadius: 20,
@@ -989,7 +1236,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 91, 110, 0.3)',
   },
   formErrorText: {
-    color: '#FF5B6E',
+    color: DANGER,
     fontSize: 13,
     fontWeight: '600',
   },
@@ -1000,36 +1247,36 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   modalTextInput: {
-    backgroundColor: '#282234',
+    backgroundColor: '#1E252F',
     color: '#F0ECF6',
     borderRadius: 12,
     padding: 14,
     fontSize: 14,
     borderWidth: 1,
-    borderColor: '#3A3247',
+    borderColor: '#2D3748',
     height: 100,
     textAlignVertical: 'top',
     marginBottom: 14,
   },
   modalUrlInput: {
-    backgroundColor: '#282234',
+    backgroundColor: '#1E252F',
     color: '#F0ECF6',
     borderRadius: 12,
     padding: 12,
     fontSize: 14,
     borderWidth: 1,
-    borderColor: '#3A3247',
+    borderColor: '#2D3748',
     marginBottom: 14,
   },
   modalPickPhotoBtn: {
-    backgroundColor: 'rgba(255, 107, 74, 0.15)',
+    backgroundColor: 'rgba(57, 169, 0, 0.15)',
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 10,
     alignItems: 'center',
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: 'rgba(255, 107, 74, 0.3)',
+    borderColor: 'rgba(57, 169, 0, 0.35)',
   },
   modalPickPhotoBtnDisabled: {
     opacity: 0.6,
@@ -1071,7 +1318,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   btnEliminarFotoText: {
-    color: '#FF5B6E',
+    color: DANGER,
     fontSize: 12,
     fontWeight: '600',
   },
@@ -1082,7 +1329,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   modalCancelBtn: {
-    backgroundColor: '#282234',
+    backgroundColor: '#1E252F',
     paddingVertical: 12,
     paddingHorizontal: 18,
     borderRadius: 10,
@@ -1102,10 +1349,32 @@ const styles = StyleSheet.create({
   },
   modalSubmitBtnText: {
     color: '#FFFFFF',
-    fontWeight: '700',
+    fontWeight: '800',
     fontSize: 14,
   },
   btnDisabled: {
     opacity: 0.65,
+  },
+  reportOptionBtn: {
+    backgroundColor: '#1E252F',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#2D3748',
+  },
+  reportOptionBtnActive: {
+    borderColor: ACCENT,
+    backgroundColor: 'rgba(57, 169, 0, 0.15)',
+  },
+  reportOptionText: {
+    color: '#B9B1C9',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  reportOptionTextActive: {
+    color: ACCENT,
+    fontWeight: '800',
   },
 });

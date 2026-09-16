@@ -1,6 +1,5 @@
 /**
- * Rutas de perfiles.
- * Reemplaza las consultas directas a la tabla perfiles con RLS.
+ * Rutas de perfiles con seguridad estricta y endpoint de perfil público.
  */
 const express = require('express');
 const { auth } = require('../middleware/auth');
@@ -10,9 +9,33 @@ const Perfil = require('../models/Perfil');
 const router = express.Router();
 
 /**
+ * Sanitizar perfil para vista pública universal (FASE 4)
+ * NUNCA incluye correo privado, contraseña, ficha, tokens ni datos sensibles.
+ */
+function sanitizarPerfilPublico(p, affinityInfo = null) {
+  return {
+    id: String(p._id),
+    nombre: p.nombre || 'Usuario SENA',
+    rol: p.rol || 'aprendiz',
+    esfera: esferaDe(p.rol),
+    programa: p.programa || null,
+    centro: p.centro || null,
+    jornada: p.jornada || null,
+    bio: p.bio || '',
+    intereses: Array.isArray(p.intereses) ? p.intereses : [],
+    intenciones: Array.isArray(p.intenciones) ? p.intenciones : [],
+    avatarEmoji: p.avatar_emoji || '😊',
+    avatarColor: p.avatar_color || '#39A900',
+    fotoUrl: p.foto_url || null,
+    asistencias: p.asistencias || 0,
+    afinidad: affinityInfo,
+    creado: p.creado ? new Date(p.creado).getTime() : Date.now()
+  };
+}
+
+/**
  * GET /perfiles
- * Lista perfiles visibles para el usuario autenticado.
- * Aplica las mismas reglas que la política perfiles_lectura de RLS.
+ * Lista perfiles visibles según esfera y centro.
  */
 router.get('/', auth, async (req, res) => {
   try {
@@ -23,9 +46,9 @@ router.get('/', auth, async (req, res) => {
     let filtro = { estado: 'activo' };
 
     if (!esStaff(yo)) {
-      // Solo ve gente de su centro y esfera
-      filtro.centro = yo.centro;
-      // Filtrar por rol que pertenezca a la misma esfera
+      if (yo.centro) {
+        filtro.centro = yo.centro;
+      }
       if (miEsfera === 'aprendices') {
         filtro.rol = { $in: ['aprendiz', 'egresado'] };
       } else {
@@ -33,42 +56,40 @@ router.get('/', auth, async (req, res) => {
       }
     }
 
-    const perfiles = await Perfil.find(filtro).lean({ virtuals: true });
+    const perfiles = await Perfil.find(filtro).lean();
 
-    // Filtrar bloqueados
     const visibles = [];
     for (const p of perfiles) {
-      if (p._id === yo._id) { visibles.push(p); continue; }
+      if (String(p._id) === String(yo._id)) {
+        visibles.push(sanitizarPerfilPublico(p));
+        continue;
+      }
       if (!(await hayBloqueo(yo._id, p._id))) {
-        visibles.push(p);
+        // Calcular afinidad
+        const misIntereses = yo.intereses || [];
+        const susIntereses = p.intereses || [];
+        const comunes = misIntereses.filter(i => susIntereses.includes(i));
+        let afinidad = null;
+        if (comunes.length > 0) {
+          afinidad = `Coinciden en ${comunes.slice(0, 2).join(', ')}`;
+        } else if (yo.programa && p.programa && yo.programa.toLowerCase() === p.programa.toLowerCase()) {
+          afinidad = 'Mismo programa de formación';
+        }
+
+        visibles.push(sanitizarPerfilPublico(p, afinidad));
       }
     }
 
-    // Mapear al formato que espera el frontend
-    const resultado = visibles.map(r => ({
-      id: r._id, nombre: r.nombre, correo: r.correo, rol: r.rol,
-      esfera: esferaDe(r.rol), estado: r.estado, centro: r.centro,
-      programa: r.programa, ficha: r.ficha, jornada: r.jornada,
-      nacimiento: r.nacimiento, bio: r.bio,
-      intereses: r.intereses || [], intenciones: r.intenciones || [],
-      avatarEmoji: r.avatar_emoji, avatarColor: r.avatar_color,
-      fotoUrl: r.foto_url || null,
-      asistencias: r.asistencias || 0, inasistencias: r.inasistencias || 0,
-      demo: r.demo, creado: new Date(r.creado).getTime(),
-      visto: new Date(r.visto).getTime()
-    }));
-
-    res.json(resultado);
+    res.json(visibles);
   } catch (e) {
     console.error('Error GET /perfiles:', e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Error al obtener perfiles' });
   }
 });
 
 /**
  * GET /perfiles/comunidad
- * Lista y busca todos los usuarios registrados en la plataforma para conectar o chatear.
- * Ordenado por fecha de registro reciente.
+ * Directorio de miembros registrados de la comunidad SENA.
  */
 router.get('/comunidad', auth, async (req, res) => {
   try {
@@ -82,68 +103,110 @@ router.get('/comunidad', auth, async (req, res) => {
       const regex = new RegExp(q.trim(), 'i');
       query.$or = [
         { nombre: regex },
-        { correo: regex },
         { programa: regex }
       ];
     }
 
     const perfiles = await Perfil.find(query)
       .sort({ creado: -1 })
-      .limit(50)
+      .limit(60)
       .lean();
 
     const visibles = [];
     for (const p of perfiles) {
-      try {
-        if (await hayBloqueo(req.uid, p._id)) continue;
-      } catch (err) {
-        // Continuar si hayBloqueo falla
-      }
-      visibles.push({
-        id: p._id,
-        nombre: p.nombre || 'Usuario SENA',
-        correo: p.correo || '',
-        rol: p.rol || 'aprendiz',
-        programa: p.programa || null,
-        ficha: p.ficha || null,
-        jornada: p.jornada || null,
-        centro: p.centro || null,
-        bio: p.bio || '',
-        avatarEmoji: p.avatar_emoji || '😊',
-        avatarColor: p.avatar_color || '#FF6B4A',
-        fotoUrl: p.foto_url || null,
-        intereses: p.intereses || [],
-        creado: p.creado ? new Date(p.creado).getTime() : Date.now()
-      });
+      if (await hayBloqueo(req.uid, p._id)) continue;
+      visibles.push(sanitizarPerfilPublico(p));
     }
 
     res.json(visibles);
   } catch (e) {
     console.error('Error en GET /perfiles/comunidad:', e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Error al obtener miembros de la comunidad' });
+  }
+});
+
+/**
+ * GET /perfiles/:id/publico
+ * Endpoint específico de perfil público (FASE 4).
+ * NUNCA devuelve información privada sensible.
+ */
+router.get('/:id/publico', auth, async (req, res) => {
+  try {
+    const targetId = String(req.params.id);
+    const yoId = String(req.uid);
+
+    if (await hayBloqueo(yoId, targetId)) {
+      return res.status(403).json({ error: 'No tienes acceso a este perfil debido a un bloqueo' });
+    }
+
+    const perfil = await Perfil.findById(targetId).lean();
+    if (!perfil || perfil.estado === 'suspendido') {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    // Calcular afinidad
+    const yo = req.perfil || await Perfil.findById(yoId).lean();
+    let afinidad = null;
+    if (yo && targetId !== yoId) {
+      const misIntereses = yo.intereses || [];
+      const susIntereses = perfil.intereses || [];
+      const comunes = misIntereses.filter(i => susIntereses.includes(i));
+      if (comunes.length > 0) {
+        afinidad = `Coinciden en ${comunes.slice(0, 3).join(', ')}`;
+      } else if (yo.programa && perfil.programa && yo.programa.toLowerCase() === perfil.programa.toLowerCase()) {
+        afinidad = 'Comparten el mismo programa de formación';
+      }
+    }
+
+    res.json(sanitizarPerfilPublico(perfil, afinidad));
+  } catch (e) {
+    console.error('Error en GET /perfiles/:id/publico:', e);
+    res.status(500).json({ error: 'Error al consultar el perfil público' });
   }
 });
 
 /**
  * GET /perfiles/:id
- * Obtiene un perfil por ID.
+ * Obtiene el perfil propio o detalle si es staff.
  */
 router.get('/:id', auth, async (req, res) => {
   try {
-    const r = await Perfil.findById(req.params.id).lean({ virtuals: true });
+    const r = await Perfil.findById(req.params.id).lean();
     if (!r) return res.status(404).json({ error: 'Perfil no encontrado' });
 
+    const esDueno = String(req.uid) === String(r._id);
+    const puedeVerPrivado = esDueno || esStaff(req.perfil);
+
+    // Si es un tercero, sanitizar estrictamente sin correo ni ficha
+    if (!puedeVerPrivado) {
+      if (await hayBloqueo(req.uid, r._id)) {
+        return res.status(403).json({ error: 'No tienes acceso a este perfil' });
+      }
+      return res.json(sanitizarPerfilPublico(r));
+    }
+
     res.json({
-      id: r._id, nombre: r.nombre, correo: r.correo, rol: r.rol,
-      esfera: esferaDe(r.rol), estado: r.estado, centro: r.centro,
-      programa: r.programa, ficha: r.ficha, jornada: r.jornada,
-      nacimiento: r.nacimiento, bio: r.bio,
-      intereses: r.intereses || [], intenciones: r.intenciones || [],
-      avatarEmoji: r.avatar_emoji, avatarColor: r.avatar_color,
+      id: String(r._id),
+      nombre: r.nombre,
+      correo: r.correo,
+      rol: r.rol,
+      esfera: esferaDe(r.rol),
+      estado: r.estado,
+      centro: r.centro,
+      programa: r.programa,
+      ficha: r.ficha,
+      jornada: r.jornada,
+      nacimiento: r.nacimiento,
+      bio: r.bio,
+      intereses: r.intereses || [],
+      intenciones: r.intenciones || [],
+      avatarEmoji: r.avatar_emoji,
+      avatarColor: r.avatar_color,
       fotoUrl: r.foto_url || null,
-      asistencias: r.asistencias || 0, inasistencias: r.inasistencias || 0,
-      demo: r.demo, creado: new Date(r.creado).getTime(),
-      visto: new Date(r.visto).getTime()
+      asistencias: r.asistencias || 0,
+      inasistencias: r.inasistencias || 0,
+      creado: r.creado ? new Date(r.creado).getTime() : Date.now(),
+      visto: r.visto ? new Date(r.visto).getTime() : Date.now()
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -152,20 +215,17 @@ router.get('/:id', auth, async (req, res) => {
 
 /**
  * PATCH /perfiles/:id
- * Actualiza el perfil propio. Solo el dueño puede editar.
- * Equivale al GRANT UPDATE de columnas específicas de Supabase.
+ * Actualiza el perfil propio. Solo el dueño o staff pueden editar.
  */
 router.patch('/:id', auth, async (req, res) => {
   try {
-    if (req.uid !== req.params.id && !esStaff(req.perfil)) {
+    if (String(req.uid) !== String(req.params.id) && !esStaff(req.perfil)) {
       return res.status(403).json({ error: 'Solo puedes editar tu propio perfil' });
     }
 
-    // Columnas que el cliente puede escribir (como el GRANT de Supabase)
     const permitidas = [
       'nombre', 'centro', 'programa', 'ficha', 'jornada', 'nacimiento',
-      'bio', 'intereses', 'intenciones', 'avatar_emoji', 'avatar_color', 'foto_url', 'visto',
-      // Aliases que usa el frontend
+      'bio', 'intereses', 'intenciones', 'avatar_emoji', 'avatar_color', 'foto_url',
       'avatarEmoji', 'avatarColor', 'fotoUrl'
     ];
 
@@ -177,15 +237,20 @@ router.patch('/:id', auth, async (req, res) => {
       else if (permitidas.includes(k)) cambios[k] = req.body[k];
     }
 
-    if (cambios.visto) cambios.visto = new Date(cambios.visto);
+    if (cambios.nombre && typeof cambios.nombre === 'string') {
+      cambios.nombre = cambios.nombre.trim();
+    }
     if (cambios.ficha === '') cambios.ficha = null;
     if (cambios.foto_url !== undefined) {
       if (typeof cambios.foto_url === 'string') {
         const trimmed = cambios.foto_url.trim();
+        if (trimmed.startsWith('data:')) {
+          return res.status(400).json({ error: 'No se permiten imágenes base64. Sube la foto mediante Cloudinary.' });
+        }
         if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
           cambios.foto_url = trimmed;
         } else {
-          cambios.foto_url = null; // Rechazar data: base64 o URLs no válidas
+          cambios.foto_url = null;
         }
       } else {
         cambios.foto_url = null;
@@ -193,23 +258,33 @@ router.patch('/:id', auth, async (req, res) => {
     }
 
     await Perfil.findByIdAndUpdate(req.params.id, { $set: cambios });
-    const actualizado = await Perfil.findById(req.params.id).lean({ virtuals: true });
+    const actualizado = await Perfil.findById(req.params.id).lean();
 
     res.json({
-      id: actualizado._id, nombre: actualizado.nombre, correo: actualizado.correo,
-      rol: actualizado.rol, esfera: esferaDe(actualizado.rol), estado: actualizado.estado,
-      centro: actualizado.centro, programa: actualizado.programa, ficha: actualizado.ficha,
-      jornada: actualizado.jornada, nacimiento: actualizado.nacimiento, bio: actualizado.bio,
-      intereses: actualizado.intereses || [], intenciones: actualizado.intenciones || [],
-      avatarEmoji: actualizado.avatar_emoji, avatarColor: actualizado.avatar_color,
+      id: String(actualizado._id),
+      nombre: actualizado.nombre,
+      correo: actualizado.correo,
+      rol: actualizado.rol,
+      esfera: esferaDe(actualizado.rol),
+      estado: actualizado.estado,
+      centro: actualizado.centro,
+      programa: actualizado.programa,
+      ficha: actualizado.ficha,
+      jornada: actualizado.jornada,
+      nacimiento: actualizado.nacimiento,
+      bio: actualizado.bio,
+      intereses: actualizado.intereses || [],
+      intenciones: actualizado.intenciones || [],
+      avatarEmoji: actualizado.avatar_emoji,
+      avatarColor: actualizado.avatar_color,
       fotoUrl: actualizado.foto_url || null,
-      asistencias: actualizado.asistencias || 0, inasistencias: actualizado.inasistencias || 0,
-      demo: actualizado.demo, creado: new Date(actualizado.creado).getTime(),
-      visto: new Date(actualizado.visto).getTime()
+      asistencias: actualizado.asistencias || 0,
+      inasistencias: actualizado.inasistencias || 0,
+      creado: new Date(actualizado.creado).getTime()
     });
   } catch (e) {
     console.error('Error PATCH /perfiles:', e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Error al actualizar el perfil' });
   }
 });
 
@@ -219,7 +294,7 @@ router.patch('/:id', auth, async (req, res) => {
  */
 router.delete('/:id', auth, async (req, res) => {
   try {
-    if (req.uid !== req.params.id) {
+    if (String(req.uid) !== String(req.params.id)) {
       return res.status(403).json({ error: 'Solo puedes borrar tu propia cuenta' });
     }
     await Perfil.findByIdAndDelete(req.params.id);

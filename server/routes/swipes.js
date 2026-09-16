@@ -1,15 +1,15 @@
 /**
  * Rutas de swipes y matches.
- * Reemplaza registrar_swipe() y me_marcaron() del esquema SQL.
  */
 const express = require('express');
 const crypto = require('crypto');
 const { auth } = require('../middleware/auth');
-const { puedoVer, esferaDe } = require('../helpers/reglas');
+const { puedoVer, esferaDe, hayBloqueo } = require('../helpers/reglas');
 const Perfil = require('../models/Perfil');
 const Swipe = require('../models/Swipe');
 const Match = require('../models/Match');
 const Chat = require('../models/Chat');
+const { crearNotificacion } = require('./notificaciones');
 
 const router = express.Router();
 
@@ -32,23 +32,31 @@ router.get('/', auth, async (req, res) => {
 
 /**
  * POST /swipes/registrar
- * Registra un swipe (like/pass). Si hay reciprocidad, crea match + chat.
- * Réplica de registrar_swipe() del esquema SQL.
+ * Registra un swipe (like/pass). Si hay reciprocidad, crea match + chat y notificaciones.
  */
 router.post('/registrar', auth, async (req, res) => {
   try {
     const { p_otro, p_intencion, p_dir } = req.body;
-    const yoId = req.uid;
+    const yoId = String(req.uid);
+    const otroId = String(p_otro);
 
     if (!['like', 'pass'].includes(p_dir)) {
       return res.status(400).json({ error: 'Dirección inválida' });
     }
 
+    if (yoId === otroId) {
+      return res.status(400).json({ error: 'No puedes interactuar contigo mismo' });
+    }
+
+    if (await hayBloqueo(yoId, otroId)) {
+      return res.status(403).json({ error: 'No puedes interactuar con un usuario bloqueado' });
+    }
+
     const yo = await Perfil.findById(yoId);
-    const otro = await Perfil.findById(p_otro);
+    const otro = await Perfil.findById(otroId);
 
     if (!(await puedoVer(yo, otro, p_intencion))) {
-      return res.status(403).json({ error: 'Ese perfil no está disponible' });
+      return res.status(403).json({ error: 'Ese perfil no está disponible para interactuar' });
     }
 
     // Upsert swipe del usuario
@@ -56,7 +64,7 @@ router.post('/registrar', auth, async (req, res) => {
       yoId,
       {
         $set: {
-          [`por_intencion.${p_intencion}.${p_otro}`]: p_dir,
+          [`por_intencion.${p_intencion}.${otroId}`]: p_dir,
           ts: new Date()
         }
       },
@@ -68,7 +76,7 @@ router.post('/registrar', auth, async (req, res) => {
     }
 
     // ¿Reciprocidad?
-    const otroSwipe = await Swipe.findById(p_otro);
+    const otroSwipe = await Swipe.findById(otroId);
     const otroMap = otroSwipe && otroSwipe.por_intencion
       ? otroSwipe.por_intencion[p_intencion] || {}
       : {};
@@ -77,8 +85,8 @@ router.post('/registrar', auth, async (req, res) => {
       return res.json({ match: false });
     }
 
-    // ¡Match! Crear match y chat
-    const [a, b] = yoId < p_otro ? [yoId, p_otro] : [p_otro, yoId];
+    // ¡Match! Crear match y chat único
+    const [a, b] = yoId < otroId ? [yoId, otroId] : [otroId, yoId];
     const matchId = `${a}__${b}__${p_intencion}`;
 
     await Match.findByIdAndUpdate(
@@ -90,67 +98,117 @@ router.post('/registrar', auth, async (req, res) => {
       { upsert: true }
     );
 
-    // Crear chat si no existe
-    const existeChat = await Chat.findById(matchId);
-    if (!existeChat) {
-      await Chat.create({
+    // Reutilizar o crear chat único
+    let chat = await Chat.findById(matchId);
+    if (!chat) {
+      // Verificar si ya existía algún chat entre ambos
+      chat = await Chat.findOne({
+        tipo: { $in: ['match', 'directo'] },
+        miembros: { $all: [yoId, otroId], $size: 2 }
+      });
+    }
+
+    if (!chat) {
+      chat = await Chat.create({
         _id: matchId,
         tipo: 'match',
-        titulo: '',
-        miembros: [yoId, p_otro],
+        titulo: `${yo.nombre} & ${otro.nombre}`,
+        miembros: [yoId, otroId],
         mensajes: [{
+          id: 'm_' + crypto.randomUUID().replace(/-/g, '').slice(0, 16),
           de: null,
-          txt: `Coincidieron en ${p_intencion}.`,
-          ts: Date.now()
+          txt: `¡Hicieron Match por ${p_intencion}! 🎉 Ya pueden chatear libremente.`,
+          ts: Date.now(),
+          leidoPor: [yoId, otroId]
         }],
         creado: new Date(),
         ultimo: new Date()
       });
+    } else {
+      // Asegurar que ambos son miembros
+      await Chat.findByIdAndUpdate(chat._id, {
+        $addToSet: { miembros: { $each: [yoId, otroId] } }
+      });
     }
 
-    res.json({ match: true, chat: matchId });
+    // Generar notificaciones para ambos usuarios
+    await Promise.all([
+      crearNotificacion({
+        recipientId: yoId,
+        type: 'nuevo_match',
+        title: '¡Nuevo Match! 🎉',
+        message: `Hiciste match con ${otro.nombre} por afinidad en ${p_intencion}.`,
+        reference: String(chat._id)
+      }),
+      crearNotificacion({
+        recipientId: otroId,
+        type: 'nuevo_match',
+        title: '¡Nuevo Match! 🎉',
+        message: `Hiciste match con ${yo.nombre} por afinidad en ${p_intencion}.`,
+        reference: String(chat._id)
+      })
+    ]);
+
+    res.json({
+      match: true,
+      chat: chat._id,
+      otroUsuario: {
+        id: String(otro._id),
+        nombre: otro.nombre,
+        rol: otro.rol,
+        avatarEmoji: otro.avatar_emoji || '😊',
+        avatarColor: otro.avatar_color || '#39A900',
+        fotoUrl: otro.foto_url || null,
+        programa: otro.programa || null
+      }
+    });
   } catch (e) {
     console.error('Error POST /swipes/registrar:', e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Error al registrar la acción' });
   }
 });
 
 /**
- * GET /swipes/me-marcaron
- * ¿Quién me marcó y aún no le respondo?
- * Réplica de me_marcaron() del esquema SQL.
+ * POST /swipes/deshacer
+ * Deshace el último 'pass' dado por el usuario en una intención específica.
  */
-router.get('/me-marcaron', auth, async (req, res) => {
+router.post('/deshacer', auth, async (req, res) => {
   try {
-    const yoId = req.uid;
-    const miSwipe = await Swipe.findById(yoId);
-    const miMap = miSwipe ? miSwipe.por_intencion || {} : {};
+    const { p_intencion, targetId } = req.body;
+    const yoId = String(req.uid);
 
-    // Buscar todos los swipes de otros
-    const otros = await Swipe.find({ _id: { $ne: yoId } });
-    const resultado = [];
+    const swipeDoc = await Swipe.findById(yoId);
+    if (!swipeDoc || !swipeDoc.por_intencion) {
+      return res.status(400).json({ error: 'No hay acciones previas para deshacer' });
+    }
 
-    for (const s of otros) {
-      const porInt = s.por_intencion || {};
-      for (const intencion of Object.keys(porInt)) {
-        const vals = porInt[intencion] || {};
-        if (vals[yoId] === 'like') {
-          // ¿Yo ya le respondí?
-          const mio = (miMap[intencion] || {})[s._id];
-          if (!mio) {
-            // Verificar que puedo verle
-            const otroPerfil = await Perfil.findById(s._id);
-            if (otroPerfil && await puedoVer(req.perfil, otroPerfil, intencion)) {
-              resultado.push({ perfil: s._id, intencion });
-            }
-          }
+    const mapa = swipeDoc.por_intencion[p_intencion] || {};
+    let target = targetId;
+
+    if (!target) {
+      // Si no especificó ID, buscar la última clave con 'pass'
+      const keys = Object.keys(mapa);
+      for (let i = keys.length - 1; i >= 0; i--) {
+        if (mapa[keys[i]] === 'pass') {
+          target = keys[i];
+          break;
         }
       }
     }
 
-    res.json(resultado);
+    if (!target || mapa[target] !== 'pass') {
+      return res.status(400).json({ error: 'No se encontró un descarte reciente para deshacer' });
+    }
+
+    // Eliminar del mapa
+    await Swipe.findByIdAndUpdate(yoId, {
+      $unset: { [`por_intencion.${p_intencion}.${target}`]: '' }
+    });
+
+    res.json({ ok: true, undoneId: target });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    console.error('Error en POST /swipes/deshacer:', e);
+    res.status(500).json({ error: 'Error al deshacer el descarte' });
   }
 });
 
@@ -160,14 +218,43 @@ router.get('/me-marcaron', auth, async (req, res) => {
  */
 router.get('/matches', auth, async (req, res) => {
   try {
+    const uid = String(req.uid);
     const matches = await Match.find({
-      $or: [{ a: req.uid }, { b: req.uid }],
+      $or: [{ a: uid }, { b: uid }],
       activo: true
-    });
-    res.json(matches.map(m => ({
-      id: m._id, a: m.a, b: m.b, intencion: m.intencion,
-      activo: m.activo, creado: new Date(m.creado).getTime()
-    })));
+    }).lean();
+
+    const otherIds = matches.map(m => m.a === uid ? m.b : m.a);
+    const perfiles = await Perfil.find({ _id: { $in: otherIds } }).lean();
+    const perfilMap = new Map();
+    perfiles.forEach(p => perfilMap.set(String(p._id), p));
+
+    const resultado = [];
+    for (const m of matches) {
+      const otherId = m.a === uid ? m.b : m.a;
+      if (await hayBloqueo(uid, otherId)) continue;
+
+      const p = perfilMap.get(String(otherId));
+      resultado.push({
+        id: m._id,
+        a: m.a,
+        b: m.b,
+        intencion: m.intencion,
+        activo: m.activo,
+        otroUsuario: p ? {
+          id: String(p._id),
+          nombre: p.nombre,
+          rol: p.rol,
+          avatarEmoji: p.avatar_emoji || '😊',
+          avatarColor: p.avatar_color || '#39A900',
+          fotoUrl: p.foto_url || null,
+          programa: p.programa || null
+        } : null,
+        creado: new Date(m.creado).getTime()
+      });
+    }
+
+    res.json(resultado);
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

@@ -5,10 +5,12 @@ import {
 } from 'react-native';
 import { useState, useCallback, useEffect } from 'react';
 import { useUsuariosComunidad, useCrearChatDirecto } from '../hooks/useParches';
+import PublicProfileModal from './PublicProfileModal';
 
-const ACCENT = '#FF6B4A';
-const BG = '#16121D';
-const CARD = '#1E1A2B';
+const ACCENT = '#39A900';
+const BG = '#0F0C18';
+const CARD = '#161B22';
+const CARD_BORDER = '#263238';
 
 interface Props {
   onOpenChat: (chatId: string) => void;
@@ -19,8 +21,8 @@ export default function PeopleScreen({ onOpenChat, onBack }: Props) {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [startingChatWith, setStartingChatWith] = useState<string | null>(null);
+  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
 
-  // Debounce effect
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(search);
@@ -151,94 +153,109 @@ export default function PeopleScreen({ onOpenChat, onBack }: Props) {
           </Text>
 
           <View style={styles.usersGrid}>
-            {usersList.map((user: any) => {
-              const isProcessing = startingChatWith === user.id;
-            const rolLabel = user.rol
-              ? user.rol.charAt(0).toUpperCase() + user.rol.slice(1)
-              : 'Aprendiz';
+            {usersList.map((usr: any) => {
+              const isProcessing = startingChatWith === usr.id;
+              const rolLabel = usr.rol
+                ? usr.rol.charAt(0).toUpperCase() + usr.rol.slice(1)
+                : 'Aprendiz';
 
-            return (
-              <View key={user.id} style={styles.userCard}>
-                {/* Avatar */}
-                {(user.fotoUrl || user.foto) ? (
-                  <Image
-                    source={{ uri: user.fotoUrl || user.foto }}
-                    style={styles.avatar}
-                    resizeMode="cover"
-                  />
-                ) : (
-                  <View
-                    style={[
-                      styles.avatar,
-                      { backgroundColor: (user.avatarColor || ACCENT) + '20' }
-                    ]}
+              return (
+                <View key={usr.id} style={styles.userCard}>
+                  {/* Avatar / Foto */}
+                  <TouchableOpacity
+                    onPress={() => setSelectedProfileId(usr.id)}
+                    activeOpacity={0.8}
                   >
-                    <Text style={styles.avatarEmoji}>{user.avatarEmoji || '😊'}</Text>
-                  </View>
-                )}
+                    {(usr.fotoUrl || usr.foto) ? (
+                      <Image
+                        source={{ uri: usr.fotoUrl || usr.foto }}
+                        style={styles.avatarPhoto}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <View
+                        style={[
+                          styles.avatar,
+                          { backgroundColor: (usr.avatarColor || ACCENT) + '25' }
+                        ]}
+                      >
+                        <Text style={styles.avatarEmoji}>{usr.avatarEmoji || '😊'}</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
 
-                {/* Info */}
-                <View style={styles.userInfo}>
-                  <View style={styles.userTopRow}>
-                    <Text style={styles.userName} numberOfLines={1}>
-                      {user.nombre}
-                    </Text>
-                    <View style={styles.rolBadge}>
-                      <Text style={styles.rolText}>{rolLabel}</Text>
+                  {/* Info */}
+                  <TouchableOpacity
+                    style={styles.userInfo}
+                    onPress={() => setSelectedProfileId(usr.id)}
+                    activeOpacity={0.8}
+                  >
+                    <View style={styles.userTopRow}>
+                      <Text style={styles.userName} numberOfLines={1}>
+                        {usr.nombre}
+                      </Text>
+                      <View style={styles.rolBadge}>
+                        <Text style={styles.rolText}>{rolLabel}</Text>
+                      </View>
                     </View>
-                  </View>
 
-                  <Text style={styles.userEmail} numberOfLines={1}>
-                    ✉️ {user.correo}
-                  </Text>
+                    {usr.programa ? (
+                      <Text style={styles.userProgram} numberOfLines={1}>
+                        📚 {usr.programa}
+                      </Text>
+                    ) : null}
 
-                  {user.programa ? (
-                    <Text style={styles.userProgram} numberOfLines={1}>
-                      📚 {user.programa}
-                    </Text>
-                  ) : null}
+                    {usr.bio ? (
+                      <Text style={styles.userBio} numberOfLines={2}>
+                        {`"${usr.bio}"`}
+                      </Text>
+                    ) : null}
 
-                  {user.bio ? (
-                    <Text style={styles.userBio} numberOfLines={2}>
-                      {`"${user.bio}"`}
-                    </Text>
-                  ) : null}
+                    {usr.intereses && usr.intereses.length > 0 ? (
+                      <View style={styles.tagsWrap}>
+                        {usr.intereses.slice(0, 3).map((tag: string, i: number) => (
+                          <View key={i} style={styles.tag}>
+                            <Text style={styles.tagText}>{tag}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    ) : null}
+                  </TouchableOpacity>
 
-                  {/* Intereses tags */}
-                  {user.intereses && user.intereses.length > 0 ? (
-                    <View style={styles.tagsWrap}>
-                      {user.intereses.slice(0, 3).map((tag: string, i: number) => (
-                        <View key={i} style={styles.tag}>
-                          <Text style={styles.tagText}>{tag}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  ) : null}
+                  {/* Botón Chatear */}
+                  <TouchableOpacity
+                    style={[styles.chatBtn, isProcessing && styles.chatBtnLoading]}
+                    onPress={() => handleStartChat(usr.id)}
+                    disabled={isProcessing}
+                    activeOpacity={0.85}
+                  >
+                    {isProcessing ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <View style={styles.chatBtnContent}>
+                        <Text style={styles.chatBtnEmoji}>💬</Text>
+                        <Text style={styles.chatBtnText}>Chatear</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
                 </View>
-
-                {/* Botón Chatear */}
-                <TouchableOpacity
-                  style={[styles.chatBtn, isProcessing && styles.chatBtnLoading]}
-                  onPress={() => handleStartChat(user.id)}
-                  disabled={isProcessing}
-                  activeOpacity={0.85}
-                >
-                  {isProcessing ? (
-                    <ActivityIndicator size="small" color="#fff" />
-                  ) : (
-                    <View style={styles.chatBtnContent}>
-                      <Text style={styles.chatBtnEmoji}>💬</Text>
-                      <Text style={styles.chatBtnText}>Chatear</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              </View>
-            );
-          })}
+              );
+            })}
           </View>
           <View style={{ height: 40 }} />
         </ScrollView>
       )}
+
+      {/* Modal Universal de Perfil Público */}
+      <PublicProfileModal
+        userId={selectedProfileId}
+        visible={!!selectedProfileId}
+        onClose={() => setSelectedProfileId(null)}
+        onOpenChat={(chatId) => {
+          setSelectedProfileId(null);
+          onOpenChat(chatId);
+        }}
+      />
     </View>
   );
 }
@@ -259,7 +276,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 32,
   },
-  loadingText: { color: '#786E8A', marginTop: 16, fontSize: 15 },
+  loadingText: { color: '#8D83A0', marginTop: 16, fontSize: 15 },
 
   // Header
   header: {
@@ -302,7 +319,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: '#2D2640',
+    borderColor: CARD_BORDER,
     maxWidth: 1200,
     width: '100%',
     alignSelf: 'center',
@@ -348,7 +365,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 16,
     borderWidth: 1,
-    borderColor: '#2D2640',
+    borderColor: CARD_BORDER,
     flex: 1,
     minWidth: 340,
     shadowColor: '#000',
@@ -362,7 +379,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: 'rgba(255,107,74,0.3)',
+    borderColor: 'rgba(57,169,0,0.3)',
+  },
+  avatarPhoto: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    borderWidth: 2,
+    borderColor: ACCENT,
   },
   avatarEmoji: { fontSize: 26 },
   userInfo: { flex: 1 },
@@ -380,7 +404,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   rolBadge: {
-    backgroundColor: 'rgba(255,107,74,0.12)',
+    backgroundColor: 'rgba(57,169,0,0.15)',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
@@ -388,16 +412,11 @@ const styles = StyleSheet.create({
   rolText: {
     color: ACCENT,
     fontSize: 11,
-    fontWeight: '700',
-  },
-  userEmail: {
-    fontSize: 12,
-    color: '#B9B1C9',
-    marginBottom: 2,
+    fontWeight: '800',
   },
   userProgram: {
     fontSize: 12,
-    color: '#786E8A',
+    color: '#8D83A0',
     marginBottom: 4,
   },
   userBio: {
@@ -414,12 +433,12 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   tag: {
-    backgroundColor: '#282234',
+    backgroundColor: '#1E252F',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#3A3247',
+    borderColor: '#2D3748',
   },
   tagText: {
     color: '#B9B1C9',
@@ -453,7 +472,7 @@ const styles = StyleSheet.create({
   chatBtnText: {
     color: '#fff',
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '800',
   },
 
   // Empty
@@ -473,19 +492,19 @@ const styles = StyleSheet.create({
   },
   emptySubtitle: {
     fontSize: 14,
-    color: '#786E8A',
+    color: '#8D83A0',
     textAlign: 'center',
     lineHeight: 22,
     maxWidth: 320,
   },
   retryBtn: {
     marginTop: 20,
-    backgroundColor: '#282234',
+    backgroundColor: '#1E252F',
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#3A3247',
+    borderColor: '#2D3748',
   },
   retryText: {
     color: '#F0ECF6',
