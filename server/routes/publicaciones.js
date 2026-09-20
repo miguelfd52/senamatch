@@ -129,6 +129,11 @@ router.post('/', auth, async (req, res) => {
       creado: new Date(),
     });
 
+    // Si el usuario tenía pendiente su primera publicación, marcarla como completada en la BD
+    await Perfil.findByIdAndUpdate(req.uid, {
+      $set: { primera_publicacion_completada: true }
+    });
+
     res.status(201).json(formatearPublicacion(nuevaPub, req.uid));
   } catch (err) {
     console.error('Error en POST /publicaciones:', err);

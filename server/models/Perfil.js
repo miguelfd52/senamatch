@@ -42,6 +42,7 @@ const perfilSchema = new mongoose.Schema({
   foto_url: { type: String, default: null },
   asistencias: { type: Number, default: 0, min: 0 },
   inasistencias: { type: Number, default: 0, min: 0 },
+  primera_publicacion_completada: { type: Boolean, default: false },
   demo: { type: Boolean, default: false },
   creado: { type: Date, default: Date.now },
   visto: { type: Date, default: Date.now }

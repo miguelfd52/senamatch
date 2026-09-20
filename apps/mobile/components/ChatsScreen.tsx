@@ -363,11 +363,18 @@ function ConversacionView({ chatId, onBack }: { chatId: string; onBack: () => vo
             );
           }
 
+          const remitenteNombre = msg.senderNombre || msg.nombre || (otro?.nombre && String(msg.de) === String(otro.id) ? otro.nombre : null);
+
           return (
             <View
               key={i}
               style={[styles.msgBubble, isMine ? styles.msgMine : styles.msgOther]}
             >
+              {isParche && !isMine && remitenteNombre ? (
+                <Text style={styles.msgSenderName} numberOfLines={1}>
+                  {remitenteNombre}
+                </Text>
+              ) : null}
               <Text style={[styles.msgText, isMine && styles.msgTextMine]}>
                 {msg.txt}
               </Text>
@@ -594,6 +601,12 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     backgroundColor: '#1E252F',
     borderBottomLeftRadius: 4,
+  },
+  msgSenderName: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#39A900',
+    marginBottom: 3,
   },
   msgText: { fontSize: 14, color: '#F0ECF6', lineHeight: 20 },
   msgTextMine: { color: '#fff' },

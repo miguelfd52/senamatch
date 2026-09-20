@@ -8,6 +8,8 @@ interface UserInfo {
   correo: string;
   nombre: string;
   rol: Role;
+  fotoUrl?: string | null;
+  primeraPublicacionCompletada?: boolean;
 }
 
 interface AuthContextProps {
@@ -15,6 +17,7 @@ interface AuthContextProps {
   loading: boolean;
   signIn: (token: string, userData: UserInfo) => Promise<void>;
   signOut: () => Promise<void>;
+  completeInitialPost: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextProps | undefined>(undefined);
@@ -31,7 +34,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const storedUser = await AsyncStorage.getItem('user_data');
         
         if (token && storedUser) {
-          setUser(JSON.parse(storedUser));
+          const parsed = JSON.parse(storedUser);
+          setUser(parsed);
+
+          // Sincronizar estado real con la BD
+          try {
+            const baseUrl = typeof window !== 'undefined' && window.location ? window.location.origin : 'http://localhost:3001';
+            const res = await fetch(`${baseUrl}/perfiles/${parsed.id}`, {
+              headers: { Authorization: `Bearer ${token}` }
+            });
+            if (res.ok) {
+              const fresh = await res.json();
+              if (fresh && typeof fresh.primeraPublicacionCompletada === 'boolean') {
+                const merged = { ...parsed, primeraPublicacionCompletada: fresh.primeraPublicacionCompletada };
+                await AsyncStorage.setItem('user_data', JSON.stringify(merged));
+                setUser(merged);
+              }
+            }
+          } catch (_) {}
         }
       } catch (e) {
         console.error('Error cargando sesión', e);
@@ -53,6 +73,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const completeInitialPost = async () => {
+    if (!user) return;
+    const updated = { ...user, primeraPublicacionCompletada: true };
+    try {
+      await AsyncStorage.setItem('user_data', JSON.stringify(updated));
+      setUser(updated);
+    } catch (e) {
+      console.error('Error al actualizar estado en sesión', e);
+    }
+  };
+
   const signOut = async () => {
     try {
       await AsyncStorage.removeItem('jwt_token');
@@ -64,7 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, loading, signIn, signOut, completeInitialPost }}>
       {children}
     </AuthContext.Provider>
   );

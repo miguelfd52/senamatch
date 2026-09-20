@@ -203,6 +203,7 @@ router.get('/:id', auth, async (req, res) => {
       avatarEmoji: r.avatar_emoji,
       avatarColor: r.avatar_color,
       fotoUrl: r.foto_url || null,
+      primeraPublicacionCompletada: r.primera_publicacion_completada === undefined ? true : !!r.primera_publicacion_completada,
       asistencias: r.asistencias || 0,
       inasistencias: r.inasistencias || 0,
       creado: r.creado ? new Date(r.creado).getTime() : Date.now(),
@@ -210,6 +211,19 @@ router.get('/:id', auth, async (req, res) => {
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
+  }
+});
+
+/**
+ * POST /perfiles/completar-primera-publicacion
+ * Marca en la base de datos que el usuario completó su publicación inicial obligatoria.
+ */
+router.post('/completar-primera-publicacion', auth, async (req, res) => {
+  try {
+    await Perfil.findByIdAndUpdate(req.uid, { $set: { primera_publicacion_completada: true } });
+    res.json({ ok: true, primeraPublicacionCompletada: true });
+  } catch (e) {
+    res.status(500).json({ error: 'Error al actualizar estado de primera publicación' });
   }
 });
 

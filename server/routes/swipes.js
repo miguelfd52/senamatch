@@ -9,6 +9,7 @@ const Perfil = require('../models/Perfil');
 const Swipe = require('../models/Swipe');
 const Match = require('../models/Match');
 const Chat = require('../models/Chat');
+const Notificacion = require('../models/Notificacion');
 const { crearNotificacion } = require('./notificaciones');
 
 const router = express.Router();
@@ -85,39 +86,53 @@ router.post('/registrar', auth, async (req, res) => {
       return res.json({ match: false });
     }
 
-    // ¡Match! Crear match y chat único
+    // ¡Match! Crear o reutilizar match único entre ambos usuarios
     const [a, b] = yoId < otroId ? [yoId, otroId] : [otroId, yoId];
-    const matchId = `${a}__${b}__${p_intencion}`;
+    
+    // Buscar si ya existe match previo entre estos 2 usuarios
+    let match = await Match.findOne({
+      $or: [
+        { a, b },
+        { a: b, b: a }
+      ],
+      activo: true
+    });
 
-    await Match.findByIdAndUpdate(
-      matchId,
-      {
-        $set: { a, b, intencion: p_intencion, activo: true },
-        $setOnInsert: { creado: new Date() }
-      },
-      { upsert: true }
-    );
+    const isNewMatch = !match;
+    const matchId = match ? match._id : `${a}__${b}`;
 
-    // Reutilizar o crear chat único
-    let chat = await Chat.findById(matchId);
-    if (!chat) {
-      // Verificar si ya existía algún chat entre ambos
-      chat = await Chat.findOne({
-        tipo: { $in: ['match', 'directo'] },
-        miembros: { $all: [yoId, otroId], $size: 2 }
-      });
+    if (!match) {
+      match = await Match.findByIdAndUpdate(
+        matchId,
+        {
+          $set: { a, b, intencion: p_intencion, activo: true },
+          $setOnInsert: { creado: new Date() }
+        },
+        { upsert: true, new: true }
+      );
     }
+
+    // Reutilizar o crear chat único entre ambos usuarios
+    let chat = await Chat.findOne({
+      tipo: { $in: ['match', 'directo'] },
+      miembros: { $all: [yoId, otroId], $size: 2 }
+    });
+
+    const mensajeBienvenida = '🎉 ¡Hicieron Match! Ahora pueden comenzar a conocerse.';
 
     if (!chat) {
       chat = await Chat.create({
-        _id: matchId,
+        _id: `chat_${a}_${b}`,
         tipo: 'match',
         titulo: `${yo.nombre} & ${otro.nombre}`,
         miembros: [yoId, otroId],
         mensajes: [{
           id: 'm_' + crypto.randomUUID().replace(/-/g, '').slice(0, 16),
           de: null,
-          txt: `¡Hicieron Match por ${p_intencion}! 🎉 Ya pueden chatear libremente.`,
+          senderId: null,
+          senderNombre: 'SENA Match',
+          nombre: 'SENA Match',
+          txt: mensajeBienvenida,
           ts: Date.now(),
           leidoPor: [yoId, otroId]
         }],
@@ -129,25 +144,59 @@ router.post('/registrar', auth, async (req, res) => {
       await Chat.findByIdAndUpdate(chat._id, {
         $addToSet: { miembros: { $each: [yoId, otroId] } }
       });
+
+      // Si el chat existente no tiene ningún mensaje, enviar el mensaje de bienvenida una sola vez
+      const mensajesExistentes = chat.mensajes || [];
+      const yaTieneBienvenida = mensajesExistentes.some(m => m && m.txt && m.txt.includes('¡Hicieron Match!'));
+      if (!yaTieneBienvenida && mensajesExistentes.length === 0) {
+        await Chat.findByIdAndUpdate(chat._id, {
+          $push: {
+            mensajes: {
+              id: 'm_' + crypto.randomUUID().replace(/-/g, '').slice(0, 16),
+              de: null,
+              senderId: null,
+              senderNombre: 'SENA Match',
+              nombre: 'SENA Match',
+              txt: mensajeBienvenida,
+              ts: Date.now(),
+              leidoPor: [yoId, otroId]
+            }
+          },
+          $set: { ultimo: new Date() }
+        });
+      }
     }
 
-    // Generar notificaciones para ambos usuarios
-    await Promise.all([
-      crearNotificacion({
-        recipientId: yoId,
-        type: 'nuevo_match',
-        title: '¡Nuevo Match! 🎉',
-        message: `Hiciste match con ${otro.nombre} por afinidad en ${p_intencion}.`,
-        reference: String(chat._id)
-      }),
-      crearNotificacion({
-        recipientId: otroId,
-        type: 'nuevo_match',
-        title: '¡Nuevo Match! 🎉',
-        message: `Hiciste match con ${yo.nombre} por afinidad en ${p_intencion}.`,
-        reference: String(chat._id)
-      })
-    ]);
+    // Generar notificaciones para ambos usuarios sin duplicados
+    if (isNewMatch) {
+      const [notifA, notifB] = await Promise.all([
+        Notificacion.findOne({ recipientId: yoId, type: 'nuevo_match', reference: String(chat._id) }),
+        Notificacion.findOne({ recipientId: otroId, type: 'nuevo_match', reference: String(chat._id) })
+      ]);
+
+      const notifPromises = [];
+      if (!notifA) {
+        notifPromises.push(crearNotificacion({
+          recipientId: yoId,
+          type: 'nuevo_match',
+          title: '¡Nuevo Match! 🎉',
+          message: `¡Hiciste Match con ${otro.nombre}! Ahora pueden comenzar a conocerse.`,
+          reference: String(chat._id)
+        }));
+      }
+      if (!notifB) {
+        notifPromises.push(crearNotificacion({
+          recipientId: otroId,
+          type: 'nuevo_match',
+          title: '¡Nuevo Match! 🎉',
+          message: `¡Hiciste Match con ${yo.nombre}! Ahora pueden comenzar a conocerse.`,
+          reference: String(chat._id)
+        }));
+      }
+      if (notifPromises.length > 0) {
+        await Promise.all(notifPromises);
+      }
+    }
 
     res.json({
       match: true,
@@ -222,7 +271,7 @@ router.get('/matches', auth, async (req, res) => {
     const matches = await Match.find({
       $or: [{ a: uid }, { b: uid }],
       activo: true
-    }).lean();
+    }).sort({ creado: -1 }).lean();
 
     const otherIds = matches.map(m => m.a === uid ? m.b : m.a);
     const perfiles = await Perfil.find({ _id: { $in: otherIds } }).lean();
@@ -230,10 +279,13 @@ router.get('/matches', auth, async (req, res) => {
     perfiles.forEach(p => perfilMap.set(String(p._id), p));
 
     const resultado = [];
+    const seenOtherIds = new Set();
     for (const m of matches) {
       const otherId = m.a === uid ? m.b : m.a;
+      if (seenOtherIds.has(String(otherId))) continue;
       if (await hayBloqueo(uid, otherId)) continue;
 
+      seenOtherIds.add(String(otherId));
       const p = perfilMap.get(String(otherId));
       resultado.push({
         id: m._id,

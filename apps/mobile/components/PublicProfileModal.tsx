@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../app/context/AuthContext';
 import { api } from '../lib/api';
+import FotoViewerModal from './FotoViewerModal';
 
 const ACCENT = '#39A900';
 const ACCENT_DARK = '#1F6B00';
@@ -28,6 +29,7 @@ export default function PublicProfileModal({ userId, visible, onClose, onOpenCha
   const [perfil, setPerfil] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [visorFoto, setVisorFoto] = useState<string | null>(null);
   const [startingChat, setStartingChat] = useState(false);
   const [bloqueando, setBloqueando] = useState(false);
   const [bloqueado, setBloqueado] = useState(false);
@@ -195,7 +197,9 @@ export default function PublicProfileModal({ userId, visible, onClose, onOpenCha
               {/* Foto o Avatar */}
               <View style={styles.avatarSection}>
                 {perfil.fotoUrl ? (
-                  <Image source={{ uri: perfil.fotoUrl }} style={styles.avatarPhoto} resizeMode="cover" />
+                  <TouchableOpacity activeOpacity={0.9} onPress={() => setVisorFoto(perfil.fotoUrl)}>
+                    <Image source={{ uri: perfil.fotoUrl }} style={styles.avatarPhoto} resizeMode="cover" />
+                  </TouchableOpacity>
                 ) : (
                   <View style={[styles.avatarCircle, { backgroundColor: (perfil.avatarColor || ACCENT) + '22' }]}>
                     <Text style={styles.avatarEmoji}>{perfil.avatarEmoji || '😊'}</Text>
@@ -361,6 +365,13 @@ export default function PublicProfileModal({ userId, visible, onClose, onOpenCha
           ) : null}
         </View>
       </View>
+
+      {/* Visor de foto a pantalla completa */}
+      <FotoViewerModal
+        visible={!!visorFoto}
+        fotoUrl={visorFoto}
+        onClose={() => setVisorFoto(null)}
+      />
     </Modal>
   );
 }

@@ -19,6 +19,7 @@ import { openImagePickerAndUpload } from '../lib/cloudinary';
 import { api } from '../lib/api';
 import SenaMatchLogo from './SenaMatchLogo';
 import PublicProfileModal from './PublicProfileModal';
+import FotoViewerModal from './FotoViewerModal';
 
 const ACCENT = '#39A900';
 const ACCENT_DARK = '#1F6B00';
@@ -77,6 +78,9 @@ export default function HomeScreen({ esfera }: Props) {
 
   // Perfil público universal
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+
+  // Visor de fotos a pantalla completa
+  const [fotoVisorUrl, setFotoVisorUrl] = useState<string | null>(null);
 
   // Reporte rápido de post
   const [reportingPubId, setReportingPubId] = useState<string | null>(null);
@@ -428,15 +432,19 @@ export default function HomeScreen({ esfera }: Props) {
               {/* Contenido de texto */}
               <Text style={styles.postText}>{pub.texto}</Text>
 
-              {/* Foto opcional del post */}
+              {/* Foto opcional del post con visor en pantalla completa */}
               {pub.fotoUrl ? (
-                <View style={styles.postImageWrap}>
+                <TouchableOpacity
+                  style={styles.postImageWrap}
+                  activeOpacity={0.9}
+                  onPress={() => setFotoVisorUrl(pub.fotoUrl)}
+                >
                   <Image
                     source={{ uri: pub.fotoUrl }}
                     style={styles.postImage}
                     resizeMode="cover"
                   />
-                </View>
+                </TouchableOpacity>
               ) : null}
 
               {/* Barra de interacción */}
@@ -760,6 +768,13 @@ export default function HomeScreen({ esfera }: Props) {
           setSelectedUserId(null);
           router.push('/chats');
         }}
+      />
+
+      {/* Visor de foto en pantalla completa */}
+      <FotoViewerModal
+        visible={!!fotoVisorUrl}
+        fotoUrl={fotoVisorUrl}
+        onClose={() => setFotoVisorUrl(null)}
       />
 
       <View style={{ height: 60 }} />

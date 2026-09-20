@@ -243,13 +243,36 @@ router.get('/:id', auth, async (req, res) => {
       }
     }
 
+    // Recopilar IDs de los emisores para asegurar que siempre haya nombre visible (especialmente en grupos)
+    const senderIds = new Set();
+    (chat.mensajes || []).forEach(m => {
+      const sender = m?.senderId || m?.de;
+      if (sender) senderIds.add(String(sender));
+    });
+    const perfilesSender = await Perfil.find({ _id: { $in: Array.from(senderIds) } }).lean();
+    const senderMap = new Map();
+    perfilesSender.forEach(p => senderMap.set(String(p._id), p.nombre));
+
+    const mensajesEnriquecidos = (chat.mensajes || []).map(m => {
+      if (!m) return m;
+      const sId = m.senderId || m.de || null;
+      const sNombre = m.senderNombre || m.nombre || (sId ? senderMap.get(String(sId)) : null) || (sId ? `Usuario ${String(sId).slice(0, 6)}` : 'SENA Match');
+      return {
+        ...m,
+        de: sId,
+        senderId: sId,
+        senderNombre: sNombre,
+        nombre: sNombre
+      };
+    });
+
     res.json({
       id: chat._id,
       tipo: chat.tipo,
       titulo: titulo || (chat.tipo === 'parche' ? 'Chat de parche' : 'Conversación'),
       otroUsuario,
       miembros: (chat.miembros || []).map(String),
-      mensajes: chat.mensajes || [],
+      mensajes: mensajesEnriquecidos,
       creado: new Date(chat.creado).getTime(),
       ultimo: new Date(chat.ultimo).getTime()
     });
@@ -296,9 +319,14 @@ router.post('/:id/mensaje', auth, async (req, res) => {
       }
     }
 
+    const miNombre = req.perfil?.nombre || 'Compañero SENA';
+
     const nuevoMensaje = {
       id: 'm_' + crypto.randomUUID().replace(/-/g, '').slice(0, 16),
       de: uid,
+      senderId: uid,
+      senderNombre: miNombre,
+      nombre: miNombre,
       txt: txt.trim(),
       ts: Date.now(),
       leidoPor: [uid]
@@ -314,8 +342,6 @@ router.post('/:id/mensaje', auth, async (req, res) => {
     });
 
     // Notificaciones según tipo de chat
-    const miNombre = req.perfil?.nombre || 'Alguien';
-
     if (otherId) {
       // Chat 1 a 1 (directo o match): notificar solo al otro
       crearNotificacion({

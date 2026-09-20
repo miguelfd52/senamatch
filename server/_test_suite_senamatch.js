@@ -106,6 +106,15 @@ function createMongooseMock(collectionName) {
         let match = true;
         if (query.correo && doc.correo !== query.correo) match = false;
         if (query._id && String(doc._id) !== String(query._id)) match = false;
+        if (query.recipientId && String(doc.recipientId) !== String(query.recipientId)) match = false;
+        if (query.type && doc.type !== query.type) match = false;
+        if (query.reference && String(doc.reference) !== String(query.reference)) match = false;
+        if (query.$or && Array.isArray(query.$or)) {
+          const pass = query.$or.some(cond => {
+            return Object.entries(cond).every(([k, v]) => String(doc[k]) === String(v));
+          });
+          if (!pass) match = false;
+        }
         if (query.miembros && query.miembros.$all) {
           const docM = (doc.miembros || []).map(String);
           if (!query.miembros.$all.every(m => docM.includes(String(m)))) match = false;
@@ -132,6 +141,7 @@ function createMongooseMock(collectionName) {
         arr = arr.filter(d => String(d.recipientId) === String(query.recipientId));
       }
       return {
+        select: function() { return this; },
         sort: function() { return this; },
         skip: function() { return this; },
         limit: function() { return this; },

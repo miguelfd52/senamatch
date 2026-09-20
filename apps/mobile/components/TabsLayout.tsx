@@ -9,6 +9,7 @@ import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import SenaMatchLogo from './SenaMatchLogo';
 import NotificacionesModal from './NotificacionesModal';
 import AdminPanelModal from './AdminPanelModal';
+import InitialPostModal from './InitialPostModal';
 import { useAuth } from '../app/context/AuthContext';
 import { api } from '../lib/api';
 import { pendingChat } from '../lib/pendingChat';
@@ -277,6 +278,9 @@ export default function TabsLayout() {
         visible={showAdminModal}
         onClose={() => setShowAdminModal(false)}
       />
+
+      {/* Modal de primera publicación obligatoria para usuarios nuevos */}
+      <InitialPostModal />
     </>
   );
 }

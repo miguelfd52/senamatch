@@ -40,6 +40,8 @@ function perfilPublico(perfil) {
     correo: perfil.correo,
     nombre: perfil.nombre,
     rol: perfil.rol,
+    fotoUrl: perfil.foto_url || null,
+    primeraPublicacionCompletada: perfil.primera_publicacion_completada === undefined ? true : !!perfil.primera_publicacion_completada,
   };
 }
 
@@ -75,6 +77,9 @@ router.post('/register', async (req, res) => {
       if (!existe.password_hash) {
         existe.password_hash = hash;
         existe.nombre = nombre || existe.nombre;
+        if (existe.primera_publicacion_completada === undefined) {
+          existe.primera_publicacion_completada = true;
+        }
         await existe.save();
         const token = firmarToken(existe);
         return res.status(200).json({ ok: true, token, user: perfilPublico(existe) });
@@ -91,6 +96,7 @@ router.post('/register', async (req, res) => {
       nombre,
       rol,
       password_hash: hash,
+      primera_publicacion_completada: false,
     });
 
     const token = firmarToken(perfil);
