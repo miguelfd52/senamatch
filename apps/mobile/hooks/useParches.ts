@@ -241,3 +241,20 @@ export function useCrearChatDirecto() {
   });
 }
 
+/* -------------------------------------------------------------------------- */
+/* Mis Matches                                                                  */
+/* Backend: GET /swipes/matches — lista de matches del usuario autenticado     */
+/* -------------------------------------------------------------------------- */
+
+export function useMatches() {
+  return useQuery({
+    queryKey: ['matches'],
+    queryFn: async () => {
+      const data = await api.get('/swipes/matches');
+      return Array.isArray(data) ? data : [];
+    },
+    staleTime: 15_000,
+    refetchInterval: 15_000,
+  });
+}
+

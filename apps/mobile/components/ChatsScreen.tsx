@@ -6,7 +6,7 @@ import {
 } from 'react-native';
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useAuth } from '../app/context/AuthContext';
-import { useBandeja, useConversacion, useEnviarMensaje } from '../hooks/useParches';
+import { useBandeja, useConversacion, useEnviarMensaje, useMatches } from '../hooks/useParches';
 import { api } from '../lib/api';
 import PeopleScreen from './PeopleScreen';
 import PublicProfileModal from './PublicProfileModal';
@@ -84,17 +84,19 @@ function ChatsList({
   onOpenPeople: () => void;
 }) {
   const { data: chats, isLoading, refetch } = useBandeja();
+  const { data: matches, refetch: refetchMatches } = useMatches();
   const [refreshing, setRefreshing] = useState(false);
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await refetch();
+    await Promise.all([refetch(), refetchMatches()]);
     setRefreshing(false);
-  }, [refetch]);
+  }, [refetch, refetchMatches]);
 
   const chatsList = Array.isArray(chats) ? chats : [];
   const sorted = [...chatsList].sort((a: any, b: any) => (b.ultimo || 0) - (a.ultimo || 0));
+  const matchesList = Array.isArray(matches) ? matches : [];
 
   if (isLoading) {
     return (
@@ -121,6 +123,43 @@ function ChatsList({
           <Text style={styles.newChatBtnText}>Nueva conversación</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Sección de Matches */}
+      {matchesList.length > 0 ? (
+        <View style={styles.matchesSection}>
+          <Text style={styles.matchesSectionTitle}>❤️ Mis Matches ({matchesList.length})</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.matchesRow}
+          >
+            {matchesList.map((m: any) => {
+              const otro = m.otroUsuario;
+              if (!otro) return null;
+              return (
+                <TouchableOpacity
+                  key={m.id}
+                  style={styles.matchAvatar}
+                  onPress={() => setSelectedProfileId(otro.id)}
+                  activeOpacity={0.8}
+                >
+                  {otro.fotoUrl ? (
+                    <Image source={{ uri: otro.fotoUrl }} style={styles.matchAvatarImg} />
+                  ) : (
+                    <View style={[styles.matchAvatarEmojiBg, { backgroundColor: (otro.avatarColor || ACCENT) + '30' }]}>
+                      <Text style={styles.matchAvatarEmojiText}>{otro.avatarEmoji || '😊'}</Text>
+                    </View>
+                  )}
+                  <View style={styles.matchHeart}>
+                    <Text style={{ fontSize: 10 }}>❤️</Text>
+                  </View>
+                  <Text style={styles.matchName} numberOfLines={1}>{otro.nombre?.split(' ')[0] || '?'}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+      ) : null}
 
       {sorted.length === 0 ? (
         <View style={styles.emptyState}>
@@ -440,6 +479,69 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center',
   },
   loadingText: { color: '#8D83A0', marginTop: 16, fontSize: 15 },
+
+  // Matches section
+  matchesSection: {
+    paddingTop: 12,
+    paddingBottom: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1E252F',
+    marginBottom: 8,
+  },
+  matchesSectionTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#B9B1C9',
+    paddingHorizontal: 24,
+    marginBottom: 12,
+    letterSpacing: 0.3,
+  },
+  matchesRow: {
+    paddingHorizontal: 20,
+    gap: 12,
+    flexDirection: 'row',
+    paddingBottom: 12,
+  },
+  matchAvatar: {
+    alignItems: 'center',
+    width: 68,
+    position: 'relative',
+  },
+  matchAvatarImg: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    borderWidth: 2,
+    borderColor: ACCENT,
+  },
+  matchAvatarEmojiBg: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: ACCENT,
+  },
+  matchAvatarEmojiText: {
+    fontSize: 26,
+  },
+  matchHeart: {
+    position: 'absolute',
+    bottom: 18,
+    right: 2,
+    backgroundColor: '#161B22',
+    borderRadius: 8,
+    padding: 2,
+  },
+  matchName: {
+    fontSize: 11,
+    color: '#B9B1C9',
+    fontWeight: '600',
+    marginTop: 4,
+    textAlign: 'center',
+    maxWidth: 64,
+  },
 
   // Header
   header: {
