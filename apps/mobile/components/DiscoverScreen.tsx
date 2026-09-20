@@ -10,6 +10,7 @@ import { usePerfiles, useSwipe } from '../hooks/useParches';
 import { api } from '../lib/api';
 import PeopleScreen from './PeopleScreen';
 import PublicProfileModal from './PublicProfileModal';
+import FotoViewerModal from './FotoViewerModal';
 
 const ACCENT = '#39A900';
 const BG = '#0F0C18';
@@ -30,6 +31,7 @@ export default function DiscoverScreen() {
   const [intencion] = useState<typeof INTENCIONES[number]>('amistad');
   const [descartesHistorial, setDescartesHistorial] = useState<string[]>([]);
   const [deshaciendo, setDeshaciendo] = useState(false);
+  const [viewingPhotoUrl, setViewingPhotoUrl] = useState<string | null>(null);
 
   // Filtros
   const [filtroJornada, setFiltroJornada] = useState<string>('todos');
@@ -253,11 +255,16 @@ export default function DiscoverScreen() {
               >
                 {/* Avatar o Foto */}
                 {(currentCard.fotoUrl || currentCard.foto) ? (
-                  <Image
-                    source={{ uri: currentCard.fotoUrl || currentCard.foto }}
-                    style={styles.avatarPhoto}
-                    resizeMode="cover"
-                  />
+                  <TouchableOpacity
+                    activeOpacity={0.9}
+                    onPress={() => setViewingPhotoUrl(currentCard.fotoUrl || currentCard.foto)}
+                  >
+                    <Image
+                      source={{ uri: currentCard.fotoUrl || currentCard.foto }}
+                      style={styles.avatarPhoto}
+                      resizeMode="cover"
+                    />
+                  </TouchableOpacity>
                 ) : (
                   <View
                     style={[
@@ -404,6 +411,13 @@ export default function DiscoverScreen() {
           setSelectedUserId(null);
           router.push('/chats');
         }}
+      />
+
+      {/* Visor Modal de Foto Completa */}
+      <FotoViewerModal
+        visible={!!viewingPhotoUrl}
+        fotoUrl={viewingPhotoUrl}
+        onClose={() => setViewingPhotoUrl(null)}
       />
     </View>
   );

@@ -68,6 +68,14 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres' });
     }
 
+    const foto_url = (req.body.foto_url || req.body.fotoUrl || '').trim();
+    if (!foto_url) {
+      return res.status(400).json({ error: 'La foto de perfil es obligatoria para nuevos usuarios' });
+    }
+    if (foto_url.startsWith('data:')) {
+      return res.status(400).json({ error: 'No se permiten imágenes en formato base64. Sube la foto mediante Cloudinary.' });
+    }
+
     const hash = await bcrypt.hash(password, 12);
 
     // Verificar si el correo ya existe
@@ -77,6 +85,7 @@ router.post('/register', async (req, res) => {
       if (!existe.password_hash) {
         existe.password_hash = hash;
         existe.nombre = nombre || existe.nombre;
+        if (foto_url && !existe.foto_url) existe.foto_url = foto_url;
         if (existe.primera_publicacion_completada === undefined) {
           existe.primera_publicacion_completada = true;
         }
@@ -96,6 +105,7 @@ router.post('/register', async (req, res) => {
       nombre,
       rol,
       password_hash: hash,
+      foto_url,
       primera_publicacion_completada: false,
     });
 

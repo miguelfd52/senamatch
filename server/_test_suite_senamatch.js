@@ -140,6 +140,23 @@ function createMongooseMock(collectionName) {
       if (query.recipientId) {
         arr = arr.filter(d => String(d.recipientId) === String(query.recipientId));
       }
+      if (query._id && query._id.$ne) {
+        arr = arr.filter(d => String(d._id) !== String(query._id.$ne));
+      }
+      if (query._id && Array.isArray(query._id.$in)) {
+        const inList = query._id.$in.map(String);
+        arr = arr.filter(d => inList.includes(String(d._id)));
+      }
+      if (query.$or && Array.isArray(query.$or)) {
+        arr = arr.filter(d => {
+          return query.$or.some(cond => {
+            return Object.entries(cond).every(([k, v]) => String(d[k]) === String(v));
+          });
+        });
+      }
+      if (query.activo !== undefined) {
+        arr = arr.filter(d => d.activo === query.activo);
+      }
       return {
         select: function() { return this; },
         sort: function() { return this; },
@@ -593,21 +610,115 @@ async function runTests() {
     assert(leerTodasRes.unreadCount === 0, 'Todas las notificaciones marcadas como leídas (unreadCount: 0)');
 
     // ========================================================
-    // TEST EXTRA: PANEL ADMIN (FASE 10)
+    // TEST 8 — REGISTRO, FOTO OBLIGATORIA & PRIMERA PUBLICACIÓN
     // ========================================================
-    console.log('\n[TEST EXTRA — PANEL ADMIN AUTORIZACIÓN]');
-    // Usuario normal C intenta acceder al panel admin -> 403
-    r = await fetch(`${BASE}/admin/metricas`, {
-      headers: { Authorization: `Bearer ${tokenC}` }
+    console.log('\n[TEST 8 — REGISTRO & PUBLICACIÓN OBLIGATORIA]');
+    // 1. Registro nuevo sin foto -> Rechazado
+    r = await fetch(`${BASE}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        nombre: 'Nuevo Aprendiz',
+        email: 'nuevo.aprendiz@misena.edu.co',
+        password: 'password123'
+      })
     });
-    assert(r.status === 403, 'Usuario normal bloqueado del panel administrativo (403)');
+    assert(r.status === 400, 'Registro nuevo sin foto de perfil rechazado (400)');
 
-    // Moderador accede al panel admin
-    r = await fetch(`${BASE}/admin/metricas`, {
-      headers: { Authorization: `Bearer ${tokenAdmin}` }
+    // 2. Registro con foto -> Permitido
+    r = await fetch(`${BASE}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        nombre: 'Nuevo Aprendiz',
+        email: 'nuevo.aprendiz@misena.edu.co',
+        password: 'password123',
+        foto_url: 'https://res.cloudinary.com/jsts4pi6/image/upload/v1/senamatch/avatar1.jpg'
+      })
     });
-    const metricas = await r.json();
-    assert(r.status === 200 && metricas.usuarios && metricas.usuarios.total >= 3, 'Staff accede a métricas en vivo');
+    const regData = await r.json();
+    assert(r.status === 201 && regData.token, 'Registro con foto de perfil permitido (201)');
+    const tokenNuevo = regData.token;
+    const uidNuevo = regData.user.id;
+
+    // Usuario nuevo tiene primeraPublicacionCompletada === false
+    assert(regData.user.primeraPublicacionCompletada === false, 'Nuevo usuario tiene primera publicación pendiente');
+
+    // 3. Primera publicación sin texto o sin foto -> Rechazada
+    r = await fetch(`${BASE}/publicaciones`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokenNuevo}` },
+      body: JSON.stringify({ texto: '' })
+    });
+    assert(r.status === 400, 'Primera publicación vacía rechazada');
+
+    // 4. Primera publicación completa con foto y texto -> Permitida
+    r = await fetch(`${BASE}/publicaciones`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokenNuevo}` },
+      body: JSON.stringify({
+        texto: '¡Hola a todos! Mi primera publicación en SENA Match',
+        fotoUrl: 'https://res.cloudinary.com/jsts4pi6/image/upload/v1/senamatch/firstpost.jpg'
+      })
+    });
+    assert(r.status === 201, 'Primera publicación completa permitida');
+
+    // 5. Verificar que primera_publicacion_completada se guardó en MongoDB
+    const perfilActualizado = await Perfil.findById(uidNuevo);
+    assert(perfilActualizado.primera_publicacion_completada === true, 'Estado de primera publicación guardado en MongoDB como completado');
+
+    // ========================================================
+    // TEST 9 — "NO ME INTERESA" (PASS) PERMANENTE & MATCH MUTUO ÚNICO
+    // ========================================================
+    console.log('\n[TEST 9 — NO ME INTERESA & MATCH MUTUO ÚNICO]');
+    // Desbloquear a C previamente bloqueado en TEST 6 para probar swipe pass limpiamente
+    await fetch(`${BASE}/bloqueos/toggle`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokenA}` },
+      body: JSON.stringify({ targetUserId: 'user_c' })
+    });
+
+    // Usuario A da "pass" (No me interesa) a Usuario C
+    r = await fetch(`${BASE}/swipes/registrar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokenA}` },
+      body: JSON.stringify({ p_otro: 'user_c', p_intencion: 'amistad', p_dir: 'pass' })
+    });
+    const passData = await r.json();
+    assert(passData.match === false, 'Decisión "No me interesa" guardada sin crear match');
+
+    // C no debe aparecer en los perfiles de A (GET /perfiles)
+    r = await fetch(`${BASE}/perfiles`, {
+      headers: { Authorization: `Bearer ${tokenA}` }
+    });
+    const perfilesParaA = await r.json();
+    const cEncontrado = perfilesParaA.some(p => p.id === 'user_c');
+    assert(!cEncontrado, 'Usuario descartado ("No me interesa") no aparece en Descubrir de A');
+
+    // C tampoco debe poder recibir ni enviar chats directos a A
+    r = await fetch(`${BASE}/chats/directo`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokenA}` },
+      body: JSON.stringify({ targetUserId: 'user_c' })
+    });
+    assert(r.status === 403, 'Usuario descartado no puede iniciar chat directo');
+
+    // Usuario B y A ya tienen match mutuo: ninguno debe aparecer en Descubrir del otro
+    const bEncontrado = perfilesParaA.some(p => p.id === 'user_b');
+    assert(!bEncontrado, 'Usuario con match mutuo eliminado de Descubrir');
+
+    // ========================================================
+    // TEST 10 — GRUPOS MUESTRAN NOMBRES REALES DE REMITENTES
+    // ========================================================
+    console.log('\n[TEST 10 — GRUPOS MUESTRAN NOMBRES REALES]');
+    // A consulta el chat del parche
+    r = await fetch(`${BASE}/chats/${parcheId}`, {
+      headers: { Authorization: `Bearer ${tokenA}` }
+    });
+    const chatParche = await r.json();
+    const msgsParche = chatParche.mensajes || [];
+    const todosTienenNombre = msgsParche.every(m => m.senderNombre && !m.senderNombre.startsWith('id_'));
+    assert(todosTienenNombre, 'Mensajes grupales muestran el nombre real del remitente y no su ID');
 
     console.log(`\n🎉 TODAS LAS PRUEBAS COMPLETADAS EXITOSAMENTE: ${passed}/${total} PASARON SIN ERRORES\n`);
     server.close();

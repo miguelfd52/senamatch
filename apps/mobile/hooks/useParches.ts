@@ -31,7 +31,11 @@ export function useSwipe(intencion: Intencion) {
       });
     },
     onSuccess: (res: any) => {
-      if (res?.match) qc.invalidateQueries({ queryKey: ['bandeja'] });
+      qc.invalidateQueries({ queryKey: ['perfiles'] });
+      if (res?.match) {
+        qc.invalidateQueries({ queryKey: ['bandeja'] });
+        qc.invalidateQueries({ queryKey: ['matches'] });
+      }
     },
   });
 }

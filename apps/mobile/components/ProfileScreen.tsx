@@ -8,6 +8,7 @@ import { useAuth } from '../app/context/AuthContext';
 import { usePerfil, useEditarPerfil } from '../hooks/useParches';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { openImagePickerAndUpload, CloudinaryError } from '../lib/cloudinary';
+import FotoViewerModal from './FotoViewerModal';
 
 const ACCENT = '#39A900';
 const BG = '#0F0C18';
@@ -53,6 +54,7 @@ export default function ProfileScreen() {
   const [selectedEmoji, setSelectedEmoji] = useState('😊');
   const [saved, setSaved] = useState(false);
   const [timedOut, setTimedOut] = useState(false);
+  const [viewingPhotoUrl, setViewingPhotoUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isLoading) return;
@@ -215,8 +217,8 @@ export default function ProfileScreen() {
         <View style={styles.profileCard}>
           {displayFoto ? (
             <TouchableOpacity
-              onPress={editing ? handlePickImage : undefined}
-              activeOpacity={editing ? 0.7 : 1}
+              onPress={editing ? handlePickImage : () => setViewingPhotoUrl(displayFoto)}
+              activeOpacity={0.8}
               style={styles.photoContainer}
             >
               <Image
@@ -468,6 +470,13 @@ export default function ProfileScreen() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* Visor Modal de Foto Completa */}
+      <FotoViewerModal
+        visible={!!viewingPhotoUrl}
+        fotoUrl={viewingPhotoUrl}
+        onClose={() => setViewingPhotoUrl(null)}
+      />
     </KeyboardAvoidingView>
   );
 }

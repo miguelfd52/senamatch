@@ -1,27 +1,49 @@
 import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, ActivityIndicator, KeyboardAvoidingView,
-  Platform, ScrollView
+  Platform, ScrollView, Image
 } from 'react-native';
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { api, ApiError } from '../../lib/api';
 import { useAuth } from '../context/AuthContext';
 import SenaMatchLogo from '../../components/SenaMatchLogo';
+import { openImagePickerAndUpload } from '../../lib/cloudinary';
 
 const CORREO_RE = /^[^\s@]+@(gmail\.com|misena\.edu\.co|sena\.edu\.co)$/i;
+const ACCENT = '#39A900';
 
 export default function RegistroScreen() {
   const [nombre, setNombre] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmar, setConfirmar] = useState('');
+  const [fotoUrl, setFotoUrl] = useState('');
+  const [fotoPreview, setFotoPreview] = useState('');
+  const [fotoUploading, setFotoUploading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
   const { signIn } = useAuth();
 
+  const handlePickPhoto = () => {
+    setError('');
+    openImagePickerAndUpload({
+      onProgress: (p) => setFotoUploading(p),
+      onPreview: (preview) => setFotoPreview(preview),
+      onSuccess: (url) => {
+        setFotoUrl(url);
+        setFotoPreview(url);
+      },
+      onError: (msg) => {
+        setError(msg);
+        setFotoPreview('');
+      }
+    }).catch(() => {});
+  };
+
   const validar = () => {
+    if (!fotoUrl.trim()) return 'La foto de perfil es obligatoria para crear tu cuenta';
     if (nombre.trim().length < 2) return 'El nombre debe tener al menos 2 caracteres';
     if (!CORREO_RE.test(email.trim())) return 'Solo se admiten correos @gmail.com, @misena.edu.co o @sena.edu.co';
     if (password.length < 8) return 'La contraseña debe tener al menos 8 caracteres';
@@ -40,6 +62,7 @@ export default function RegistroScreen() {
         nombre: nombre.trim(),
         email: email.trim().toLowerCase(),
         password,
+        foto_url: fotoUrl.trim(),
       });
       await signIn(response.token, response.user);
       // _layout.tsx redirige automáticamente según rol
@@ -73,6 +96,51 @@ export default function RegistroScreen() {
 
         {/* Formulario */}
         <View style={styles.card}>
+          {/* Subida obligatoria de Foto de Perfil */}
+          <View style={styles.photoSection}>
+            <TouchableOpacity
+              style={styles.photoCircleBtn}
+              onPress={handlePickPhoto}
+              disabled={fotoUploading}
+              activeOpacity={0.8}
+            >
+              {fotoPreview || fotoUrl ? (
+                <Image
+                  source={{ uri: fotoPreview || fotoUrl }}
+                  style={styles.photoPreviewImg}
+                  resizeMode="cover"
+                />
+              ) : (
+                <View style={styles.photoPlaceholder}>
+                  <Text style={styles.photoPlaceholderEmoji}>📷</Text>
+                  <Text style={styles.photoPlaceholderText}>Subir foto *</Text>
+                </View>
+              )}
+
+              {fotoUploading && (
+                <View style={styles.photoUploadingOverlay}>
+                  <ActivityIndicator size="small" color="#FFF" />
+                </View>
+              )}
+            </TouchableOpacity>
+
+            <View style={{ flex: 1 }}>
+              <Text style={styles.photoRequiredTitle}>Foto de perfil obligatoria</Text>
+              <Text style={styles.photoRequiredSubtitle}>
+                {fotoUrl ? '✅ Foto cargada con éxito' : 'Selecciona una foto tuya para que tus compañeros puedan reconocerte.'}
+              </Text>
+              <TouchableOpacity
+                onPress={handlePickPhoto}
+                disabled={fotoUploading}
+                style={styles.changePhotoBtn}
+              >
+                <Text style={styles.changePhotoBtnText}>
+                  {fotoUploading ? 'Subiendo…' : fotoUrl ? 'Cambiar foto' : 'Seleccionar foto'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
           <Text style={styles.fieldLabel}>Nombre completo</Text>
           <TextInput
             style={styles.input}
@@ -123,10 +191,10 @@ export default function RegistroScreen() {
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
           <TouchableOpacity
-            style={[styles.btnPrimary, loading && styles.btnDisabled]}
+            style={[styles.btnPrimary, (loading || fotoUploading) && styles.btnDisabled]}
             onPress={handleRegistro}
             activeOpacity={0.85}
-            disabled={loading}
+            disabled={loading || fotoUploading}
           >
             {loading ? (
               <View style={styles.loadingRow}>
@@ -174,6 +242,71 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: '#263238',
     shadowColor: '#000', shadowOpacity: 0.3,
     shadowRadius: 12, elevation: 4,
+  },
+  photoSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    padding: 14,
+    backgroundColor: 'rgba(57,169,0,0.06)',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(57,169,0,0.25)',
+    marginBottom: 20,
+  },
+  photoCircleBtn: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    overflow: 'hidden',
+    backgroundColor: '#1E252F',
+    borderWidth: 2,
+    borderColor: ACCENT,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  photoPreviewImg: {
+    width: '100%',
+    height: '100%',
+  },
+  photoPlaceholder: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  photoPlaceholderEmoji: {
+    fontSize: 22,
+  },
+  photoPlaceholderText: {
+    color: '#8D83A0',
+    fontSize: 10,
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  photoUploadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  photoRequiredTitle: {
+    color: '#F0ECF6',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  photoRequiredSubtitle: {
+    color: '#8D83A0',
+    fontSize: 12,
+    lineHeight: 16,
+    marginTop: 2,
+  },
+  changePhotoBtn: {
+    marginTop: 6,
+    alignSelf: 'flex-start',
+  },
+  changePhotoBtnText: {
+    color: ACCENT,
+    fontSize: 12,
+    fontWeight: '700',
   },
   fieldLabel: {
     color: '#B9B1C9', fontSize: 13,

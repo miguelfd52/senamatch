@@ -6,6 +6,9 @@ const { auth } = require('../middleware/auth');
 const { esferaDe, esStaff, hayBloqueo } = require('../helpers/reglas');
 const Perfil = require('../models/Perfil');
 
+const Match = require('../models/Match');
+const Swipe = require('../models/Swipe');
+
 const router = express.Router();
 
 /**
@@ -35,15 +38,44 @@ function sanitizarPerfilPublico(p, affinityInfo = null) {
 
 /**
  * GET /perfiles
- * Lista perfiles visibles según esfera y centro.
+ * Lista perfiles visibles según esfera y centro, excluyendo:
+ * - El usuario actual
+ * - Usuarios con los que ya tiene Match
+ * - Usuarios marcados como "No me interesa" (pass)
+ * - Duplicados
  */
 router.get('/', auth, async (req, res) => {
   try {
     const yo = req.perfil;
     if (!yo) return res.status(404).json({ error: 'Perfil no encontrado' });
+    const yoId = String(yo._id);
+
+    // 1. Obtener IDs de usuarios con los que ya tiene Match activo
+    const matches = await Match.find({
+      $or: [{ a: yoId }, { b: yoId }],
+      activo: true
+    }).lean();
+    const matchedIds = new Set(matches.map(m => String(m.a === yoId ? m.b : m.a)));
+
+    // 2. Obtener IDs de usuarios marcados como "pass" (No me interesa)
+    const swipeDoc = await Swipe.findById(yoId).lean();
+    const pasadosIds = new Set();
+    if (swipeDoc && swipeDoc.por_intencion) {
+      for (const intencion of Object.keys(swipeDoc.por_intencion)) {
+        const mapa = swipeDoc.por_intencion[intencion] || {};
+        for (const [targetId, accion] of Object.entries(mapa)) {
+          if (accion === 'pass') {
+            pasadosIds.add(String(targetId));
+          }
+        }
+      }
+    }
 
     const miEsfera = esferaDe(yo.rol);
-    let filtro = { estado: 'activo' };
+    let filtro = {
+      _id: { $ne: yo._id },
+      estado: 'activo'
+    };
 
     if (!esStaff(yo)) {
       if (yo.centro) {
@@ -56,15 +88,20 @@ router.get('/', auth, async (req, res) => {
       }
     }
 
-    const perfiles = await Perfil.find(filtro).lean();
+    const perfiles = await Perfil.find(filtro).sort({ creado: -1 }).lean();
 
     const visibles = [];
+    const seenIds = new Set();
+
     for (const p of perfiles) {
-      if (String(p._id) === String(yo._id)) {
-        visibles.push(sanitizarPerfilPublico(p));
-        continue;
-      }
+      const pid = String(p._id);
+      if (pid === yoId) continue;
+      if (seenIds.has(pid)) continue;
+      if (matchedIds.has(pid)) continue;
+      if (pasadosIds.has(pid)) continue;
+
       if (!(await hayBloqueo(yo._id, p._id))) {
+        seenIds.add(pid);
         // Calcular afinidad
         const misIntereses = yo.intereses || [];
         const susIntereses = p.intereses || [];

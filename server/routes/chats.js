@@ -6,6 +6,7 @@ const Chat = require('../models/Chat');
 const Match = require('../models/Match');
 const Perfil = require('../models/Perfil');
 const Parche = require('../models/Parche');
+const Swipe = require('../models/Swipe');
 const { crearNotificacion } = require('./notificaciones');
 
 const router = express.Router();
@@ -21,12 +22,26 @@ function esMiembroDelChat(chat, uid) {
 /**
  * GET /chats
  * Lista chats donde el usuario autenticado participa, enriqueciendo con detalles del otro usuario
- * y filtrando conversaciones con usuarios bloqueados.
+ * y filtrando conversaciones con usuarios bloqueados o descartados (No me interesa).
  */
 router.get('/', auth, async (req, res) => {
   try {
     const uid = String(req.uid);
     const chats = await Chat.find({ miembros: uid }).sort({ ultimo: -1 }).lean();
+
+    // Obtener IDs de usuarios descartados con 'pass'
+    const swipeDoc = await Swipe.findById(uid).lean();
+    const pasadosIds = new Set();
+    if (swipeDoc && swipeDoc.por_intencion) {
+      for (const intencion of Object.keys(swipeDoc.por_intencion)) {
+        const mapa = swipeDoc.por_intencion[intencion] || {};
+        for (const [targetId, accion] of Object.entries(mapa)) {
+          if (accion === 'pass') {
+            pasadosIds.add(String(targetId));
+          }
+        }
+      }
+    }
 
     // Recolectar IDs de otros participantes
     const otherUserIds = [];
@@ -69,8 +84,8 @@ router.get('/', auth, async (req, res) => {
         const other = (c.miembros || []).find(m => String(m) !== uid);
         if (other) {
           const sOther = String(other);
-          // Ocultar si hay bloqueo
-          if (await hayBloqueo(uid, sOther)) {
+          // Ocultar si hay bloqueo o si fue descartado ("No me interesa")
+          if (pasadosIds.has(sOther) || (await hayBloqueo(uid, sOther))) {
             continue;
           }
           if (perfilMap.has(sOther)) {
@@ -141,6 +156,16 @@ router.post('/directo', auth, async (req, res) => {
       return res.status(403).json({ error: 'No puedes comunicarte con este usuario debido a un bloqueo' });
     }
 
+    // Ocultar/rechazar si fue marcado como "No me interesa"
+    const swipeDocDirecto = await Swipe.findById(uid).lean();
+    if (swipeDocDirecto && swipeDocDirecto.por_intencion) {
+      for (const int of Object.keys(swipeDocDirecto.por_intencion)) {
+        if (swipeDocDirecto.por_intencion[int]?.[String(targetUserId)] === 'pass') {
+          return res.status(403).json({ error: 'No puedes comunicarte con un usuario que marcaste como no me interesa' });
+        }
+      }
+    }
+
     // Buscar si ya existe chat directo o match con exactamente los dos participantes
     const [a, b] = uid < String(targetUserId) ? [uid, String(targetUserId)] : [String(targetUserId), uid];
     const matchChatId = `${a}__${b}`;
@@ -160,6 +185,9 @@ router.post('/directo', auth, async (req, res) => {
         mensajes: [{
           id: 'm_' + crypto.randomUUID().replace(/-/g, '').slice(0, 16),
           de: null,
+          senderId: null,
+          senderNombre: 'SENA Match',
+          nombre: 'SENA Match',
           txt: `Conversación iniciada con ${targetUser.nombre}. ¡Saluda a tu compañero! 👋`,
           ts: Date.now(),
           leidoPor: [uid, String(targetUserId)]
@@ -256,7 +284,8 @@ router.get('/:id', auth, async (req, res) => {
     const mensajesEnriquecidos = (chat.mensajes || []).map(m => {
       if (!m) return m;
       const sId = m.senderId || m.de || null;
-      const sNombre = m.senderNombre || m.nombre || (sId ? senderMap.get(String(sId)) : null) || (sId ? `Usuario ${String(sId).slice(0, 6)}` : 'SENA Match');
+      const realName = sId ? senderMap.get(String(sId)) : null;
+      const sNombre = realName || m.senderNombre || m.nombre || (sId ? `Aprendiz ${String(sId).slice(0, 5)}` : 'SENA Match');
       return {
         ...m,
         de: sId,
@@ -303,19 +332,27 @@ router.post('/:id/mensaje', auth, async (req, res) => {
 
     // Verificación de bloqueos y estado de match si aplica
     let otherId = null;
-    if (chat.tipo === 'match') {
-      const match = await Match.findById(req.params.id);
-      if (match && !match.activo) {
-        return res.status(400).json({ error: 'Esta conversación ha sido cerrada' });
+    if (chat.tipo === 'match' || chat.tipo === 'directo') {
+      if (chat.tipo === 'match') {
+        const match = await Match.findById(req.params.id);
+        if (match && !match.activo) {
+          return res.status(400).json({ error: 'Esta conversación ha sido cerrada' });
+        }
       }
       otherId = (chat.miembros || []).find(m => String(m) !== uid);
-      if (otherId && (await hayBloqueo(uid, otherId))) {
-        return res.status(403).json({ error: 'No puedes enviar mensajes a este usuario debido a un bloqueo' });
-      }
-    } else if (chat.tipo === 'directo') {
-      otherId = (chat.miembros || []).find(m => String(m) !== uid);
-      if (otherId && (await hayBloqueo(uid, otherId))) {
-        return res.status(403).json({ error: 'No puedes enviar mensajes a este usuario debido a un bloqueo' });
+      if (otherId) {
+        if (await hayBloqueo(uid, otherId)) {
+          return res.status(403).json({ error: 'No puedes enviar mensajes a este usuario debido a un bloqueo' });
+        }
+        // Verificar si fue marcado como 'pass'
+        const swipeDocMsg = await Swipe.findById(uid).lean();
+        if (swipeDocMsg && swipeDocMsg.por_intencion) {
+          for (const int of Object.keys(swipeDocMsg.por_intencion)) {
+            if (swipeDocMsg.por_intencion[int]?.[String(otherId)] === 'pass') {
+              return res.status(403).json({ error: 'No puedes enviar mensajes a un usuario que marcaste como no me interesa' });
+            }
+          }
+        }
       }
     }
 
