@@ -18,6 +18,7 @@ const DANGER = '#FF5B6E';
 export default function InitialPostModal() {
   const { user, completeInitialPost } = useAuth();
   const [texto, setTexto] = useState('');
+  const [fotoPreview, setFotoPreview] = useState('');
   const [fotoUrl, setFotoUrl] = useState('');
   const [subiendoFoto, setSubiendoFoto] = useState(false);
   const [publicando, setPublicando] = useState(false);
@@ -28,32 +29,34 @@ export default function InitialPostModal() {
 
   if (!visible) return null;
 
-  const handleSubirFoto = async () => {
+  const handleSubirFoto = () => {
     setError('');
-    setSubiendoFoto(true);
-    try {
-      const result = await openImagePickerAndUpload();
-      if (result && result.secure_url) {
-        setFotoUrl(result.secure_url);
-      }
-    } catch (err: any) {
-      if (!err?.message?.includes('cancel')) {
-        setError(err?.message || 'Error al subir la imagen. Inténtalo de nuevo.');
-      }
-    } finally {
-      setSubiendoFoto(false);
-    }
+    openImagePickerAndUpload({
+      onProgress: (loading) => setSubiendoFoto(loading),
+      onPreview: (dataUrl) => setFotoPreview(dataUrl),
+      onSuccess: (secureUrl) => {
+        setFotoUrl(secureUrl);
+        setFotoPreview(secureUrl);
+        setSubiendoFoto(false);
+        setError('');
+      },
+      onError: (msg) => {
+        setError(msg);
+        setSubiendoFoto(false);
+        if (!fotoUrl) setFotoPreview('');
+      },
+    });
   };
 
   const puedePublicar = texto.trim().length > 0 && !!fotoUrl && !publicando && !subiendoFoto;
 
   const handlePublicar = async () => {
-    if (!texto.trim()) {
-      setError('Escribe un texto o comentario para tu publicación.');
-      return;
-    }
     if (!fotoUrl) {
       setError('Debes adjuntar una foto para completar tu registro.');
+      return;
+    }
+    if (!texto.trim()) {
+      setError('Escribe un texto o comentario para tu publicación.');
       return;
     }
 
@@ -76,6 +79,8 @@ export default function InitialPostModal() {
       setPublicando(false);
     }
   };
+
+  const imagenAMostrar = fotoPreview || fotoUrl;
 
   return (
     <Modal
@@ -105,9 +110,15 @@ export default function InitialPostModal() {
                 1. Foto de presentación <Text style={styles.required}>* Obligatoria</Text>
               </Text>
 
-              {fotoUrl ? (
+              {imagenAMostrar ? (
                 <View style={styles.previewWrap}>
-                  <Image source={{ uri: fotoUrl }} style={styles.previewImage} resizeMode="cover" />
+                  <Image source={{ uri: imagenAMostrar }} style={styles.previewImage} resizeMode="cover" />
+                  {subiendoFoto ? (
+                    <View style={styles.previewLoadingOverlay}>
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                      <Text style={styles.previewLoadingText}>Subiendo foto a Cloudinary…</Text>
+                    </View>
+                  ) : null}
                   <TouchableOpacity
                     style={styles.btnCambiarFoto}
                     onPress={handleSubirFoto}
@@ -115,7 +126,7 @@ export default function InitialPostModal() {
                     activeOpacity={0.8}
                   >
                     <Text style={styles.btnCambiarFotoText}>
-                      {subiendoFoto ? 'Cargando…' : '📷 Cambiar foto'}
+                      {subiendoFoto ? 'Cargando imagen…' : '📷 Cambiar foto'}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -301,10 +312,28 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: CARD_BORDER,
     backgroundColor: '#120F1D',
+    position: 'relative',
   },
   previewImage: {
     width: '100%',
     height: 190,
+  },
+  previewLoadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 40,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  previewLoadingText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
   },
   btnCambiarFoto: {
     paddingVertical: 10,

@@ -163,48 +163,59 @@ export async function uploadDataUrlToCloudinary(dataUrl: string): Promise<Cloudi
 
 /**
  * Wrapper para web: abre selector de archivo y sube a Cloudinary.
- * Llama onProgress(true/false) para controlar estado de carga.
- * Llama onSuccess(secure_url) con la URL permanente.
- * Llama onError(msg) si falla.
+ * Funciona con callbacks (onProgress, onSuccess, onError, onPreview)
+ * y además retorna una Promesa con el resultado de Cloudinary.
  */
-export function openImagePickerAndUpload(options: {
-  onProgress: (loading: boolean) => void;
-  onSuccess: (secureUrl: string) => void;
-  onError: (msg: string) => void;
+export function openImagePickerAndUpload(options?: {
+  onProgress?: (loading: boolean) => void;
+  onSuccess?: (secureUrl: string) => void;
+  onError?: (msg: string) => void;
   onPreview?: (dataUrl: string) => void;
-}) {
-  if (Platform.OS !== 'web' || typeof document === 'undefined') {
-    options.onError('La subida de fotos desde archivo solo está disponible en el navegador.');
-    return;
-  }
-
-  const input = document.createElement('input');
-  input.type = 'file';
-  input.accept = 'image/jpeg,image/png,image/webp';
-
-  input.onchange = async (e: any) => {
-    const file: File | undefined = e.target?.files?.[0];
-    if (!file) return;
-
-    // Mostrar preview inmediata antes de subir
-    if (options.onPreview) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        options.onPreview!(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+}): Promise<CloudinaryResult | null> {
+  return new Promise((resolve, reject) => {
+    if (Platform.OS !== 'web' || typeof document === 'undefined') {
+      const err = new CloudinaryError('La subida de fotos desde archivo solo está disponible en el navegador.');
+      options?.onError?.(err.message);
+      reject(err);
+      return;
     }
 
-    options.onProgress(true);
-    try {
-      const result = await uploadFileToCloudinary(file);
-      options.onSuccess(result.secure_url);
-    } catch (err: any) {
-      options.onError(err.message || 'Error desconocido al subir la foto.');
-    } finally {
-      options.onProgress(false);
-    }
-  };
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/jpeg,image/png,image/webp,image/jpg';
 
-  input.click();
+    input.onchange = async (e: any) => {
+      const file: File | undefined = e.target?.files?.[0];
+      if (!file) {
+        resolve(null);
+        return;
+      }
+
+      // Mostrar preview inmediata antes de subir
+      if (options?.onPreview) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          if (reader.result) {
+            options.onPreview!(reader.result as string);
+          }
+        };
+        reader.readAsDataURL(file);
+      }
+
+      options?.onProgress?.(true);
+      try {
+        const result = await uploadFileToCloudinary(file);
+        options?.onSuccess?.(result.secure_url);
+        resolve(result);
+      } catch (err: any) {
+        const msg = err?.message || 'Error desconocido al subir la foto.';
+        options?.onError?.(msg);
+        reject(err);
+      } finally {
+        options?.onProgress?.(false);
+      }
+    };
+
+    input.click();
+  });
 }
