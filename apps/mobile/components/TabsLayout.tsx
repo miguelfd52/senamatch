@@ -11,6 +11,7 @@ import NotificacionesModal from './NotificacionesModal';
 import AdminPanelModal from './AdminPanelModal';
 import { useAuth } from '../app/context/AuthContext';
 import { api } from '../lib/api';
+import { pendingChat } from '../lib/pendingChat';
 
 const ACCENT = '#39A900';
 const INACTIVE = '#8D83A0';
@@ -243,12 +244,12 @@ export default function TabsLayout() {
             esStaffUser={esStaffUser}
           />
         )}
+        sceneContainerStyle={{
+          paddingTop: isDesktop ? 72 : 0,
+          backgroundColor: '#0F0C18',
+        }}
         screenOptions={{
           headerShown: false,
-          sceneContainerStyle: {
-            paddingTop: isDesktop ? 72 : 0,
-            backgroundColor: '#0F0C18',
-          },
         }}
       >
         <Tabs.Screen name="index" options={{ title: 'Inicio' }} />
@@ -263,6 +264,13 @@ export default function TabsLayout() {
         visible={showNotifsModal}
         onClose={() => setShowNotifsModal(false)}
         onNotifCountChange={(c) => setUnreadNotifs(c)}
+        onSelectChat={(chatId) => {
+          // 1. Guardar el chatId para que ChatsScreen lo detecte
+          pendingChat.set(chatId);
+          // 2. Cerrar el modal
+          setShowNotifsModal(false);
+          // 3. El Tab de chats se montará/actualizará y leerá el pendingChat
+        }}
       />
 
       <AdminPanelModal

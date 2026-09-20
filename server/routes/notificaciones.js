@@ -76,6 +76,22 @@ router.get('/', auth, async (req, res) => {
 });
 
 /**
+ * PATCH /notificaciones/leer-todas
+ * Marca todas las notificaciones del usuario como leídas.
+ * IMPORTANTE: debe ir ANTES de /:id/leer para que Express no lo capture como parámetro.
+ */
+router.patch('/leer-todas', auth, async (req, res) => {
+  try {
+    const uid = String(req.uid);
+    await Notificacion.updateMany({ recipientId: uid, read: false }, { $set: { read: true } });
+    res.json({ ok: true, unreadCount: 0 });
+  } catch (err) {
+    console.error('Error en PATCH /notificaciones/leer-todas:', err);
+    res.status(500).json({ error: 'Error al marcar todas las notificaciones' });
+  }
+});
+
+/**
  * PATCH /notificaciones/:id/leer
  * Marca una notificación individual como leída.
  */
@@ -98,21 +114,6 @@ router.patch('/:id/leer', auth, async (req, res) => {
   } catch (err) {
     console.error('Error en PATCH /notificaciones/:id/leer:', err);
     res.status(500).json({ error: 'Error al marcar notificación' });
-  }
-});
-
-/**
- * PATCH /notificaciones/leer-todas
- * Marca todas las notificaciones del usuario como leídas.
- */
-router.patch('/leer-todas', auth, async (req, res) => {
-  try {
-    const uid = String(req.uid);
-    await Notificacion.updateMany({ recipientId: uid, read: false }, { $set: { read: true } });
-    res.json({ ok: true, unreadCount: 0 });
-  } catch (err) {
-    console.error('Error en PATCH /notificaciones/leer-todas:', err);
-    res.status(500).json({ error: 'Error al marcar todas las notificaciones' });
   }
 });
 

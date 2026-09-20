@@ -38,10 +38,12 @@ export default function LoginScreen() {
 
       if (status === 401 || rawMsg.includes('incorrecto') || rawMsg.includes('correo o contrase')) {
         setError('Correo o contraseña incorrectos');
+      } else if (status === 0 || rawMsg.includes('no se pudo conectar') || rawMsg.includes('fetch')) {
+        setError('No se pudo conectar con el servidor. Asegúrate de ejecutar el servidor backend (npm run dev).');
       } else if (status === 400 && e?.message) {
         setError(e.message);
       } else {
-        setError('No pudimos iniciar sesión en este momento. Inténtalo nuevamente.');
+        setError(e?.message || 'No pudimos iniciar sesión en este momento. Inténtalo nuevamente.');
       }
     } finally {
       setLoading(false);

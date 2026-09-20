@@ -12,23 +12,27 @@ export const getApiUrl = () => {
   if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location) {
     const host = window.location.hostname;
     const isLocalhost = host === 'localhost' || host === '127.0.0.1';
+    const isLanIp = /^192\.168\.|^10\.|^172\.(1[6-9]|2[0-9]|3[01])\./.test(host) || host.endsWith('.local');
 
-    // En desarrollo local en navegador:
+    // En desarrollo local en navegador vía localhost:
     if (isLocalhost) {
-      // Si el desarrollador definió una URL específica local, usarla; si no, localhost:3001
       if (envUrl && (envUrl.includes('localhost') || envUrl.includes('127.0.0.1'))) {
         return envUrl.replace(/\/$/, '');
       }
       return 'http://localhost:3001';
     }
 
+    // En desarrollo local abierto con la IP de la red local (ej. http://192.168.x.x:8081):
+    if (isLanIp) {
+      return `http://${host}:3001`;
+    }
+
     // En producción Web (ej. https://senamatch-k9dt.vercel.app):
-    // Debe usar EXPO_PUBLIC_API_URL configurado en producción (Vercel)
-    if (envUrl) {
+    if (envUrl && !envUrl.includes('192.168.') && !envUrl.includes('10.') && !envUrl.includes('localhost')) {
       return envUrl.replace(/\/$/, '');
     }
 
-    // Fallback de producción: nunca devolver localhost en dominios públicos
+    // Fallback en web: usar el mismo origen
     return window.location.origin;
   }
 
@@ -69,7 +73,7 @@ async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
     });
   } catch (netErr: any) {
     console.error('Fetch connection failed:', url, netErr);
-    throw new ApiError('No pudimos iniciar sesión en este momento. Inténtalo nuevamente.', 0);
+    throw new ApiError('No se pudo conectar con el servidor. Verifica que el backend esté activo en el puerto 3001.', 0);
   }
 
   if (!response.ok) {

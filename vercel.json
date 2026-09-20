@@ -5,7 +5,14 @@
   "installCommand": "npm install",
   "framework": null,
   "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+    {
+      "source": "/(auth|perfiles|swipes|parches|chats|publicaciones|notificaciones|admin|reportes|bloqueos|config|api)(/.*)?",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
   ]
 }
 

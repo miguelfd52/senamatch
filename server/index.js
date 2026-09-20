@@ -28,8 +28,8 @@ app.use(cors({
     // Permitir peticiones sin origin (apps móviles Expo / React Native, curl, scripts del servidor)
     if (!origin) return callback(null, true);
 
-    // Permitir el frontend de producción en Vercel
-    if (origin === ALLOWED_ORIGIN_PROD) {
+    // Permitir el frontend de producción en Vercel y despliegues preview
+    if (origin === ALLOWED_ORIGIN_PROD || origin.endsWith('.vercel.app')) {
       return callback(null, true);
     }
 
@@ -68,7 +68,7 @@ if (uri && !uri.includes('USUARIO') && !uri.includes('CONTRASENA')) {
   candidates.push(uri);
 }
 
-if (!candidates.includes(fallbackUri)) {
+if (!candidates.includes(fallbackUri) && !process.env.VERCEL) {
   candidates.push(fallbackUri);
 }
 
@@ -76,6 +76,8 @@ const safeLogUri = (value) => value.replace(
   /mongodb(\+srv)?:\/\/([^:@]+):([^@]+)@/,
   (_, srv) => `mongodb${srv || ''}://***:***@`
 );
+
+let isConnecting = null;
 
 const connectMongo = async () => {
   let lastError = null;
@@ -100,24 +102,56 @@ const connectMongo = async () => {
     `   Último error: ${lastError ? lastError.message : 'desconocido'}`
   );
 
-  setTimeout(connectMongo, 10_000);
+  if (!process.env.VERCEL) {
+    setTimeout(connectMongo, 10_000);
+  }
 };
 
+const ensureMongoConnected = async () => {
+  if (mongoose.connection.readyState === 1) return;
+  if (!isConnecting) {
+    isConnecting = connectMongo().finally(() => {
+      isConnecting = null;
+    });
+  }
+  return isConnecting;
+};
+
+// Iniciar conexión inmediatamente al arrancar
 connectMongo();
 
-// ─── Rutas ───────────────────────────────────────────────────────────────────
-app.use('/auth',     authRoutes);
-app.use('/perfiles', perfilesRoutes);
-app.use('/swipes',   swipesRoutes);
-app.use('/parches',  parchesRoutes);
-app.use('/chats',          chatsRoutes);
-app.use('/publicaciones',  publicacionesRoutes);
-app.use('/notificaciones', notificacionesRoutes.router);
-app.use('/admin',          adminRoutes);
-app.use('/',               miscRoutes); // bloqueos, reportes, config
+// Middleware para asegurar que MongoDB esté conectado antes de procesar rutas
+app.use(async (req, res, next) => {
+  if (req.path === '/' || req.path === '/api') {
+    return next();
+  }
+  try {
+    await ensureMongoConnected();
+    next();
+  } catch (err) {
+    console.error('Error al conectar con MongoDB:', err);
+    res.status(503).json({ error: 'Error de conexión con la base de datos' });
+  }
+});
+
+// ─── Rutas (compatibilidad directa y con prefijo /api) ────────────────────────
+const mountRoutes = (prefix = '') => {
+  app.use(`${prefix}/auth`,          authRoutes);
+  app.use(`${prefix}/perfiles`,      perfilesRoutes);
+  app.use(`${prefix}/swipes`,        swipesRoutes);
+  app.use(`${prefix}/parches`,       parchesRoutes);
+  app.use(`${prefix}/chats`,         chatsRoutes);
+  app.use(`${prefix}/publicaciones`, publicacionesRoutes);
+  app.use(`${prefix}/notificaciones`, notificacionesRoutes.router);
+  app.use(`${prefix}/admin`,         adminRoutes);
+  app.use(`${prefix}/`,              miscRoutes);
+};
+
+mountRoutes('');
+mountRoutes('/api');
 
 // ─── Health check ────────────────────────────────────────────────────────────
-app.get('/', (req, res) => {
+app.get(['/', '/api'], (req, res) => {
   res.json({
     status: 'ok',
     name: 'sena-match-server',
@@ -140,10 +174,12 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Error interno del servidor' });
 });
 
-// ─── Inicio ───────────────────────────────────────────────────────────────────
+// ─── Inicio (solo cuando se ejecuta como script independiente, no en Vercel) ──
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`🚀 Servidor SENA Match corriendo en puerto ${PORT}`);
-});
+if (process.env.VERCEL !== '1' && require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`🚀 Servidor SENA Match corriendo en puerto ${PORT}`);
+  });
+}
 
 module.exports = app;

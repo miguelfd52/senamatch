@@ -5,6 +5,7 @@ const { hayBloqueo } = require('../helpers/reglas');
 const Chat = require('../models/Chat');
 const Match = require('../models/Match');
 const Perfil = require('../models/Perfil');
+const Parche = require('../models/Parche');
 const { crearNotificacion } = require('./notificaciones');
 
 const router = express.Router();
@@ -312,16 +313,40 @@ router.post('/:id/mensaje', auth, async (req, res) => {
       }
     });
 
-    // Generar notificación para el otro participante si es chat 1 a 1
+    // Notificaciones según tipo de chat
+    const miNombre = req.perfil?.nombre || 'Alguien';
+
     if (otherId) {
-      const miNombre = req.perfil?.nombre || 'Alguien';
+      // Chat 1 a 1 (directo o match): notificar solo al otro
       crearNotificacion({
         recipientId: String(otherId),
         type: 'nuevo_mensaje',
         title: `Nuevo mensaje de ${miNombre}`,
-        message: txt.trim().length > 60 ? txt.trim().slice(0, 57) + '...' : txt.trim(),
+        message: `${miNombre} te envió un mensaje`,
         reference: String(chat._id)
-      }).catch(err => console.error('Error al notificar mensaje:', err));
+      }).catch(err => console.error('Error al notificar mensaje directo:', err));
+    } else if (chat.tipo === 'parche') {
+      // Chat grupal de parche: notificar a todos los miembros excepto el emisor
+      const chatActualizado = await Chat.findById(req.params.id).lean();
+      const miembrosGrupo = (chatActualizado?.miembros || chat.miembros || []).map(String);
+      const receptores = miembrosGrupo.filter(m => m !== uid);
+
+      // Obtener título del parche para el mensaje
+      let tituloParcheStr = chat.titulo || 'el parche';
+      try {
+        const parcheDoc = await Parche.findById(req.params.id).lean();
+        if (parcheDoc?.titulo) tituloParcheStr = parcheDoc.titulo;
+      } catch (_) { /* ignorar */ }
+
+      for (const receptorId of receptores) {
+        crearNotificacion({
+          recipientId: receptorId,
+          type: 'nuevo_mensaje',
+          title: 'Nuevo mensaje en el parche',
+          message: `${miNombre} escribió en "${tituloParcheStr}"`,
+          reference: String(chat._id)
+        }).catch(err => console.error('Error al notificar mensaje de parche:', err));
+      }
     }
 
     res.status(201).json({ ok: true, mensaje: nuevoMensaje });

@@ -113,12 +113,17 @@ export default function NotificacionesModal({ visible, onClose, onSelectChat, on
     onClose();
 
     if (n.type === 'nuevo_match' || n.type === 'nuevo_mensaje') {
+      // Ambos tipos tienen reference = chatId
       if (n.reference && onSelectChat) {
         onSelectChat(n.reference);
+      } else if (n.reference) {
+        // Fallback si onSelectChat no está disponible
+        router.push('/chats');
       } else {
         router.push('/chats');
       }
     } else if (n.type.includes('parche')) {
+      // Eventos de parche (invitación, cancelación, expulsión, etc.) → ir a parches
       router.push('/parches');
     }
   };

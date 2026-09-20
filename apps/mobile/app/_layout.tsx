@@ -21,8 +21,9 @@ function Enrutador() {
     const esfera = user ? (['aprendiz', 'egresado'].includes(user.rol as string) ? 'aprendices' : 'equipo') : null;
 
     if (!estaAutenticado) {
-      if (grupo !== '(auth)' && grupo !== undefined && grupo !== 'index') {
-        router.replace('/');
+      // Si no está en auth, ir directamente al login (no a la pantalla de bienvenida)
+      if (grupo !== '(auth)') {
+        router.replace('/(auth)/login');
       }
       return;
     }

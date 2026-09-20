@@ -10,6 +10,7 @@ import { useBandeja, useConversacion, useEnviarMensaje } from '../hooks/useParch
 import { api } from '../lib/api';
 import PeopleScreen from './PeopleScreen';
 import PublicProfileModal from './PublicProfileModal';
+import { pendingChat } from '../lib/pendingChat';
 
 const ACCENT = '#39A900';
 const BG = '#0F0C18';
@@ -20,6 +21,25 @@ const DANGER = '#FF5B6E';
 export default function ChatsScreen() {
   const [selectedChat, setSelectedChat] = useState<string | null>(null);
   const [showPeople, setShowPeople] = useState(false);
+
+  // Suscribirse al singleton para abrir chats desde notificaciones
+  useEffect(() => {
+    // Verificar si ya hay un chat pendiente al montar
+    const pending = pendingChat.get();
+    if (pending) {
+      setSelectedChat(pending);
+      pendingChat.clear();
+    }
+
+    // Suscribirse a futuros cambios
+    const unsub = pendingChat.subscribe((chatId) => {
+      if (chatId) {
+        setSelectedChat(chatId);
+        pendingChat.clear();
+      }
+    });
+    return unsub;
+  }, []);
 
   if (selectedChat) {
     return (
