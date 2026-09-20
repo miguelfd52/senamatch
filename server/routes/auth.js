@@ -22,11 +22,15 @@ function rolPorCorreo(correo) {
   return null;
 }
 
+const DEFAULT_JWT_SECRET = 'ed19d6b289cb17ca6ed7df448effcc4a045a6449ac5b3f3ae072e79b76cc16032c610689cffc80f8b708005a8d096771';
+const JWT_SECRET = process.env.JWT_SECRET || DEFAULT_JWT_SECRET;
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
+
 function firmarToken(perfil) {
   return jwt.sign(
     { uid: perfil._id, correo: perfil.correo, rol: perfil.rol },
-    process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+    JWT_SECRET,
+    { expiresIn: JWT_EXPIRES_IN }
   );
 }
 
@@ -47,9 +51,9 @@ function perfilPublico(perfil) {
  */
 router.post('/register', async (req, res) => {
   try {
-    const nombre = (req.body.nombre || '').trim();
-    const correo = (req.body.email || '').trim().toLowerCase();
-    const password = req.body.password || '';
+    const nombre = (req.body.nombre || req.body.name || '').trim();
+    const correo = (req.body.email || req.body.correo || '').trim().toLowerCase();
+    const password = req.body.password || req.body.contrasena || '';
 
     // Validaciones básicas
     if (!nombre || nombre.length < 2) {
@@ -62,14 +66,23 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres' });
     }
 
-    // Verificar que el correo no esté en uso
+    const hash = await bcrypt.hash(password, 12);
+
+    // Verificar si el correo ya existe
     const existe = await Perfil.findOne({ correo });
     if (existe) {
+      // Si la cuenta existía pero no tenía contraseña definida previamente
+      if (!existe.password_hash) {
+        existe.password_hash = hash;
+        existe.nombre = nombre || existe.nombre;
+        await existe.save();
+        const token = firmarToken(existe);
+        return res.status(200).json({ ok: true, token, user: perfilPublico(existe) });
+      }
       return res.status(409).json({ error: 'Ya existe una cuenta con ese correo' });
     }
 
     const rol = rolPorCorreo(correo);
-    const hash = await bcrypt.hash(password, 12);
     const id = crypto.randomUUID();
 
     const perfil = await Perfil.create({
@@ -96,8 +109,8 @@ router.post('/register', async (req, res) => {
  */
 router.post('/login', async (req, res) => {
   try {
-    const correo = (req.body.email || '').trim().toLowerCase();
-    const password = req.body.password || '';
+    const correo = (req.body.email || req.body.correo || '').trim().toLowerCase();
+    const password = req.body.password || req.body.contrasena || '';
 
     if (!correo || !password) {
       return res.status(400).json({ error: 'Correo y contraseña son obligatorios' });

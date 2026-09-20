@@ -1,6 +1,9 @@
 const jwt = require('jsonwebtoken');
 const Perfil = require('../models/Perfil');
 
+const DEFAULT_JWT_SECRET = 'ed19d6b289cb17ca6ed7df448effcc4a045a6449ac5b3f3ae072e79b76cc16032c610689cffc80f8b708005a8d096771';
+const getJwtSecret = () => process.env.JWT_SECRET || DEFAULT_JWT_SECRET;
+
 /**
  * Middleware de autenticación JWT.
  * Extrae el token del header Authorization: Bearer <token>,
@@ -13,7 +16,7 @@ async function auth(req, res, next) {
   }
   try {
     const token = header.split(' ')[1];
-    const payload = jwt.verify(token, process.env.JWT_SECRET);
+    const payload = jwt.verify(token, getJwtSecret());
     req.uid = payload.uid || payload.sub;
     req.perfil = await Perfil.findById(req.uid).lean({ virtuals: true });
     next();
@@ -35,7 +38,7 @@ async function authOpcional(req, res, next) {
   }
   try {
     const token = header.split(' ')[1];
-    const payload = jwt.verify(token, process.env.JWT_SECRET);
+    const payload = jwt.verify(token, getJwtSecret());
     req.uid = payload.uid;
     req.perfil = await Perfil.findById(payload.uid).lean({ virtuals: true });
   } catch (e) {

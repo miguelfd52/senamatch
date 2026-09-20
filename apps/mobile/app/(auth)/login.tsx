@@ -39,7 +39,9 @@ export default function LoginScreen() {
       if (status === 401 || rawMsg.includes('incorrecto') || rawMsg.includes('correo o contrase')) {
         setError('Correo o contraseña incorrectos');
       } else if (status === 0 || rawMsg.includes('no se pudo conectar') || rawMsg.includes('fetch')) {
-        setError('No se pudo conectar con el servidor. Asegúrate de ejecutar el servidor backend (npm run dev).');
+        setError('No se pudo conectar con el servidor. Verifica tu conexión o intenta nuevamente.');
+      } else if (status === 503 || rawMsg.includes('base de datos') || rawMsg.includes('conexión')) {
+        setError('La base de datos se está reconectando. Por favor, intenta de nuevo en unos segundos.');
       } else if (status === 400 && e?.message) {
         setError(e.message);
       } else {

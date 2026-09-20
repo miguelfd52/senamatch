@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const crypto = require('crypto');
 const { auth } = require('../middleware/auth');
 const { esStaff, hayBloqueo } = require('../helpers/reglas');
@@ -100,11 +100,14 @@ router.post('/', auth, async (req, res) => {
       return res.status(400).json({ error: 'El texto no puede superar los 1000 caracteres' });
     }
 
-    // Aceptar URL HTTPS o cadena base64 data:image/
+    // Aceptar URL HTTPS o rechazar explícitamente base64 data:image/
     let fotoLimpia = null;
     if (fotoUrl && typeof fotoUrl === 'string') {
       const trimmed = fotoUrl.trim();
-      if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:image/')) {
+      if (trimmed.startsWith('data:image/')) {
+        return res.status(400).json({ error: 'No se permiten imágenes en base64 directas. Sube la imagen a través del servicio de almacenamiento.' });
+      }
+      if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
         fotoLimpia = trimmed;
       }
     }
@@ -258,7 +261,7 @@ router.post('/:id/comentarios', auth, async (req, res) => {
       autorNombre: miPerfil?.nombre || req.perfil?.nombre || 'Usuario SENA',
       autorAvatarEmoji: miPerfil?.avatar_emoji || req.perfil?.avatar_emoji || 'ðŸ˜Š',
       autorFotoUrl: miPerfil?.foto_url || req.perfil?.foto_url || null,
-      texto: textoFinal,
+      texto: texto.trim(),
       creado: new Date(),
     };
 

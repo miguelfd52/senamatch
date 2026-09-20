@@ -17,6 +17,13 @@ const notificacionesRoutes = require('./routes/notificaciones');
 const adminRoutes         = require('./routes/admin');
 const miscRoutes          = require('./routes/misc');
 
+// Fallbacks por defecto para entorno Vercel Serverless
+const ATLAS_DEFAULT_URI = 'mongodb+srv://migy1kdg_db_user:uxxu9PQKhMReLtmO@senamatch.laom9mq.mongodb.net/senamatch?retryWrites=true&w=majority&appName=Cluster0';
+const DEFAULT_JWT_SECRET = 'ed19d6b289cb17ca6ed7df448effcc4a045a6449ac5b3f3ae072e79b76cc16032c610689cffc80f8b708005a8d096771';
+
+process.env.JWT_SECRET = process.env.JWT_SECRET || DEFAULT_JWT_SECRET;
+process.env.JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
+
 const app = express();
 
 // ─── CORS ───────────────────────────────────────────────────────────────────
@@ -60,16 +67,20 @@ app.use(cors({
 app.use(express.json());
 
 // ─── Conexión a MongoDB ──────────────────────────────────────────────────────
-const uri = process.env.MONGO_URI;
-const fallbackUri = 'mongodb://127.0.0.1:27017/senamatch';
+const envUri = process.env.MONGO_URI;
+const fallbackLocalUri = 'mongodb://127.0.0.1:27017/senamatch';
 const candidates = [];
 
-if (uri && !uri.includes('USUARIO') && !uri.includes('CONTRASENA')) {
-  candidates.push(uri);
+if (envUri && !envUri.includes('USUARIO') && !envUri.includes('CONTRASENA')) {
+  candidates.push(envUri);
 }
 
-if (!candidates.includes(fallbackUri) && !process.env.VERCEL) {
-  candidates.push(fallbackUri);
+if (!candidates.includes(ATLAS_DEFAULT_URI)) {
+  candidates.push(ATLAS_DEFAULT_URI);
+}
+
+if (!process.env.VERCEL && !candidates.includes(fallbackLocalUri)) {
+  candidates.push(fallbackLocalUri);
 }
 
 const safeLogUri = (value) => value.replace(
@@ -80,45 +91,56 @@ const safeLogUri = (value) => value.replace(
 let isConnecting = null;
 
 const connectMongo = async () => {
-  let lastError = null;
+  if (mongoose.connection.readyState === 1) {
+    return mongoose.connection;
+  }
+  if (isConnecting) {
+    return isConnecting;
+  }
 
-  for (const candidate of candidates) {
-    try {
-      await mongoose.connect(candidate, {
-        dbName: 'senamatch',
-      });
-      console.log(`✅ Conectado a MongoDB (base: senamatch): ${safeLogUri(candidate)}`);
-      return;
-    } catch (err) {
-      lastError = err;
-      console.warn(`⚠️ No se pudo conectar a ${safeLogUri(candidate)}: ${err.message}`);
+  isConnecting = (async () => {
+    let lastError = null;
+
+    for (const candidate of candidates) {
+      try {
+        await mongoose.connect(candidate, {
+          dbName: 'senamatch',
+          serverSelectionTimeoutMS: 5000,
+          connectTimeoutMS: 5000,
+        });
+        console.log(`✅ Conectado a MongoDB (base: senamatch): ${safeLogUri(candidate)}`);
+        return mongoose.connection;
+      } catch (err) {
+        lastError = err;
+        console.warn(`⚠️ No se pudo conectar a ${safeLogUri(candidate)}: ${err.message}`);
+      }
     }
-  }
 
-  console.error(
-    '\n❌ No se pudo conectar a MongoDB.\n' +
-    '   1) Verifica la variable MONGO_URI y autoriza la IP (0.0.0.0/0) en Atlas, o\n' +
-    '   2) inicia MongoDB local con la base "senamatch".\n' +
-    `   Último error: ${lastError ? lastError.message : 'desconocido'}`
-  );
+    console.error(
+      '\n❌ No se pudo conectar a MongoDB.\n' +
+      '   1) Verifica la variable MONGO_URI y autoriza la IP (0.0.0.0/0) en Atlas, o\n' +
+      '   2) inicia MongoDB local con la base "senamatch".\n' +
+      `   Último error: ${lastError ? lastError.message : 'desconocido'}`
+    );
 
-  if (!process.env.VERCEL) {
-    setTimeout(connectMongo, 10_000);
-  }
-};
+    if (!process.env.VERCEL) {
+      setTimeout(connectMongo, 10_000);
+    }
+    throw lastError || new Error('No se pudo conectar a MongoDB');
+  })().finally(() => {
+    isConnecting = null;
+  });
 
-const ensureMongoConnected = async () => {
-  if (mongoose.connection.readyState === 1) return;
-  if (!isConnecting) {
-    isConnecting = connectMongo().finally(() => {
-      isConnecting = null;
-    });
-  }
   return isConnecting;
 };
 
-// Iniciar conexión inmediatamente al arrancar
-connectMongo();
+const ensureMongoConnected = async () => {
+  if (mongoose.connection.readyState === 1) return mongoose.connection;
+  return connectMongo();
+};
+
+// Iniciar intento de conexión al arrancar
+connectMongo().catch(() => {});
 
 // Middleware para asegurar que MongoDB esté conectado antes de procesar rutas
 app.use(async (req, res, next) => {
@@ -129,8 +151,8 @@ app.use(async (req, res, next) => {
     await ensureMongoConnected();
     next();
   } catch (err) {
-    console.error('Error al conectar con MongoDB:', err);
-    res.status(503).json({ error: 'Error de conexión con la base de datos' });
+    console.error('Error al conectar con MongoDB:', err.message);
+    res.status(503).json({ error: 'Error de conexión con la base de datos. Inténtalo nuevamente.' });
   }
 });
 
