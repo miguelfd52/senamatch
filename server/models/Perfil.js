@@ -46,7 +46,7 @@ const perfilSchema = new mongoose.Schema({
   demo: { type: Boolean, default: false },
   creado: { type: Date, default: Date.now },
   visto: { type: Date, default: Date.now }
-}, { _id: false, timestamps: false });
+}, { timestamps: false });
 
 // Virtual: esfera
 perfilSchema.virtual('esfera').get(function () {

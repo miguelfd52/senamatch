@@ -79,10 +79,15 @@ router.get('/', auth, async (req, res) => {
 
     if (!esStaff(yo)) {
       if (yo.centro) {
-        // Permitir ver usuarios del mismo centro, o usuarios nuevos que aún no tienen centro
+        const numCentro = Number(yo.centro);
+        const centros = [yo.centro];
+        if (!isNaN(numCentro)) centros.push(numCentro);
+        centros.push(String(yo.centro));
+
         filtro.$or = [
-          { centro: yo.centro },
-          { centro: null }
+          { centro: { $in: centros } },
+          { centro: null },
+          { centro: { $exists: false } }
         ];
       }
       if (miEsfera === 'aprendices') {

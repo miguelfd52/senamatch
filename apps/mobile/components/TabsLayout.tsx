@@ -309,6 +309,44 @@ export default function TabsLayout() {
 
           notifiedKeysRef.current.add(key);
 
+          // Si es un match nuevo no leído
+          if (n.type === 'nuevo_match' && !n.read) {
+            qc.invalidateQueries({ queryKey: ['matches'] });
+            qc.invalidateQueries({ queryKey: ['bandeja'] });
+            qc.invalidateQueries({ queryKey: ['perfiles'] });
+
+            playNotificationSound();
+
+            const avisoTitulo = n.title || '¡Nuevo Match! 🎉';
+            setToastAviso({
+              id: n.id,
+              titulo: avisoTitulo,
+              mensaje: n.message || '¡Hiciste Match con un compañero!',
+              chatId: n.reference,
+            });
+
+            if (
+              Platform.OS === 'web' &&
+              typeof window !== 'undefined' &&
+              'Notification' in window &&
+              Notification.permission === 'granted'
+            ) {
+              try {
+                const webNotif = new Notification(avisoTitulo, {
+                  body: n.message || '¡Tienes una nueva afinidad mutua en SENA Match!',
+                  icon: '/favicon.ico',
+                });
+                webNotif.onclick = () => {
+                  window.focus();
+                  if (n.reference) {
+                    pendingChat.set(n.reference);
+                    router.push('/chats');
+                  }
+                };
+              } catch (_) {}
+            }
+          }
+
           // Si es un mensaje nuevo no leído
           if (n.type === 'nuevo_mensaje' && !n.read) {
             // Actualizar vista del chat y bandeja en React Query inmediatamente sin recargar

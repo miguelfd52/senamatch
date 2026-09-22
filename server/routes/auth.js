@@ -103,10 +103,13 @@ router.post('/register', async (req, res) => {
       _id: id,
       correo,
       nombre,
-      rol,
+      rol: rol || 'aprendiz',
+      estado: 'activo',
       password_hash: hash,
       foto_url,
       primera_publicacion_completada: false,
+      creado: new Date(),
+      visto: new Date()
     });
 
     const token = firmarToken(perfil);

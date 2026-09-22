@@ -167,8 +167,8 @@ export function usePerfiles() {
       const data = await api.get('/perfiles');
       return data ?? [];
     },
-    staleTime: 15_000,
-    refetchInterval: 15_000,
+    staleTime: 3_000,
+    refetchInterval: 5_000,
   });
 }
 
@@ -254,8 +254,8 @@ export function useMatches() {
       const data = await api.get('/swipes/matches');
       return Array.isArray(data) ? data : [];
     },
-    staleTime: 15_000,
-    refetchInterval: 15_000,
+    staleTime: 5_000,
+    refetchInterval: 6_000,
   });
 }
 

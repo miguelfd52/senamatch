@@ -26,7 +26,7 @@ export default function DiscoverScreen() {
   const { user } = useAuth();
   const { data: perfiles, isLoading, isError, error, refetch } = usePerfiles();
 
-  const [currentIdx, setCurrentIdx] = useState(0);
+  const [swipedSessionIds, setSwipedSessionIds] = useState<string[]>([]);
   const [mode, setMode] = useState<'cards' | 'people'>('cards');
   const [intencion] = useState<typeof INTENCIONES[number]>('amistad');
   const [descartesHistorial, setDescartesHistorial] = useState<string[]>([]);
@@ -47,24 +47,28 @@ export default function DiscoverScreen() {
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
   const handleRetry = useCallback(() => {
-    setCurrentIdx(0);
+    setSwipedSessionIds([]);
+    setDescartesHistorial([]);
     refetch();
   }, [refetch]);
 
   // Filtrar perfiles
-  const rawCards = Array.isArray(perfiles)
-    ? perfiles.filter((p: any) => p && String(p.id) !== String(user?.id))
-    : [];
+  const rawCards = useMemo(() => {
+    if (!Array.isArray(perfiles)) return [];
+    return perfiles.filter((p: any) => p && String(p.id) !== String(user?.id));
+  }, [perfiles, user?.id]);
 
   const cards = useMemo(() => {
+    const swipedSet = new Set(swipedSessionIds);
     return rawCards.filter((p: any) => {
+      if (swipedSet.has(String(p.id))) return false;
       if (filtroJornada !== 'todos' && p.jornada !== filtroJornada) return false;
       if (filtroInteres !== 'todos' && !(p.intereses || []).includes(filtroInteres)) return false;
       return true;
     });
-  }, [rawCards, filtroJornada, filtroInteres]);
+  }, [rawCards, swipedSessionIds, filtroJornada, filtroInteres]);
 
-  const currentCard = cards[currentIdx] as any;
+  const currentCard = cards[0] as any;
 
   const animateAction = useCallback((action: () => void) => {
     Animated.sequence([
@@ -84,16 +88,18 @@ export default function DiscoverScreen() {
 
   const handleSwipe = useCallback((dir: 'pass' | 'like') => {
     if (!currentCard) return;
-    const targetId = currentCard.id;
+    const targetId = String(currentCard.id);
 
     animateAction(() => {
+      setSwipedSessionIds(prev => [...prev, targetId]);
+      if (dir === 'pass') {
+        setDescartesHistorial(prev => [...prev, targetId]);
+      }
+
       swipeMutation.mutate(
         { target: targetId, dir },
         {
           onSuccess: (res: any) => {
-            if (dir === 'pass') {
-              setDescartesHistorial(prev => [...prev, targetId]);
-            }
             if (res?.match) {
               setMatchData({
                 match: true,
@@ -101,10 +107,9 @@ export default function DiscoverScreen() {
                 otroUsuario: res.otroUsuario || currentCard
               });
             }
-            setCurrentIdx(prev => prev + 1);
           },
-          onError: () => {
-            setCurrentIdx(prev => prev + 1);
+          onError: (err: any) => {
+            console.error('Error en swipe:', err);
           },
         }
       );
@@ -122,8 +127,7 @@ export default function DiscoverScreen() {
         targetId: ultimoId
       });
       setDescartesHistorial(prev => prev.slice(0, -1));
-      // Retroceder índice si es posible
-      setCurrentIdx(prev => Math.max(0, prev - 1));
+      setSwipedSessionIds(prev => prev.filter(id => id !== ultimoId));
     } catch (err: any) {
       console.error('Error al deshacer:', err);
     } finally {
@@ -150,9 +154,9 @@ export default function DiscoverScreen() {
       <View style={styles.header}>
         <View>
           <Text style={styles.headerTitle}>Descubrir</Text>
-          {cards.length > 0 && currentIdx < cards.length ? (
+          {cards.length > 0 ? (
             <Text style={styles.headerCount}>
-              {currentIdx + 1} de {cards.length} aprendices
+              {cards.length} disponible{cards.length === 1 ? '' : 's'}
             </Text>
           ) : (
             <Text style={styles.headerCount}>SENA Match</Text>
@@ -173,28 +177,28 @@ export default function DiscoverScreen() {
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filtersBar}>
           <TouchableOpacity
             style={[styles.filterChip, filtroJornada === 'todos' && styles.filterChipActive]}
-            onPress={() => { setFiltroJornada('todos'); setCurrentIdx(0); }}
+            onPress={() => setFiltroJornada('todos')}
           >
             <Text style={[styles.filterText, filtroJornada === 'todos' && styles.filterTextActive]}>Todas jornadas</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.filterChip, filtroJornada === 'manana' && styles.filterChipActive]}
-            onPress={() => { setFiltroJornada('manana'); setCurrentIdx(0); }}
+            onPress={() => setFiltroJornada('manana')}
           >
             <Text style={[styles.filterText, filtroJornada === 'manana' && styles.filterTextActive]}>Mañana</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.filterChip, filtroJornada === 'tarde' && styles.filterChipActive]}
-            onPress={() => { setFiltroJornada('tarde'); setCurrentIdx(0); }}
+            onPress={() => setFiltroJornada('tarde')}
           >
             <Text style={[styles.filterText, filtroJornada === 'tarde' && styles.filterTextActive]}>Tarde</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.filterChip, filtroJornada === 'noche' && styles.filterChipActive]}
-            onPress={() => { setFiltroJornada('noche'); setCurrentIdx(0); }}
+            onPress={() => setFiltroJornada('noche')}
           >
             <Text style={[styles.filterText, filtroJornada === 'noche' && styles.filterTextActive]}>Noche</Text>
           </TouchableOpacity>
@@ -223,7 +227,7 @@ export default function DiscoverScreen() {
             </TouchableOpacity>
           </View>
         </View>
-      ) : !cards.length || currentIdx >= cards.length ? (
+      ) : !cards.length ? (
         <View style={styles.center}>
           <Text style={styles.emptyEmoji}>🔍</Text>
           <Text style={styles.emptyTitle}>Has revisado todos los perfiles</Text>

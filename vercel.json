@@ -6,7 +6,7 @@
   "framework": null,
   "rewrites": [
     {
-      "source": "/(auth|perfiles|swipes|parches|chats|publicaciones|notificaciones|admin|reportes|bloqueos|config|api)(/.*)?",
+      "source": "/(auth|perfiles|swipes|matches|parches|chats|publicaciones|notificaciones|admin|reportes|bloqueos|config|api)(/.*)?",
       "destination": "/api/index.js"
     },
     {

@@ -166,6 +166,7 @@ const mountRoutes = (prefix = '') => {
   app.use(`${prefix}/publicaciones`, publicacionesRoutes);
   app.use(`${prefix}/notificaciones`, notificacionesRoutes.router);
   app.use(`${prefix}/admin`,         adminRoutes);
+  app.use(`${prefix}/matches`,       swipesRoutes);
   app.use(`${prefix}/`,              miscRoutes);
 };
 
