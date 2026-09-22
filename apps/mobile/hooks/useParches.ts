@@ -115,7 +115,7 @@ export function useConversacion(conversationId: string) {
       const data = await api.get(`/chats/${conversationId}`);
       return data ?? [];
     },
-    refetchInterval: 5_000, // Polling cada 5s reemplaza Supabase Realtime para el chat
+    refetchInterval: 2_500, // Polling cada 2.5s para actualización en tiempo real sin recargar
     enabled: !!conversationId,
   });
 }
@@ -132,8 +132,8 @@ export function useBandeja() {
       const data = await api.get('/chats');
       return data ?? [];
     },
-    staleTime: 10_000,
-    refetchInterval: 10_000,
+    staleTime: 2_000,
+    refetchInterval: 3_500, // Sincronización continua de bandeja y no leídos
   });
 }
 

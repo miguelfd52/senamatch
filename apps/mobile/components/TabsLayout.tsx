@@ -3,7 +3,8 @@ import {
   View, Text, StyleSheet, TouchableOpacity,
   Platform, useWindowDimensions
 } from 'react-native';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 
 import SenaMatchLogo from './SenaMatchLogo';
@@ -26,15 +27,24 @@ const TABS_META: Record<string, { title: string; emoji: string }> = {
   perfil: { title: 'Perfil', emoji: '👤' },
 };
 
+interface ToastAviso {
+  id: string;
+  titulo: string;
+  mensaje: string;
+  chatId: string | null;
+}
+
 function ResponsiveTabBar({
   state,
   navigation,
   unreadNotifs,
+  unreadChats,
   onOpenNotifs,
   onOpenAdmin,
   esStaffUser
 }: BottomTabBarProps & {
   unreadNotifs: number;
+  unreadChats: number;
   onOpenNotifs: () => void;
   onOpenAdmin: () => void;
   esStaffUser: boolean;
@@ -63,6 +73,7 @@ function ResponsiveTabBar({
             {state.routes.map((route, index) => {
               const isFocused = state.index === index;
               const meta = TABS_META[route.name] || { title: route.name, emoji: '✨' };
+              const isChatsTab = route.name === 'chats';
 
               const onPress = () => {
                 const event = navigation.emit({
@@ -86,7 +97,16 @@ function ResponsiveTabBar({
                   ]}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.desktopTabEmoji}>{meta.emoji}</Text>
+                  <View style={{ position: 'relative' }}>
+                    <Text style={styles.desktopTabEmoji}>{meta.emoji}</Text>
+                    {isChatsTab && unreadChats > 0 ? (
+                      <View style={styles.desktopTabBadge}>
+                        <Text style={styles.desktopTabBadgeText}>
+                          {unreadChats > 9 ? '9+' : unreadChats}
+                        </Text>
+                      </View>
+                    ) : null}
+                  </View>
                   <Text
                     style={[
                       styles.desktopTabText,
@@ -100,7 +120,7 @@ function ResponsiveTabBar({
               );
             })}
 
-            {/* Botón de Notificaciones en Desktop */}
+            {/* Botón de Notificaciones en Desktop 🔔 */}
             <TouchableOpacity
               onPress={onOpenNotifs}
               style={styles.desktopNotifBtn}
@@ -138,6 +158,7 @@ function ResponsiveTabBar({
       {state.routes.map((route, index) => {
         const isFocused = state.index === index;
         const meta = TABS_META[route.name] || { title: route.name, emoji: '✨' };
+        const isChatsTab = route.name === 'chats';
 
         const onPress = () => {
           const event = navigation.emit({
@@ -165,6 +186,13 @@ function ResponsiveTabBar({
               ]}
             >
               <Text style={styles.mobileIconText}>{meta.emoji}</Text>
+              {isChatsTab && unreadChats > 0 ? (
+                <View style={styles.mobileNotifBadge}>
+                  <Text style={styles.mobileNotifBadgeText}>
+                    {unreadChats > 9 ? '9+' : unreadChats}
+                  </Text>
+                </View>
+              ) : null}
             </View>
             <Text
               style={[
@@ -178,7 +206,7 @@ function ResponsiveTabBar({
         );
       })}
 
-      {/* Botón de Notificaciones Móvil */}
+      {/* Botón de Notificaciones Móvil 🔔 */}
       <TouchableOpacity
         onPress={onOpenNotifs}
         style={styles.mobileTabItem}
@@ -204,34 +232,131 @@ export default function TabsLayout() {
   const { user } = useAuth();
   const { width } = useWindowDimensions();
   const isDesktop = Platform.OS === 'web' && width >= 768;
+  const qc = useQueryClient();
 
   const [unreadNotifs, setUnreadNotifs] = useState(0);
+  const [unreadChats, setUnreadChats] = useState(0);
   const [showNotifsModal, setShowNotifsModal] = useState(false);
   const [showAdminModal, setShowAdminModal] = useState(false);
+  const [toastAviso, setToastAviso] = useState<ToastAviso | null>(null);
+
+  const notifiedKeysRef = useRef<Set<string>>(new Set());
+  const isInitialRef = useRef(true);
 
   const esStaffUser = !!(user?.rol && ['admin', 'moderador', 'bienestar'].includes(user.rol as string));
 
-  // Sondeo periódico de notificaciones
+  // Solicitar permiso de notificaciones del navegador en web
+  useEffect(() => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && 'Notification' in window) {
+      if (Notification.permission === 'default') {
+        try {
+          Notification.requestPermission().catch(() => {});
+        } catch (_) {}
+      }
+    }
+  }, []);
+
+  // Auto-cerrar toast tras 5 segundos
+  useEffect(() => {
+    if (toastAviso) {
+      const timer = setTimeout(() => {
+        setToastAviso(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [toastAviso]);
+
+  // Sondeo en tiempo real de notificaciones y chats no leídos (cada 3s)
   useEffect(() => {
     let activo = true;
+
     const consultar = async () => {
       try {
-        const res: any = await api.get('/notificaciones');
-        if (activo && res && typeof res.unreadCount === 'number') {
-          setUnreadNotifs(res.unreadCount);
+        const [resNotifs, resChats]: [any, any] = await Promise.all([
+          api.get('/notificaciones'),
+          api.get('/chats').catch(() => []),
+        ]);
+
+        if (!activo) return;
+
+        // 1. Actualizar contador de notificaciones 🔔
+        if (resNotifs && typeof resNotifs.unreadCount === 'number') {
+          setUnreadNotifs(resNotifs.unreadCount);
+        }
+
+        // 2. Actualizar contador total de mensajes de chat no leídos
+        if (Array.isArray(resChats)) {
+          const totalNoLeidos = resChats.reduce((acc: number, c: any) => acc + (c?.unreadCount || 0), 0);
+          setUnreadChats(totalNoLeidos);
+        }
+
+        // 3. Procesar notificaciones en tiempo real
+        const items: any[] = resNotifs?.notificaciones || [];
+        if (isInitialRef.current) {
+          // Primera carga: registrar existentes para no alertar de mensajes antiguos
+          items.forEach((n) => {
+            const key = `${n.id}_${n.createdAt}`;
+            notifiedKeysRef.current.add(key);
+          });
+          isInitialRef.current = false;
+          return;
+        }
+
+        // Buscar mensajes nuevos no notificados
+        for (const n of items) {
+          const key = `${n.id}_${n.createdAt}`;
+          if (notifiedKeysRef.current.has(key)) continue;
+
+          notifiedKeysRef.current.add(key);
+
+          // Si es un mensaje nuevo no leído
+          if (n.type === 'nuevo_mensaje' && !n.read) {
+            // Actualizar vista del chat y bandeja en React Query inmediatamente sin recargar
+            qc.invalidateQueries({ queryKey: ['mensajes'] });
+            qc.invalidateQueries({ queryKey: ['bandeja'] });
+
+            const avisoTitulo = n.title?.startsWith('💬') ? n.title : `💬 ${n.title || 'Nuevo mensaje'}`;
+            setToastAviso({
+              id: n.id,
+              titulo: avisoTitulo,
+              mensaje: n.message || 'Te han enviado un nuevo mensaje',
+              chatId: n.reference,
+            });
+
+            // Notificación nativa del navegador web
+            if (
+              Platform.OS === 'web' &&
+              typeof window !== 'undefined' &&
+              'Notification' in window &&
+              Notification.permission === 'granted'
+            ) {
+              try {
+                const webNotif = new Notification(avisoTitulo, {
+                  body: n.message || 'Tienes un nuevo mensaje en SENA Match',
+                  icon: '/favicon.ico',
+                });
+                webNotif.onclick = () => {
+                  window.focus();
+                  if (n.reference) {
+                    pendingChat.set(n.reference);
+                  }
+                };
+              } catch (_) {}
+            }
+          }
         }
       } catch {
-        // Ignorar si no está autenticado aún
+        // Ignorar si aún no está autenticado
       }
     };
 
     consultar();
-    const interval = setInterval(consultar, 20_000);
+    const interval = setInterval(consultar, 3_000);
     return () => {
       activo = false;
       clearInterval(interval);
     };
-  }, []);
+  }, [qc, user?.id]);
 
   return (
     <>
@@ -240,6 +365,7 @@ export default function TabsLayout() {
           <ResponsiveTabBar
             {...props}
             unreadNotifs={unreadNotifs}
+            unreadChats={unreadChats}
             onOpenNotifs={() => setShowNotifsModal(true)}
             onOpenAdmin={() => setShowAdminModal(true)}
             esStaffUser={esStaffUser}
@@ -260,17 +386,49 @@ export default function TabsLayout() {
         <Tabs.Screen name="perfil" options={{ title: 'Perfil' }} />
       </Tabs>
 
+      {/* Aviso flotante en tiempo real: 💬 Nuevo mensaje de [usuario] */}
+      {toastAviso ? (
+        <TouchableOpacity
+          activeOpacity={0.95}
+          onPress={() => {
+            if (toastAviso.chatId) {
+              pendingChat.set(toastAviso.chatId);
+            }
+            setToastAviso(null);
+          }}
+          style={styles.toastBanner}
+        >
+          <View style={styles.toastIconWrap}>
+            <Text style={{ fontSize: 20 }}>💬</Text>
+          </View>
+          <View style={styles.toastBody}>
+            <Text style={styles.toastTitle} numberOfLines={1}>
+              {toastAviso.titulo}
+            </Text>
+            <Text style={styles.toastSnippet} numberOfLines={1}>
+              {toastAviso.mensaje}
+            </Text>
+          </View>
+          <TouchableOpacity
+            onPress={(e) => {
+              e.stopPropagation?.();
+              setToastAviso(null);
+            }}
+            style={styles.toastCloseBtn}
+          >
+            <Text style={styles.toastCloseText}>✕</Text>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      ) : null}
+
       {/* Modales globales de Notificaciones y Panel Admin */}
       <NotificacionesModal
         visible={showNotifsModal}
         onClose={() => setShowNotifsModal(false)}
         onNotifCountChange={(c) => setUnreadNotifs(c)}
         onSelectChat={(chatId) => {
-          // 1. Guardar el chatId para que ChatsScreen lo detecte
           pendingChat.set(chatId);
-          // 2. Cerrar el modal
           setShowNotifsModal(false);
-          // 3. El Tab de chats se montará/actualizará y leerá el pendingChat
         }}
       />
 
@@ -467,5 +625,75 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 9,
     fontWeight: '900',
+  },
+  desktopTabBadge: {
+    position: 'absolute',
+    top: -6,
+    right: -8,
+    backgroundColor: ACCENT,
+    borderRadius: 8,
+    minWidth: 16,
+    height: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 3,
+  },
+  desktopTabBadgeText: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: '900',
+  },
+
+  // Banner / Toast flotante para mensajes en tiempo real
+  toastBanner: {
+    position: 'absolute' as any,
+    top: Platform.OS === 'web' ? 18 : 50,
+    alignSelf: 'center',
+    width: 380,
+    maxWidth: '92%',
+    backgroundColor: '#1E1A2B',
+    borderColor: ACCENT,
+    borderWidth: 1.5,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.5,
+    shadowRadius: 18,
+    elevation: 25,
+    zIndex: 99999,
+  },
+  toastIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(57, 169, 0, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  toastBody: {
+    flex: 1,
+  },
+  toastTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#F0ECF6',
+  },
+  toastSnippet: {
+    fontSize: 12,
+    color: '#B9B1C9',
+    marginTop: 2,
+  },
+  toastCloseBtn: {
+    padding: 6,
+    marginLeft: 6,
+  },
+  toastCloseText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#8D83A0',
   },
 });

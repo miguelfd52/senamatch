@@ -7,6 +7,7 @@ const Match = require('../models/Match');
 const Perfil = require('../models/Perfil');
 const Parche = require('../models/Parche');
 const Swipe = require('../models/Swipe');
+const Notificacion = require('../models/Notificacion');
 const { crearNotificacion } = require('./notificaciones');
 
 const router = express.Router();
@@ -381,11 +382,12 @@ router.post('/:id/mensaje', auth, async (req, res) => {
     // Notificaciones según tipo de chat
     if (otherId) {
       // Chat 1 a 1 (directo o match): notificar solo al otro
+      const snippet = txt.trim().length > 60 ? txt.trim().slice(0, 57) + '...' : txt.trim();
       crearNotificacion({
         recipientId: String(otherId),
         type: 'nuevo_mensaje',
         title: `Nuevo mensaje de ${miNombre}`,
-        message: `${miNombre} te envió un mensaje`,
+        message: snippet,
         reference: String(chat._id)
       }).catch(err => console.error('Error al notificar mensaje directo:', err));
     } else if (chat.tipo === 'parche') {
@@ -401,12 +403,13 @@ router.post('/:id/mensaje', auth, async (req, res) => {
         if (parcheDoc?.titulo) tituloParcheStr = parcheDoc.titulo;
       } catch (_) { /* ignorar */ }
 
+      const snippet = txt.trim().length > 50 ? txt.trim().slice(0, 47) + '...' : txt.trim();
       for (const receptorId of receptores) {
         crearNotificacion({
           recipientId: receptorId,
           type: 'nuevo_mensaje',
-          title: 'Nuevo mensaje en el parche',
-          message: `${miNombre} escribió en "${tituloParcheStr}"`,
+          title: `Nuevo mensaje de ${miNombre}`,
+          message: `En "${tituloParcheStr}": ${snippet}`,
           reference: String(chat._id)
         }).catch(err => console.error('Error al notificar mensaje de parche:', err));
       }

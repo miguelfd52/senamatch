@@ -21,6 +21,11 @@ async function crearNotificacion({ recipientId, type, title, message, reference 
     });
 
     if (existe) {
+      existe.title = title;
+      existe.message = message;
+      existe.read = false;
+      existe.createdAt = new Date();
+      await existe.save();
       return existe;
     }
 
