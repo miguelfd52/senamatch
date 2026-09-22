@@ -1,4 +1,4 @@
-import { Tabs } from 'expo-router';
+import { Tabs, useRouter } from 'expo-router';
 import {
   View, Text, StyleSheet, TouchableOpacity,
   Platform, useWindowDimensions
@@ -14,6 +14,7 @@ import InitialPostModal from './InitialPostModal';
 import { useAuth } from '../app/context/AuthContext';
 import { api } from '../lib/api';
 import { pendingChat } from '../lib/pendingChat';
+import { playNotificationSound } from '../lib/sound';
 
 const ACCENT = '#39A900';
 const INACTIVE = '#8D83A0';
@@ -229,6 +230,7 @@ function ResponsiveTabBar({
 }
 
 export default function TabsLayout() {
+  const router = useRouter();
   const { user } = useAuth();
   const { width } = useWindowDimensions();
   const isDesktop = Platform.OS === 'web' && width >= 768;
@@ -272,10 +274,7 @@ export default function TabsLayout() {
 
     const consultar = async () => {
       try {
-        const [resNotifs, resChats]: [any, any] = await Promise.all([
-          api.get('/notificaciones'),
-          api.get('/chats').catch(() => []),
-        ]);
+        const resNotifs: any = await api.get('/notificaciones');
 
         if (!activo) return;
 
@@ -284,10 +283,9 @@ export default function TabsLayout() {
           setUnreadNotifs(resNotifs.unreadCount);
         }
 
-        // 2. Actualizar contador total de mensajes de chat no leídos
-        if (Array.isArray(resChats)) {
-          const totalNoLeidos = resChats.reduce((acc: number, c: any) => acc + (c?.unreadCount || 0), 0);
-          setUnreadChats(totalNoLeidos);
+        // 2. Actualizar contador total de mensajes de chat no leídos (desde índice optimizado)
+        if (resNotifs && typeof resNotifs.unreadChatsCount === 'number') {
+          setUnreadChats(resNotifs.unreadChatsCount);
         }
 
         // 3. Procesar notificaciones en tiempo real
@@ -302,6 +300,8 @@ export default function TabsLayout() {
           return;
         }
 
+        const currentActiveChat = pendingChat.getActive();
+
         // Buscar mensajes nuevos no notificados
         for (const n of items) {
           const key = `${n.id}_${n.createdAt}`;
@@ -314,6 +314,15 @@ export default function TabsLayout() {
             // Actualizar vista del chat y bandeja en React Query inmediatamente sin recargar
             qc.invalidateQueries({ queryKey: ['mensajes'] });
             qc.invalidateQueries({ queryKey: ['bandeja'] });
+
+            // Reproducir sonido de notificación
+            playNotificationSound();
+
+            // Si el usuario ya está dentro de esta conversación, evitar alertas duplicadas
+            if (currentActiveChat && String(currentActiveChat) === String(n.reference)) {
+              api.post(`/chats/${n.reference}/leer`).catch(() => {});
+              continue;
+            }
 
             const avisoTitulo = n.title?.startsWith('💬') ? n.title : `💬 ${n.title || 'Nuevo mensaje'}`;
             setToastAviso({
@@ -339,6 +348,7 @@ export default function TabsLayout() {
                   window.focus();
                   if (n.reference) {
                     pendingChat.set(n.reference);
+                    router.push('/chats');
                   }
                 };
               } catch (_) {}
@@ -356,7 +366,7 @@ export default function TabsLayout() {
       activo = false;
       clearInterval(interval);
     };
-  }, [qc, user?.id]);
+  }, [qc, user?.id, router]);
 
   return (
     <>
@@ -392,7 +402,9 @@ export default function TabsLayout() {
           activeOpacity={0.95}
           onPress={() => {
             if (toastAviso.chatId) {
+              api.patch(`/notificaciones/${toastAviso.id}/leer`).catch(() => {});
               pendingChat.set(toastAviso.chatId);
+              router.push('/chats');
             }
             setToastAviso(null);
           }}
@@ -429,6 +441,7 @@ export default function TabsLayout() {
         onSelectChat={(chatId) => {
           pendingChat.set(chatId);
           setShowNotifsModal(false);
+          router.push('/chats');
         }}
       />
 

@@ -78,38 +78,59 @@ router.post('/registrar', auth, async (req, res) => {
 
     // ¿Reciprocidad?
     const otroSwipe = await Swipe.findById(otroId);
-    const otroMap = otroSwipe && otroSwipe.por_intencion
-      ? otroSwipe.por_intencion[p_intencion] || {}
-      : {};
+    let otroDioLike = false;
+    let intencionMatch = p_intencion || 'amistad';
 
-    if (otroMap[yoId] !== 'like') {
+    if (otroSwipe && otroSwipe.por_intencion) {
+      // 1. Chequear primero en la misma intención
+      if (otroSwipe.por_intencion[p_intencion]?.[yoId] === 'like') {
+        otroDioLike = true;
+      } else {
+        // 2. Si no, chequear si le dio like en cualquier otra intención
+        for (const [int, mapa] of Object.entries(otroSwipe.por_intencion)) {
+          if (mapa && mapa[yoId] === 'like') {
+            otroDioLike = true;
+            intencionMatch = int;
+            break;
+          }
+        }
+      }
+    }
+
+    if (!otroDioLike) {
       return res.json({ match: false });
     }
 
     // ¡Match! Crear o reutilizar match único entre ambos usuarios
     const [a, b] = yoId < otroId ? [yoId, otroId] : [otroId, yoId];
+    const matchId = `${a}__${b}`;
     
     // Buscar si ya existe match previo entre estos 2 usuarios
     let match = await Match.findOne({
       $or: [
+        { _id: matchId },
         { a, b },
         { a: b, b: a }
-      ],
-      activo: true
+      ]
     });
 
-    const isNewMatch = !match;
-    const matchId = match ? match._id : `${a}__${b}`;
+    const isNewMatch = !match || !match.activo;
 
     if (!match) {
-      match = await Match.findByIdAndUpdate(
-        matchId,
-        {
-          $set: { a, b, intencion: p_intencion, activo: true },
-          $setOnInsert: { creado: new Date() }
-        },
-        { upsert: true, new: true }
-      );
+      // Si no existe, crearlo explícitamente en MongoDB con ID y campos completos
+      match = await Match.create({
+        _id: matchId,
+        a,
+        b,
+        intencion: intencionMatch,
+        activo: true,
+        creado: new Date()
+      });
+    } else if (!match.activo) {
+      // Si existía pero estaba inactivo (ej. se habían descartado), reactivarlo
+      match.activo = true;
+      match.intencion = intencionMatch;
+      await match.save();
     }
 
     // Reutilizar o crear chat único entre ambos usuarios

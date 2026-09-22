@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useAuth } from '../app/context/AuthContext';
+import { useQueryClient } from '@tanstack/react-query';
 import { useBandeja, useConversacion, useEnviarMensaje, useMatches } from '../hooks/useParches';
 import { api } from '../lib/api';
 import PeopleScreen from './PeopleScreen';
@@ -294,6 +295,7 @@ function ChatsList({
 
 function ConversacionView({ chatId, onBack }: { chatId: string; onBack: () => void }) {
   const { user } = useAuth();
+  const qc = useQueryClient();
   const { data: chatData, isLoading } = useConversacion(chatId);
   const enviarMutation = useEnviarMensaje(chatId);
   const [texto, setTexto] = useState('');
@@ -306,12 +308,22 @@ function ConversacionView({ chatId, onBack }: { chatId: string; onBack: () => vo
   const chat = chatData as any;
   const mensajes = chat?.mensajes || [];
 
-  // Marcar mensajes como leídos al abrir la conversación
+  // Registrar chat activo para suprimir alertas redundantes mientras está en pantalla
+  useEffect(() => {
+    pendingChat.setActive(chatId);
+    return () => {
+      pendingChat.setActive(null);
+    };
+  }, [chatId]);
+
+  // Marcar mensajes como leídos al abrir o recibir mensajes en la conversación
   useEffect(() => {
     if (chatId) {
-      api.post(`/chats/${chatId}/leer`).catch(() => {});
+      api.post(`/chats/${chatId}/leer`).then(() => {
+        qc.invalidateQueries({ queryKey: ['bandeja'] });
+      }).catch(() => {});
     }
-  }, [chatId, mensajes.length]);
+  }, [chatId, mensajes.length, qc]);
 
   useEffect(() => {
     if (scrollRef.current && mensajes.length > 0) {

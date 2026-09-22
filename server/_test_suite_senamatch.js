@@ -209,6 +209,8 @@ function createMongooseMock(collectionName) {
         let match = true;
         if (query.recipientId && String(doc.recipientId) !== String(query.recipientId)) match = false;
         if (query.read !== undefined && doc.read !== query.read) match = false;
+        if (query.type && doc.type !== query.type) match = false;
+        if (query.reference && String(doc.reference) !== String(query.reference)) match = false;
         if (query.estado && doc.estado !== query.estado) match = false;
         if (match) count++;
       }
@@ -219,6 +221,8 @@ function createMongooseMock(collectionName) {
         let match = true;
         if (filter.recipientId && String(doc.recipientId) !== String(filter.recipientId)) match = false;
         if (filter.read !== undefined && doc.read !== filter.read) match = false;
+        if (filter.type && doc.type !== filter.type) match = false;
+        if (filter.reference && String(doc.reference) !== String(filter.reference)) match = false;
         if (match && update.$set) {
           Object.assign(doc, update.$set);
           store.set(id, doc);

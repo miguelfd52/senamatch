@@ -115,7 +115,7 @@ export function useConversacion(conversationId: string) {
       const data = await api.get(`/chats/${conversationId}`);
       return data ?? [];
     },
-    refetchInterval: 2_500, // Polling cada 2.5s para actualización en tiempo real sin recargar
+    refetchInterval: 3_500, // Intervalo de respaldo (sincronizado con invalidaciones reactivas)
     enabled: !!conversationId,
   });
 }
@@ -132,8 +132,8 @@ export function useBandeja() {
       const data = await api.get('/chats');
       return data ?? [];
     },
-    staleTime: 2_000,
-    refetchInterval: 3_500, // Sincronización continua de bandeja y no leídos
+    staleTime: 5_000,
+    refetchInterval: 8_000, // Optimizado: las invalidaciones actualizan la bandeja de inmediato
   });
 }
 
@@ -167,7 +167,8 @@ export function usePerfiles() {
       const data = await api.get('/perfiles');
       return data ?? [];
     },
-    staleTime: 60_000,
+    staleTime: 15_000,
+    refetchInterval: 15_000,
   });
 }
 

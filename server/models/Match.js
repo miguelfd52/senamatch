@@ -7,7 +7,7 @@ const matchSchema = new mongoose.Schema({
   intencion: { type: String, required: true },
   activo: { type: Boolean, default: true },
   creado: { type: Date, default: Date.now }
-}, { _id: false, timestamps: false });
+}, { timestamps: false });
 
 matchSchema.index({ a: 1, activo: 1 });
 matchSchema.index({ b: 1, activo: 1 });

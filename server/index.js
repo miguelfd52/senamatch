@@ -67,7 +67,7 @@ app.use(cors({
 app.use(express.json());
 
 // ─── Conexión a MongoDB ──────────────────────────────────────────────────────
-const envUri = process.env.MONGO_URI;
+const envUri = process.env.MONGO_URI || process.env.MONGODB_URI;
 const fallbackLocalUri = 'mongodb://127.0.0.1:27017/senamatch';
 const candidates = [];
 

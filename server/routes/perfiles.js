@@ -79,7 +79,11 @@ router.get('/', auth, async (req, res) => {
 
     if (!esStaff(yo)) {
       if (yo.centro) {
-        filtro.centro = yo.centro;
+        // Permitir ver usuarios del mismo centro, o usuarios nuevos que aún no tienen centro
+        filtro.$or = [
+          { centro: yo.centro },
+          { centro: null }
+        ];
       }
       if (miEsfera === 'aprendices') {
         filtro.rol = { $in: ['aprendiz', 'egresado'] };

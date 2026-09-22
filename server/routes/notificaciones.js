@@ -51,12 +51,13 @@ async function crearNotificacion({ recipientId, type, title, message, reference 
 router.get('/', auth, async (req, res) => {
   try {
     const uid = String(req.uid);
-    const [notificaciones, unreadCount] = await Promise.all([
+    const [notificaciones, unreadCount, unreadChatsCount] = await Promise.all([
       Notificacion.find({ recipientId: uid })
         .sort({ createdAt: -1 })
         .limit(50)
         .lean(),
-      Notificacion.countDocuments({ recipientId: uid, read: false })
+      Notificacion.countDocuments({ recipientId: uid, read: false }),
+      Notificacion.countDocuments({ recipientId: uid, type: 'nuevo_mensaje', read: false })
     ]);
 
     const resultado = notificaciones.map(n => ({
@@ -72,7 +73,8 @@ router.get('/', auth, async (req, res) => {
 
     res.json({
       notificaciones: resultado,
-      unreadCount
+      unreadCount,
+      unreadChatsCount
     });
   } catch (err) {
     console.error('Error en GET /notificaciones:', err);

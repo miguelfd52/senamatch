@@ -57,11 +57,12 @@ async function puedoVer(yo, otro, intencion) {
   const otraEsfera = esferaDe(otro.rol);
   if (miEsfera !== otraEsfera) return false;
 
-  if (yo.centro && otro.centro && yo.centro !== otro.centro) return false;
-  const intencionesYo = (yo.intenciones && yo.intenciones.length > 0) ? yo.intenciones : ['amistad', 'estudio'];
-  const intencionesOtro = (otro.intenciones && otro.intenciones.length > 0) ? otro.intenciones : ['amistad', 'estudio'];
-  if (!intencionesYo.includes(intencion)) return false;
-  if (!intencionesOtro.includes(intencion)) return false;
+  if (yo.centro && otro.centro && Number(yo.centro) !== Number(otro.centro)) return false;
+  const defaultIntenciones = ['amistad', 'estudio', 'deporte'];
+  const intencionesYo = (yo.intenciones && yo.intenciones.length > 0) ? yo.intenciones : defaultIntenciones;
+  const intencionesOtro = (otro.intenciones && otro.intenciones.length > 0) ? otro.intenciones : defaultIntenciones;
+  if (intencion && !intencionesYo.includes(intencion) && !defaultIntenciones.includes(intencion)) return false;
+  if (intencion && !intencionesOtro.includes(intencion) && !defaultIntenciones.includes(intencion)) return false;
   if (await hayBloqueo(yo._id, otro._id)) return false;
 
   if (intencion === 'cita') {

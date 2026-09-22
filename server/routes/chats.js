@@ -451,6 +451,12 @@ router.post('/:id/leer', auth, async (req, res) => {
       await Chat.findByIdAndUpdate(req.params.id, { $set: { mensajes: nuevosMensajes } });
     }
 
+    // Marcar como leídas las notificaciones de nuevos mensajes de este chat
+    await Notificacion.updateMany(
+      { recipientId: uid, reference: String(req.params.id), type: 'nuevo_mensaje', read: false },
+      { $set: { read: true } }
+    );
+
     res.json({ ok: true });
   } catch (e) {
     console.error('Error en POST /chats/:id/leer:', e);
