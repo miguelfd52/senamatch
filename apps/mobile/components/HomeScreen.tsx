@@ -437,7 +437,7 @@ export default function HomeScreen({ esfera }: Props) {
                 <TouchableOpacity
                   style={styles.postImageWrap}
                   activeOpacity={0.9}
-                  onPress={() => setFotoVisorUrl(pub.fotoUrl)}
+                  onPress={() => setFotoVisorUrl(pub.fotoUrl || null)}
                 >
                   <Image
                     source={{ uri: pub.fotoUrl }}
