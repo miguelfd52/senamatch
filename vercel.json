@@ -1,7 +1,6 @@
 {
   "version": 2,
-  "buildCommand": null,
-  "outputDirectory": "web",
+  "buildCommand": "npm run build:vercel",
   "installCommand": "npm install",
   "framework": null,
   "rewrites": [
@@ -11,8 +10,7 @@
     },
     {
       "source": "/(.*)",
-      "destination": "/app.html"
+      "destination": "/index.html"
     }
   ]
 }
-
