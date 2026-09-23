@@ -32,6 +32,8 @@ apps/mobile/web-build/
 web-build/
 
 # ── Build / Dist ──
+# Archivos exportados de apps/mobile para Vercel
+public/
 dist/
 !apps/mobile/dist/
 build/
