@@ -1,8 +1,13 @@
 const jwt = require('jsonwebtoken');
 const Perfil = require('../models/Perfil');
 
-const DEFAULT_JWT_SECRET = 'ed19d6b289cb17ca6ed7df448effcc4a045a6449ac5b3f3ae072e79b76cc16032c610689cffc80f8b708005a8d096771';
-const getJwtSecret = () => process.env.JWT_SECRET || DEFAULT_JWT_SECRET;
+const getJwtSecret = () => {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error('Variable de entorno JWT_SECRET no configurada');
+  }
+  return secret;
+};
 
 /**
  * Middleware de autenticación JWT.
@@ -15,12 +20,16 @@ async function auth(req, res, next) {
     return res.status(401).json({ error: 'Sin sesión' });
   }
   try {
+    const secret = getJwtSecret();
     const token = header.split(' ')[1];
-    const payload = jwt.verify(token, getJwtSecret());
+    const payload = jwt.verify(token, secret);
     req.uid = payload.uid || payload.sub;
     req.perfil = await Perfil.findById(req.uid).lean({ virtuals: true });
     next();
   } catch (e) {
+    if (e.message && e.message.includes('JWT_SECRET')) {
+      return res.status(500).json({ error: 'Error de configuración en el servidor' });
+    }
     return res.status(401).json({ error: 'Token inválido o expirado' });
   }
 }

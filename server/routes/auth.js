@@ -22,14 +22,21 @@ function rolPorCorreo(correo) {
   return null;
 }
 
-const DEFAULT_JWT_SECRET = 'ed19d6b289cb17ca6ed7df448effcc4a045a6449ac5b3f3ae072e79b76cc16032c610689cffc80f8b708005a8d096771';
-const JWT_SECRET = process.env.JWT_SECRET || DEFAULT_JWT_SECRET;
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
 
+function getJwtSecret() {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error('Variable de entorno JWT_SECRET no configurada');
+  }
+  return secret;
+}
+
 function firmarToken(perfil) {
+  const secret = getJwtSecret();
   return jwt.sign(
     { uid: perfil._id, correo: perfil.correo, rol: perfil.rol },
-    JWT_SECRET,
+    secret,
     { expiresIn: JWT_EXPIRES_IN }
   );
 }
