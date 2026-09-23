@@ -3,9 +3,14 @@
   "buildCommand": "npm run build:vercel",
   "installCommand": "npm install",
   "framework": null,
+  "functions": {
+    "api/index.js": {
+      "maxDuration": 15
+    }
+  },
   "rewrites": [
     {
-      "source": "/(auth|perfiles|swipes|matches|parches|chats|publicaciones|notificaciones|admin|reportes|bloqueos|config|api)(/.*)?",
+      "source": "/(auth|perfiles|swipes|matches|parches|chats|publicaciones|notificaciones|admin|reportes|bloqueos|config|health|api)(/.*)?",
       "destination": "/api/index.js"
     },
     {

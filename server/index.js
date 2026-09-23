@@ -94,8 +94,8 @@ const connectMongo = async () => {
     try {
       await mongoose.connect(uri, {
         dbName: 'senamatch',
-        serverSelectionTimeoutMS: 5000,
-        connectTimeoutMS: 5000,
+        serverSelectionTimeoutMS: 8000,
+        connectTimeoutMS: 8000,
       });
       console.log('✅ Conectado a MongoDB (base: senamatch)');
       return mongoose.connection;
@@ -123,7 +123,7 @@ connectMongo().catch(() => {});
 
 // Middleware para asegurar que MongoDB esté conectado antes de procesar rutas
 app.use(async (req, res, next) => {
-  if (req.path === '/' || req.path === '/api') {
+  if (req.path === '/' || req.path === '/api' || req.path === '/health' || req.path === '/api/health') {
     return next();
   }
   try {
@@ -153,11 +153,25 @@ mountRoutes('');
 mountRoutes('/api');
 
 // ─── Health check ────────────────────────────────────────────────────────────
-app.get(['/', '/api'], (req, res) => {
+app.get(['/', '/api', '/health', '/api/health'], async (req, res) => {
+  let dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
+  if (dbStatus !== 'connected' && getMongoUri()) {
+    try {
+      await ensureMongoConnected();
+      dbStatus = 'connected';
+    } catch (e) {
+      dbStatus = 'error_connecting';
+    }
+  }
+
   res.json({
     status: 'ok',
     name: 'sena-match-server',
-    database: mongoose.connection.readyState === 1 ? 'connected' : 'connecting_or_disconnected',
+    database: dbStatus,
+    config: {
+      mongoUriConfigured: !!getMongoUri(),
+      jwtSecretConfigured: !!process.env.JWT_SECRET,
+    },
     timestamp: new Date().toISOString()
   });
 });
