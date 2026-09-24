@@ -20,6 +20,7 @@ import { api } from '../lib/api';
 import SenaMatchLogo from './SenaMatchLogo';
 import PublicProfileModal from './PublicProfileModal';
 import FotoViewerModal from './FotoViewerModal';
+import { pendingChat } from '../lib/pendingChat';
 
 const ACCENT = '#39A900';
 const ACCENT_DARK = '#1F6B00';
@@ -766,6 +767,9 @@ export default function HomeScreen({ esfera }: Props) {
         onClose={() => setSelectedUserId(null)}
         onOpenChat={(chatId) => {
           setSelectedUserId(null);
+          if (chatId) {
+            pendingChat.set(String(chatId));
+          }
           router.push('/chats');
         }}
       />

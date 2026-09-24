@@ -450,6 +450,20 @@ function ConversacionView({ chatId, onBack }: { chatId: string; onBack: () => vo
         </View>
       ) : null}
 
+      {/* Pregunta rompehielos breve y fija */}
+      {mensajes.filter((m: any) => m && m.de !== null).length === 0 && (
+        <TouchableOpacity
+          style={styles.icebreakerBar}
+          onPress={() => setTexto('¿Qué te motivó a unirte al SENA? 😊')}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.icebreakerBarIcon}>💡</Text>
+          <Text style={styles.icebreakerBarText}>
+            Romper el hielo: "¿Qué te motivó a unirte al SENA?"
+          </Text>
+        </TouchableOpacity>
+      )}
+
       {/* Input */}
       <View style={styles.inputBar}>
         <TextInput
@@ -777,4 +791,23 @@ const styles = StyleSheet.create({
   },
   sendBtnDisabled: { backgroundColor: '#2D3748' },
   sendBtnText: { fontSize: 18, color: '#fff' },
+  icebreakerBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(57, 169, 0, 0.12)',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(57, 169, 0, 0.3)',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  icebreakerBarIcon: {
+    fontSize: 16,
+  },
+  icebreakerBarText: {
+    color: '#5FE0B4',
+    fontSize: 13,
+    fontWeight: '600',
+    flex: 1,
+  },
 });

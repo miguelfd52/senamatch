@@ -11,6 +11,7 @@ import { api } from '../lib/api';
 import PeopleScreen from './PeopleScreen';
 import PublicProfileModal from './PublicProfileModal';
 import FotoViewerModal from './FotoViewerModal';
+import { pendingChat } from '../lib/pendingChat';
 
 const ACCENT = '#39A900';
 const BG = '#0F0C18';
@@ -383,12 +384,20 @@ export default function DiscoverScreen() {
               Tú y {matchData?.otroUsuario?.nombre || 'tu compañero'} tienen afinidad mutua.
             </Text>
 
+            {/* Pregunta rompehielos */}
+            <Text style={styles.matchIcebreaker}>
+              💡 ¿Qué te llevó a unirte al SENA?
+            </Text>
+
             <View style={styles.matchActions}>
               <TouchableOpacity
                 style={styles.matchChatBtn}
                 onPress={() => {
                   const cId = matchData?.chat;
                   setMatchData(null);
+                  if (cId) {
+                    pendingChat.set(String(cId));
+                  }
                   router.push('/chats');
                 }}
               >
@@ -413,6 +422,9 @@ export default function DiscoverScreen() {
         onClose={() => setSelectedUserId(null)}
         onOpenChat={(cId) => {
           setSelectedUserId(null);
+          if (cId) {
+            pendingChat.set(String(cId));
+          }
           router.push('/chats');
         }}
       />
@@ -604,7 +616,11 @@ const styles = StyleSheet.create({
     fontSize: 26, fontWeight: '900', color: '#fff', textAlign: 'center', marginBottom: 8,
   },
   matchSubtitle: {
-    fontSize: 14, color: '#B9B1C9', textAlign: 'center', lineHeight: 20, marginBottom: 24,
+    fontSize: 14, color: '#B9B1C9', textAlign: 'center', lineHeight: 20, marginBottom: 12,
+  },
+  matchIcebreaker: {
+    fontSize: 13, color: '#5FE0B4', textAlign: 'center', fontStyle: 'italic',
+    marginBottom: 20, paddingHorizontal: 12,
   },
   matchActions: { width: '100%', gap: 10 },
   matchChatBtn: {

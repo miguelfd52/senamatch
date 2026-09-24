@@ -9,6 +9,7 @@ import { usePerfil, useEditarPerfil } from '../hooks/useParches';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { openImagePickerAndUpload, CloudinaryError } from '../lib/cloudinary';
 import FotoViewerModal from './FotoViewerModal';
+import { useTheme } from '../app/context/ThemeContext';
 
 const ACCENT = '#39A900';
 const BG = '#0F0C18';
@@ -38,6 +39,7 @@ export default function ProfileScreen() {
   const { user, signOut, signIn } = useAuth();
   const { data: perfil, isLoading } = usePerfil(user?.id || '');
   const editMutation = useEditarPerfil(user?.id || '');
+  const { isDark, toggleTheme } = useTheme();
 
   const [editing, setEditing] = useState(false);
   const [nombre, setNombre] = useState(user?.nombre || '');
@@ -459,14 +461,32 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           )
         ) : (
-          <TouchableOpacity
-            style={styles.signOutBtn}
-            onPress={handleSignOut}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.signOutText}>Cerrar sesión</Text>
-          </TouchableOpacity>
+          <View style={{ gap: 12 }}>
+            {/* Toggle tema */}
+            <TouchableOpacity
+              style={styles.themeBtn}
+              onPress={toggleTheme}
+              activeOpacity={0.8}
+              accessibilityLabel={isDark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+            >
+              <Text style={styles.themeBtnIcon}>{isDark ? '☀️' : '🌙'}</Text>
+              <Text style={styles.themeBtnText}>
+                {isDark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.signOutBtn}
+              onPress={handleSignOut}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.signOutText}>Cerrar sesión</Text>
+            </TouchableOpacity>
+          </View>
         )}
+
+        {/* Crédito del creador */}
+        <Text style={styles.credit}>Creado por Miguel Toncel Herrera</Text>
 
         <View style={{ height: 40 }} />
       </ScrollView>
@@ -675,4 +695,16 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: 'rgba(255,91,110,0.3)',
   },
   signOutText: { color: '#FF5B6E', fontSize: 16, fontWeight: '700' },
+  themeBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: 'rgba(57,169,0,0.08)',
+    padding: 16, borderRadius: 12, marginTop: 8,
+    borderWidth: 1, borderColor: 'rgba(57,169,0,0.25)',
+  },
+  themeBtnIcon: { fontSize: 20 },
+  themeBtnText: { color: '#39A900', fontSize: 15, fontWeight: '700' },
+  credit: {
+    marginTop: 28, textAlign: 'center',
+    fontSize: 11, color: '#625975', fontStyle: 'italic',
+  },
 });

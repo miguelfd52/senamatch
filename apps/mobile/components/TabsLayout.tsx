@@ -15,6 +15,7 @@ import { useAuth } from '../app/context/AuthContext';
 import { api } from '../lib/api';
 import { pendingChat } from '../lib/pendingChat';
 import { playNotificationSound } from '../lib/sound';
+import { useTheme } from '../app/context/ThemeContext';
 
 const ACCENT = '#39A900';
 const INACTIVE = '#8D83A0';
@@ -52,10 +53,11 @@ function ResponsiveTabBar({
 }) {
   const { width } = useWindowDimensions();
   const isDesktop = Platform.OS === 'web' && width >= 768;
+  const { colors } = useTheme();
 
   if (isDesktop) {
     return (
-      <View style={styles.desktopNavbar}>
+      <View style={[styles.desktopNavbar, { backgroundColor: colors.navBg, borderBottomColor: colors.navBorder }]}>
         <View style={styles.desktopNavInner}>
           {/* Marca / Logo 3D */}
           <TouchableOpacity
@@ -155,7 +157,7 @@ function ResponsiveTabBar({
 
   // Versión móvil en la parte inferior
   return (
-    <View style={styles.mobileTabBar}>
+    <View style={[styles.mobileTabBar, { backgroundColor: colors.navBg, borderTopColor: colors.navBorder }]}>
       {state.routes.map((route, index) => {
         const isFocused = state.index === index;
         const meta = TABS_META[route.name] || { title: route.name, emoji: '✨' };

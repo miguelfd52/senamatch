@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { View, StyleSheet, Platform } from 'react-native';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ThemeProvider, useTheme } from './context/ThemeContext';
 
 const qc = new QueryClient();
 
@@ -44,14 +45,24 @@ function Enrutador() {
   return <Slot />;
 }
 
+function MainContainer() {
+  const { colors } = useTheme();
+
+  return (
+    <View style={[styles.webOuter, { backgroundColor: colors.bg }]}>
+      <Enrutador />
+    </View>
+  );
+}
+
 export default function RootLayout() {
   return (
     <QueryClientProvider client={qc}>
-      <AuthProvider>
-        <View style={styles.webOuter}>
-          <Enrutador />
-        </View>
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <MainContainer />
+        </AuthProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }
@@ -69,3 +80,4 @@ const styles = StyleSheet.create({
       : {}),
   },
 });
+
