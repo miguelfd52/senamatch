@@ -25,5 +25,11 @@ const notificacionSchema = new mongoose.Schema({
 }, { timestamps: false });
 
 notificacionSchema.index({ recipientId: 1, read: 1, createdAt: -1 });
+// Índice único sparse para garantizar que cada usuario sólo recibe una
+// notificación de tipo 'nuevo_match' por chat, incluso ante peticiones concurrentes.
+notificacionSchema.index(
+  { recipientId: 1, type: 1, reference: 1 },
+  { unique: true, sparse: true, name: 'notif_unique_recipient_type_ref' }
+);
 
 module.exports = mongoose.models.Notificacion || mongoose.model('Notificacion', notificacionSchema, 'notificaciones');

@@ -140,6 +140,7 @@ router.post('/registrar', auth, async (req, res) => {
     });
 
     const mensajeBienvenida = '🎉 ¡Hicieron Match! Ahora pueden comenzar a conocerse.';
+    const msgIcebreaker = '💡 Para romper el hielo: ¿Qué te llevó a unirte al SENA?';
 
     if (!chat) {
       chat = await Chat.create({
@@ -147,16 +148,28 @@ router.post('/registrar', auth, async (req, res) => {
         tipo: 'match',
         titulo: `${yo.nombre} & ${otro.nombre}`,
         miembros: [yoId, otroId],
-        mensajes: [{
-          id: 'm_' + crypto.randomUUID().replace(/-/g, '').slice(0, 16),
-          de: null,
-          senderId: null,
-          senderNombre: 'SENA Match',
-          nombre: 'SENA Match',
-          txt: mensajeBienvenida,
-          ts: Date.now(),
-          leidoPor: [yoId, otroId]
-        }],
+        mensajes: [
+          {
+            id: 'm_' + crypto.randomUUID().replace(/-/g, '').slice(0, 16),
+            de: null,
+            senderId: null,
+            senderNombre: 'SENA Match',
+            nombre: 'SENA Match',
+            txt: mensajeBienvenida,
+            ts: Date.now(),
+            leidoPor: [yoId, otroId]
+          },
+          {
+            id: 'm_' + crypto.randomUUID().replace(/-/g, '').slice(0, 16),
+            de: null,
+            senderId: null,
+            senderNombre: 'SENA Match',
+            nombre: 'SENA Match',
+            txt: msgIcebreaker,
+            ts: Date.now() + 1,
+            leidoPor: [yoId, otroId]
+          }
+        ],
         creado: new Date(),
         ultimo: new Date()
       });
@@ -188,36 +201,43 @@ router.post('/registrar', auth, async (req, res) => {
       }
     }
 
-    // Generar notificaciones para ambos usuarios sin duplicados
+    // Generar notificaciones para ambos usuarios – atómico para evitar duplicados ante concurrencia
     if (isNewMatch) {
-      const [notifA, notifB] = await Promise.all([
-        Notificacion.findOne({ recipientId: yoId, type: 'nuevo_match', reference: String(chat._id) }),
-        Notificacion.findOne({ recipientId: otroId, type: 'nuevo_match', reference: String(chat._id) })
+      const ts = new Date();
+      await Promise.all([
+        Notificacion.findOneAndUpdate(
+          { recipientId: yoId, type: 'nuevo_match', reference: String(chat._id) },
+          {
+            $setOnInsert: {
+              recipientId: yoId,
+              type: 'nuevo_match',
+              title: '¡Nuevo Match! 🎉',
+              message: `¡Hiciste Match con ${otro.nombre}! Ahora pueden comenzar a conocerse.`,
+              reference: String(chat._id),
+              read: false,
+              createdAt: ts
+            }
+          },
+          { upsert: true, new: false }
+        ),
+        Notificacion.findOneAndUpdate(
+          { recipientId: otroId, type: 'nuevo_match', reference: String(chat._id) },
+          {
+            $setOnInsert: {
+              recipientId: otroId,
+              type: 'nuevo_match',
+              title: '¡Nuevo Match! 🎉',
+              message: `¡Hiciste Match con ${yo.nombre}! Ahora pueden comenzar a conocerse.`,
+              reference: String(chat._id),
+              read: false,
+              createdAt: ts
+            }
+          },
+          { upsert: true, new: false }
+        )
       ]);
-
-      const notifPromises = [];
-      if (!notifA) {
-        notifPromises.push(crearNotificacion({
-          recipientId: yoId,
-          type: 'nuevo_match',
-          title: '¡Nuevo Match! 🎉',
-          message: `¡Hiciste Match con ${otro.nombre}! Ahora pueden comenzar a conocerse.`,
-          reference: String(chat._id)
-        }));
-      }
-      if (!notifB) {
-        notifPromises.push(crearNotificacion({
-          recipientId: otroId,
-          type: 'nuevo_match',
-          title: '¡Nuevo Match! 🎉',
-          message: `¡Hiciste Match con ${yo.nombre}! Ahora pueden comenzar a conocerse.`,
-          reference: String(chat._id)
-        }));
-      }
-      if (notifPromises.length > 0) {
-        await Promise.all(notifPromises);
-      }
     }
+
 
     res.json({
       match: true,

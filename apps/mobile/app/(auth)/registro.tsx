@@ -64,15 +64,24 @@ export default function RegistroScreen() {
         password,
         foto_url: fotoUrl.trim(),
       });
-      await signIn(response.token, response.user);
-      // _layout.tsx redirige automáticamente según rol
+
+      if (response.requiresVerification || response.pending) {
+        // Backend requiere verificación OTP: ir a pantalla de verificación
+        router.push({
+          pathname: '/(auth)/verify-registro' as any,
+          params: { email: email.trim().toLowerCase() }
+        });
+      } else if (response.token && response.user) {
+        await signIn(response.token, response.user);
+        // _layout.tsx redirige automáticamente según rol
+      }
     } catch (e: any) {
       console.error('Error en registro:', e);
       const status = e?.status ?? (e instanceof ApiError ? e.status : null);
       const rawMsg = (e?.message || '').toLowerCase();
 
       if (status === 409 || rawMsg.includes('existe')) {
-        setError('Ya existe una cuenta con ese correo');
+        setError('Ya existe una cuenta con ese correo. Inicia sesión o recupera tu contraseña.');
       } else if (status === 400 && e?.message) {
         setError(e.message);
       } else {
