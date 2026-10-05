@@ -1,0 +1,11 @@
+{
+  "name": "@sena/core",
+  "version": "3.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/reglas.ts",
+  "types": "./src/reglas.ts",
+  "exports": {
+    "./reglas": "./src/reglas.ts"
+  }
+}

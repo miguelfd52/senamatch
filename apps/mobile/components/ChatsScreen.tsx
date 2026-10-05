@@ -1,0 +1,815 @@
+import {
+  View, Text, StyleSheet, TouchableOpacity,
+  ScrollView, ActivityIndicator, TextInput,
+  KeyboardAvoidingView, Platform, RefreshControl,
+  Image
+} from 'react-native';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { useAuth } from '../app/context/AuthContext';
+import { useQueryClient } from '@tanstack/react-query';
+import { useBandeja, useConversacion, useEnviarMensaje, useMatches } from '../hooks/useParches';
+import { api } from '../lib/api';
+import PeopleScreen from './PeopleScreen';
+import PublicProfileModal from './PublicProfileModal';
+import { pendingChat } from '../lib/pendingChat';
+import { useTheme } from '../app/context/ThemeContext';
+
+const ACCENT = '#39A900';
+const DANGER = '#FF5B6E';
+
+export default function ChatsScreen() {
+  const [selectedChat, setSelectedChat] = useState<string | null>(null);
+  const [showPeople, setShowPeople] = useState(false);
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+
+  // Suscribirse al singleton para abrir chats desde notificaciones
+  useEffect(() => {
+    // Verificar si ya hay un chat pendiente al montar
+    const pending = pendingChat.get();
+    if (pending) {
+      setSelectedChat(pending);
+      pendingChat.clear();
+    }
+
+    // Suscribirse a futuros cambios
+    const unsub = pendingChat.subscribe((chatId) => {
+      if (chatId) {
+        setSelectedChat(chatId);
+        pendingChat.clear();
+      }
+    });
+    return unsub;
+  }, []);
+
+  if (selectedChat) {
+    return (
+      <ConversacionView
+        chatId={selectedChat}
+        onBack={() => setSelectedChat(null)}
+      />
+    );
+  }
+
+  if (showPeople) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.bg }}>
+        <PeopleScreen
+          onOpenChat={(id) => {
+            setShowPeople(false);
+            setSelectedChat(id);
+          }}
+          onBack={() => setShowPeople(false)}
+        />
+      </View>
+    );
+  }
+
+  return (
+    <ChatsList
+      onSelect={setSelectedChat}
+      onOpenPeople={() => setShowPeople(true)}
+    />
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Lista de chats                                                              */
+/* -------------------------------------------------------------------------- */
+
+function ChatsList({
+  onSelect,
+  onOpenPeople
+}: {
+  onSelect: (id: string) => void;
+  onOpenPeople: () => void;
+}) {
+  const { data: chats, isLoading, refetch } = useBandeja();
+  const { data: matches, refetch: refetchMatches } = useMatches();
+  const [refreshing, setRefreshing] = useState(false);
+  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([refetch(), refetchMatches()]);
+    setRefreshing(false);
+  }, [refetch, refetchMatches]);
+
+  const chatsList = Array.isArray(chats) ? chats : [];
+  const sorted = [...chatsList].sort((a: any, b: any) => (b.ultimo || 0) - (a.ultimo || 0));
+  const matchesList = Array.isArray(matches) ? matches : [];
+
+  if (isLoading) {
+    return (
+      <View style={[styles.center, { backgroundColor: colors.bg }]}>
+        <ActivityIndicator size="large" color={colors.accent} />
+        <Text style={[styles.loadingText, { color: colors.textSub }]}>Cargando conversaciones…</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={[styles.container, { backgroundColor: colors.bg }]}>
+      <View style={styles.header}>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Chats</Text>
+          <Text style={[styles.headerSubtitle, { color: colors.textSub }]}>Tus conversaciones directas y de parches</Text>
+        </View>
+        <TouchableOpacity
+          style={styles.newChatBtn}
+          onPress={onOpenPeople}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.newChatBtnEmoji}>➕</Text>
+          <Text style={styles.newChatBtnText}>Nueva conversación</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Sección de Matches */}
+      {matchesList.length > 0 ? (
+        <View style={styles.matchesSection}>
+          <Text style={styles.matchesSectionTitle}>❤️ Mis Matches ({matchesList.length})</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.matchesRow}
+          >
+            {matchesList.map((m: any) => {
+              const otro = m.otroUsuario;
+              if (!otro) return null;
+              return (
+                <TouchableOpacity
+                  key={m.id}
+                  style={styles.matchAvatar}
+                  onPress={() => setSelectedProfileId(otro.id)}
+                  activeOpacity={0.8}
+                >
+                  {otro.fotoUrl ? (
+                    <Image source={{ uri: otro.fotoUrl }} style={styles.matchAvatarImg} />
+                  ) : (
+                    <View style={[styles.matchAvatarEmojiBg, { backgroundColor: (otro.avatarColor || ACCENT) + '30' }]}>
+                      <Text style={styles.matchAvatarEmojiText}>{otro.avatarEmoji || '😊'}</Text>
+                    </View>
+                  )}
+                  <View style={styles.matchHeart}>
+                    <Text style={{ fontSize: 10 }}>❤️</Text>
+                  </View>
+                  <Text style={styles.matchName} numberOfLines={1}>{otro.nombre?.split(' ')[0] || '?'}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+      ) : null}
+
+      {sorted.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyEmoji}>💬</Text>
+          <Text style={[styles.emptyTitle, { color: colors.text }]}>Sin conversaciones activas</Text>
+          <Text style={[styles.emptySubtitle, { color: colors.textSub }]}>
+            Encuentra a personas registradas en SENA Match o crea un parche para comenzar a chatear.
+          </Text>
+          <TouchableOpacity
+            style={styles.explorePeopleBtn}
+            onPress={onOpenPeople}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.explorePeopleBtnEmoji}>👥</Text>
+            <Text style={styles.explorePeopleBtnText}>Explorar comunidad para chatear</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <ScrollView
+          contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={ACCENT}
+              colors={[ACCENT]}
+            />
+          }
+        >
+          {sorted.map((chat: any) => {
+            const lastMsg = chat.mensajes?.length
+              ? chat.mensajes[chat.mensajes.length - 1]
+              : null;
+            const lastText = lastMsg?.txt || 'Sin mensajes aún';
+            const lastTime = chat.ultimo
+              ? new Date(chat.ultimo).toLocaleTimeString('es-CO', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })
+              : '';
+            const isParche = chat.tipo === 'parche';
+            const isDirect = chat.tipo === 'directo';
+            const otro = chat.otroUsuario;
+            const chatTitle = otro?.nombre || chat.titulo || (isParche ? 'Chat de parche' : 'Conversación');
+            const unread = chat.unreadCount || 0;
+
+            return (
+              <TouchableOpacity
+                key={chat.id}
+                style={[styles.chatCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }, unread > 0 && styles.chatCardUnread]}
+                onPress={() => onSelect(chat.id)}
+                activeOpacity={0.7}
+              >
+                {/* Avatar */}
+                <TouchableOpacity
+                  onPress={() => otro?.id && setSelectedProfileId(otro.id)}
+                  activeOpacity={0.8}
+                >
+                  {otro?.fotoUrl ? (
+                    <Image source={{ uri: otro.fotoUrl }} style={styles.chatAvatarPhoto} resizeMode="cover" />
+                  ) : (
+                    <View
+                      style={[
+                        styles.chatAvatar,
+                        isParche && styles.chatAvatarParche,
+                        { backgroundColor: (otro?.avatarColor || ACCENT) + '25' }
+                      ]}
+                    >
+                      <Text style={styles.chatAvatarEmoji}>
+                        {otro?.avatarEmoji || (isParche ? '🎯' : '💬')}
+                      </Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+
+                <View style={styles.chatInfo}>
+                  <View style={styles.chatTopRow}>
+                    <Text style={[styles.chatName, { color: colors.text }, unread > 0 && styles.chatNameUnread]} numberOfLines={1}>
+                      {chatTitle}
+                    </Text>
+                    <Text style={[styles.chatTime, { color: colors.textMuted }]}>{lastTime}</Text>
+                  </View>
+
+                  <Text style={[styles.chatPreview, { color: colors.textSub }, unread > 0 && styles.chatPreviewUnread]} numberOfLines={1}>
+                    {lastText}
+                  </Text>
+
+                  <View style={styles.chatMeta}>
+                    <Text style={styles.chatBadge}>
+                      {isParche ? '🎯 Parche' : isDirect ? '👤 Directo' : '❤️ Match'}
+                    </Text>
+                    {otro?.rol ? (
+                      <Text style={styles.chatRole}>
+                        {otro.rol.charAt(0).toUpperCase() + otro.rol.slice(1)}
+                      </Text>
+                    ) : (
+                      <Text style={styles.chatMembers}>
+                        {chat.miembros?.length || 0} miembros
+                      </Text>
+                    )}
+                    {unread > 0 ? (
+                      <View style={styles.unreadCounter}>
+                        <Text style={styles.unreadCounterText}>{unread}</Text>
+                      </View>
+                    ) : null}
+                  </View>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+          <View style={{ height: 24 }} />
+        </ScrollView>
+      )}
+
+      {/* Perfil público modal si se pulsa sobre el avatar */}
+      <PublicProfileModal
+        userId={selectedProfileId}
+        visible={!!selectedProfileId}
+        onClose={() => setSelectedProfileId(null)}
+        onOpenChat={(id) => {
+          setSelectedProfileId(null);
+          onSelect(id);
+        }}
+      />
+    </View>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Vista de conversación                                                       */
+/* -------------------------------------------------------------------------- */
+
+function ConversacionView({ chatId, onBack }: { chatId: string; onBack: () => void }) {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  const { data: chatData, isLoading } = useConversacion(chatId);
+  const enviarMutation = useEnviarMensaje(chatId);
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const [texto, setTexto] = useState('');
+  const [errorEnvio, setErrorEnvio] = useState<string | null>(null);
+  const [mensajeFallido, setMensajeFallido] = useState<string | null>(null);
+  const [selectedParticipantId, setSelectedParticipantId] = useState<string | null>(null);
+
+  const scrollRef = useRef<ScrollView>(null);
+
+  const chat = chatData as any;
+  const mensajes = chat?.mensajes || [];
+
+  // Registrar chat activo para suprimir alertas redundantes mientras está en pantalla
+  useEffect(() => {
+    pendingChat.setActive(chatId);
+    return () => {
+      pendingChat.setActive(null);
+    };
+  }, [chatId]);
+
+  // Marcar mensajes como leídos al abrir o recibir mensajes en la conversación
+  useEffect(() => {
+    if (chatId) {
+      api.post(`/chats/${chatId}/leer`).then(() => {
+        qc.invalidateQueries({ queryKey: ['bandeja'] });
+      }).catch(() => {});
+    }
+  }, [chatId, mensajes.length, qc]);
+
+  useEffect(() => {
+    if (scrollRef.current && mensajes.length > 0) {
+      setTimeout(() => {
+        scrollRef.current?.scrollToEnd({ animated: false });
+      }, 100);
+    }
+  }, [mensajes.length]);
+
+  const handleEnviar = (textoAEnviar?: string) => {
+    const txt = (textoAEnviar || texto).trim();
+    if (!txt) return;
+
+    setErrorEnvio(null);
+    setMensajeFallido(null);
+
+    enviarMutation.mutate(txt, {
+      onSuccess: () => {
+        setTexto('');
+        setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 150);
+      },
+      onError: (err: any) => {
+        setErrorEnvio(err?.message || 'No se pudo enviar el mensaje. Revisa tu conexión.');
+        setMensajeFallido(txt);
+      }
+    });
+  };
+
+  const handleReintentar = () => {
+    if (mensajeFallido) {
+      handleEnviar(mensajeFallido);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <View style={[styles.center, { backgroundColor: colors.bg }]}>
+        <ActivityIndicator size="large" color={ACCENT} />
+      </View>
+    );
+  }
+
+  const isParche = chat?.tipo === 'parche';
+  const chatTitle = chat?.titulo || (isParche ? 'Chat de parche' : 'Conversación');
+  const otro = chat?.otroUsuario;
+
+  return (
+    <KeyboardAvoidingView
+      style={[styles.container, { backgroundColor: colors.bg }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+    >
+      {/* Top bar */}
+      <View style={[styles.convHeader, { backgroundColor: colors.card, borderBottomColor: colors.cardBorder }]}>
+        <TouchableOpacity onPress={onBack} style={styles.backBtn} activeOpacity={0.7}>
+          <Text style={styles.backText}>‹ Volver</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.convTitleWrap}
+          onPress={() => otro?.id && setSelectedParticipantId(otro.id)}
+          activeOpacity={otro?.id ? 0.8 : 1}
+        >
+          <Text style={[styles.convTitle, { color: colors.text }]} numberOfLines={1}>{chatTitle}</Text>
+          <Text style={[styles.convSubtitle, { color: colors.textSub }]}>
+            {isParche ? 'Parche grupal' : (otro?.rol ? `${otro.rol} • SENA` : 'En línea')}
+          </Text>
+        </TouchableOpacity>
+
+        <View style={{ width: 50 }} />
+      </View>
+
+      {/* Messages */}
+      <ScrollView
+        ref={scrollRef}
+        style={styles.messagesArea}
+        contentContainerStyle={styles.messagesContent}
+      >
+        {mensajes.map((msg: any, i: number) => {
+          const isMine = String(msg.de) === String(user?.id);
+          const isSystem = msg.de === null;
+
+          if (isSystem) {
+            return (
+              <View key={i} style={styles.systemMsg}>
+                <Text style={styles.systemMsgText}>{msg.txt}</Text>
+              </View>
+            );
+          }
+
+          const remitenteNombre = msg.senderNombre || msg.nombre || (otro?.nombre && String(msg.de) === String(otro.id) ? otro.nombre : null);
+
+          return (
+            <View
+              key={i}
+              style={[styles.msgBubble, isMine ? styles.msgMine : [styles.msgOther, { backgroundColor: colors.inputBg }]]}
+            >
+              {isParche && !isMine && remitenteNombre ? (
+                <Text style={styles.msgSenderName} numberOfLines={1}>
+                  {remitenteNombre}
+                </Text>
+              ) : null}
+              <Text style={[styles.msgText, isMine && styles.msgTextMine]}>
+                {msg.txt}
+              </Text>
+              <Text style={styles.msgTime}>
+                {msg.ts ? new Date(msg.ts).toLocaleTimeString('es-CO', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                }) : ''}
+              </Text>
+            </View>
+          );
+        })}
+      </ScrollView>
+
+      {/* Banner de error de envío */}
+      {errorEnvio ? (
+        <View style={styles.errorEnvioBanner}>
+          <Text style={styles.errorEnvioText}>⚠️ {errorEnvio}</Text>
+          <TouchableOpacity onPress={handleReintentar} style={styles.retryEnvioBtn}>
+            <Text style={styles.retryEnvioBtnText}>Reintentar</Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
+
+      {/* Pregunta rompehielos breve y fija */}
+      {mensajes.filter((m: any) => m && m.de !== null).length === 0 && (
+        <TouchableOpacity
+          style={styles.icebreakerBar}
+          onPress={() => setTexto('¿Qué te motivó a unirte al SENA? 😊')}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.icebreakerBarIcon}>💡</Text>
+          <Text style={styles.icebreakerBarText}>
+            Romper el hielo: "¿Qué te motivó a unirte al SENA?"
+          </Text>
+        </TouchableOpacity>
+      )}
+
+      {/* Input */}
+      <View style={[styles.inputBar, { backgroundColor: colors.card, borderTopColor: colors.cardBorder }]}>
+        <TextInput
+          style={[styles.msgInput, { backgroundColor: colors.inputBg, color: colors.text, borderColor: colors.inputBorder }]}
+          placeholder="Escribe un mensaje respetuoso…"
+          placeholderTextColor={colors.textMuted}
+          value={texto}
+          onChangeText={setTexto}
+          maxLength={500}
+          returnKeyType="send"
+          onSubmitEditing={() => handleEnviar()}
+        />
+        <TouchableOpacity
+          style={[styles.sendBtn, !texto.trim() && styles.sendBtnDisabled]}
+          onPress={() => handleEnviar()}
+          disabled={!texto.trim() || enviarMutation.isPending}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.sendBtnText}>
+            {enviarMutation.isPending ? '…' : '➤'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Modal de perfil público */}
+      <PublicProfileModal
+        userId={selectedParticipantId}
+        visible={!!selectedParticipantId}
+        onClose={() => setSelectedParticipantId(null)}
+      />
+    </KeyboardAvoidingView>
+  );
+}
+
+function makeStyles(colors: import('../app/context/ThemeContext').ThemeColors) {
+  return StyleSheet.create({
+  container: { flex: 1 },
+  center: {
+    flex: 1,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  loadingText: { marginTop: 16, fontSize: 15 },
+
+  // Matches section
+  matchesSection: {
+    paddingTop: 12,
+    paddingBottom: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.inputBg,
+    marginBottom: 8,
+  },
+  matchesSectionTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.textSub,
+    paddingHorizontal: 24,
+    marginBottom: 12,
+    letterSpacing: 0.3,
+  },
+  matchesRow: {
+    paddingHorizontal: 20,
+    gap: 12,
+    flexDirection: 'row',
+    paddingBottom: 12,
+  },
+  matchAvatar: {
+    alignItems: 'center',
+    width: 68,
+    position: 'relative',
+  },
+  matchAvatarImg: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    borderWidth: 2,
+    borderColor: ACCENT,
+  },
+  matchAvatarEmojiBg: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: ACCENT,
+  },
+  matchAvatarEmojiText: {
+    fontSize: 26,
+  },
+  matchHeart: {
+    position: 'absolute',
+    bottom: 18,
+    right: 2,
+    backgroundColor: colors.card,
+    borderRadius: 8,
+    padding: 2,
+  },
+  matchName: {
+    fontSize: 11,
+    color: colors.textSub,
+    fontWeight: '600',
+    marginTop: 4,
+    textAlign: 'center',
+    maxWidth: 64,
+  },
+
+  // Header
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingTop: Platform.OS === 'web' ? 95 : 32,
+    paddingBottom: 16,
+    maxWidth: 1200,
+    width: '100%',
+    alignSelf: 'center',
+  },
+  headerTitle: { fontSize: 28, fontWeight: '800' },
+  headerSubtitle: { fontSize: 14, marginTop: 2 },
+  newChatBtn: {
+    backgroundColor: colors.accent,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    shadowColor: colors.accent,
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  newChatBtnEmoji: { fontSize: 15 },
+  newChatBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+
+  // Empty
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+    maxWidth: 1200,
+    width: '100%',
+    alignSelf: 'center',
+  },
+  emptyEmoji: { fontSize: 56, marginBottom: 16 },
+  emptyTitle: { fontSize: 22, fontWeight: '700', marginBottom: 8 },
+  emptySubtitle: { fontSize: 14, textAlign: 'center', lineHeight: 22, maxWidth: 400 },
+  explorePeopleBtn: {
+    backgroundColor: colors.accent,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginTop: 20,
+    shadowColor: colors.accent,
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  explorePeopleBtnEmoji: { fontSize: 16 },
+  explorePeopleBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+
+  // Chat list
+  listContent: {
+    paddingHorizontal: 24,
+    paddingBottom: 32,
+    maxWidth: 1200,
+    width: '100%',
+    alignSelf: 'center',
+  },
+  chatCard: {
+    borderRadius: 16,
+    padding: 18,
+    marginBottom: 12,
+    flexDirection: 'row',
+    gap: 16,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+  },
+  chatCardUnread: {
+    borderColor: 'rgba(57, 169, 0, 0.4)',
+    backgroundColor: colors.bgSecondary,
+  },
+  chatAvatar: {
+    width: 50, height: 50, borderRadius: 25,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  chatAvatarPhoto: {
+    width: 50, height: 50, borderRadius: 25,
+    borderWidth: 2, borderColor: ACCENT,
+  },
+  chatAvatarParche: { backgroundColor: 'rgba(57,169,0,0.15)' },
+  chatAvatarEmoji: { fontSize: 24 },
+  chatInfo: { flex: 1 },
+  chatTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  chatName: { fontSize: 15, fontWeight: '700', flex: 1, marginRight: 8 },
+  chatNameUnread: { fontWeight: '900', color: '#FFFFFF' },
+  chatTime: { fontSize: 12 },
+  chatPreview: { fontSize: 13, marginTop: 4 },
+  chatPreviewUnread: { color: '#DDF4D5', fontWeight: '600' },
+  chatMeta: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 8 },
+  chatBadge: { fontSize: 11, color: '#786E8A' },
+  chatRole: { fontSize: 11, color: ACCENT, fontWeight: '700' },
+  chatMembers: { fontSize: 11, color: '#786E8A' },
+  unreadCounter: {
+    backgroundColor: ACCENT,
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    marginLeft: 'auto',
+  },
+  unreadCounterText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+
+  convHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 24, paddingTop: Platform.OS === 'web' ? 95 : 52, paddingBottom: 16,
+    backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.cardBorder,
+  },
+  backBtn: { padding: 4 },
+  backText: { color: colors.accent, fontSize: 16, fontWeight: '700' },
+  convTitleWrap: { flex: 1, alignItems: 'center', marginHorizontal: 8 },
+  convTitle: {
+    fontSize: 16, fontWeight: '700', color: colors.text,
+    textAlign: 'center',
+  },
+  convSubtitle: { fontSize: 11, color: colors.textMuted, marginTop: 1 },
+
+  // Messages
+  messagesArea: { flex: 1 },
+  messagesContent: { padding: 16, paddingBottom: 8 },
+
+  systemMsg: { alignSelf: 'center', marginVertical: 8 },
+  systemMsgText: {
+    fontSize: 12, color: colors.textSub, fontStyle: 'italic',
+    backgroundColor: colors.inputBg, paddingHorizontal: 14, paddingVertical: 6,
+    borderRadius: 12, overflow: 'hidden',
+  },
+
+  msgBubble: {
+    maxWidth: '78%', marginBottom: 8, padding: 12,
+    borderRadius: 16,
+  },
+  msgMine: {
+    alignSelf: 'flex-end',
+    backgroundColor: colors.accent,
+    borderBottomRightRadius: 4,
+  },
+  msgOther: {
+    alignSelf: 'flex-start',
+    borderBottomLeftRadius: 4,
+  },
+  msgSenderName: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.accent,
+    marginBottom: 3,
+  },
+  msgText: { fontSize: 14, color: colors.text, lineHeight: 20 },
+  msgTextMine: { color: '#fff' },
+  msgTime: {
+    fontSize: 10, color: 'rgba(255,255,255,0.6)',
+    marginTop: 4, textAlign: 'right',
+  },
+
+  errorEnvioBanner: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 91, 110, 0.15)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 91, 110, 0.3)',
+  },
+  errorEnvioText: {
+    color: DANGER,
+    fontSize: 12,
+    fontWeight: '600',
+    flex: 1,
+  },
+  retryEnvioBtn: {
+    backgroundColor: colors.danger,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginLeft: 8,
+  },
+  retryEnvioBtnText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+
+  // Input bar
+  inputBar: {
+    flexDirection: 'row', gap: 10, padding: 12,
+    borderTopWidth: 1,
+    alignItems: 'center',
+  },
+  msgInput: {
+    flex: 1, fontSize: 15,
+    borderWidth: 1,
+    paddingHorizontal: 14, paddingVertical: 10,
+    borderRadius: 20,
+  },
+  sendBtn: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: colors.accent, justifyContent: 'center', alignItems: 'center',
+  },
+  sendBtnDisabled: { backgroundColor: colors.chipBg },
+  sendBtnText: { fontSize: 18, color: '#fff' },
+  icebreakerBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(57, 169, 0, 0.12)',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(57, 169, 0, 0.3)',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  icebreakerBarIcon: {
+    fontSize: 16,
+  },
+  icebreakerBarText: {
+    color: colors.success,
+    fontSize: 13,
+    fontWeight: '600',
+    flex: 1,
+  },
+  });
+}

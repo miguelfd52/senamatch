@@ -1,0 +1,27 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "skipLibCheck": true,
+    "strict": true,
+    "paths": {
+      "@sena/core/*": [
+        "../../packages/core/src/*"
+      ],
+      "@sena/core": [
+        "../../packages/core/src/reglas.ts"
+      ],
+      "@sena/api/*": [
+        "../../packages/api/src/*"
+      ],
+      "@sena/api": [
+        "../../packages/api/src/database.types.ts"
+      ]
+    }
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx"
+  ]
+}

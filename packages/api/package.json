@@ -1,0 +1,11 @@
+{
+  "name": "@sena/api",
+  "version": "3.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/database.types.ts",
+  "types": "./src/database.types.ts",
+  "exports": {
+    "./database.types": "./src/database.types.ts"
+  }
+}

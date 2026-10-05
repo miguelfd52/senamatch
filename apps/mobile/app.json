@@ -1,0 +1,15 @@
+{
+  "expo": {
+    "name": "SENA Match",
+    "slug": "sena-match",
+    "scheme": "senamatch",
+    "version": "3.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "plugins": ["expo-router"],
+    "platforms": ["ios", "android", "web"],
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}

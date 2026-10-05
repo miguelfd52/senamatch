@@ -1,0 +1,41 @@
+{
+  "name": "sena-match-v3",
+  "private": true,
+  "version": "3.0.0",
+  "description": "Red social híbrida para la comunidad SENA: descubrimiento 1 a 1 y parches grupales efímeros",
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "server"
+  ],
+  "scripts": {
+    "dev": "concurrently -n \"SERVER,MOBILE\" -c \"cyan,magenta\" \"npm run dev:server\" \"npm run dev:mobile\"",
+    "dev:mobile": "npm run start --workspace apps/mobile",
+    "dev:server": "npm run dev --prefix server",
+    "build:vercel": "node scripts/build-vercel.js",
+    "db:start": "supabase start",
+    "db:push": "supabase db push",
+    "db:reset": "supabase db reset",
+    "db:types": "supabase gen types typescript --local > packages/api/src/database.types.ts",
+    "db:test": "psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f supabase/tests/01_esferas_y_rls.test.sql",
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+    "@types/react": "~18.2.79",
+    "concurrently": "^10.0.5",
+    "eslint": "^9.13.0",
+    "typescript": "~5.3.3"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongodb": "^7.6.0",
+    "mongoose": "^8.7.0",
+    "nodemailer": "^6.9.15",
+    "react-dom": "18.2.0",
+    "react-native-web": "~0.19.10"
+  }
+}

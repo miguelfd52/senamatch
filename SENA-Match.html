@@ -1,0 +1,2195 @@
+<title>SENA Match</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Instrument+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap">
+
+<style>
+/* ============================================================================
+   Identidad «Turno» — propia de SENA Match, distinta del verde institucional
+   que usan los demás proyectos. El referente es el tablero de turnos y la
+   ficha de horario: ciruela profunda, mandarina para lo que se toca, menta
+   para lo confirmado, ámbar para el tiempo. Numerales en monoespaciada.
+   ============================================================================ */
+:root{
+  --fondo:#16121D; --sup:#1F1A29; --sup2:#282234; --sup3:#332B41;
+  --linea:#3A3247; --linea-suave:#2A2436;
+  --tinta:#F0ECF6; --tinta2:#B9B1C9; --tinta3:#847B96;
+  --mandarina:#FF6B4A; --mandarina-hover:#FF8468; --sobre-mandarina:#2A0C04;
+  --menta:#5FE0B4; --ambar:#FFC24B; --rojo:#FF5B6E;
+  --radio:10px; --radio-s:6px;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:light){
+  :root:not([data-theme="dark"]){
+    --fondo:#F6F3FA; --sup:#FFFFFF; --sup2:#EFEBF6; --sup3:#E4DEEE;
+    --linea:#DCD5E8; --linea-suave:#EAE4F2;
+    --tinta:#16121D; --tinta2:#4A4159; --tinta3:#786E8A;
+    --mandarina:#D8390F; --mandarina-hover:#B92E08; --sobre-mandarina:#FFFFFF;
+    --menta:#0E7F5E; --ambar:#8A5B00; --rojo:#C4142B;
+    color-scheme:light;
+  }
+}
+:root[data-theme="light"]{
+  --fondo:#F6F3FA; --sup:#FFFFFF; --sup2:#EFEBF6; --sup3:#E4DEEE;
+  --linea:#DCD5E8; --linea-suave:#EAE4F2;
+  --tinta:#16121D; --tinta2:#4A4159; --tinta3:#786E8A;
+  --mandarina:#D8390F; --mandarina-hover:#B92E08; --sobre-mandarina:#FFFFFF;
+  --menta:#0E7F5E; --ambar:#8A5B00; --rojo:#C4142B;
+  color-scheme:light;
+}
+
+*{box-sizing:border-box}
+body{
+  background:var(--fondo); color:var(--tinta);
+  font-family:"Instrument Sans",system-ui,sans-serif; font-size:15px; line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,.dis{font-family:"Bricolage Grotesque",system-ui,sans-serif;text-wrap:balance;
+  letter-spacing:-.02em;margin:0}
+.mono,.hora,.cifra,.rot{font-family:"DM Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--mandarina);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+#app{max-width:600px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column}
+
+/* ---------- Barra superior ---------- */
+.barra{position:sticky;top:0;z-index:20;background:var(--fondo);
+  border-bottom:1px solid var(--linea);padding:.65rem .9rem;display:flex;align-items:center;gap:.55rem}
+.barra h1{font-size:1.1rem;font-weight:700;flex:1;min-width:0;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.icono-b{border:1px solid var(--linea);background:var(--sup);width:34px;height:34px;
+  border-radius:var(--radio-s);display:grid;place-items:center;cursor:pointer;position:relative;flex:none}
+.icono-b:hover{background:var(--sup2)}
+.icono-b svg{width:17px;height:17px}
+.globo{position:absolute;top:-5px;right:-5px;min-width:17px;height:17px;padding:0 4px;
+  background:var(--mandarina);color:var(--sobre-mandarina);border-radius:9px;
+  font-family:"DM Mono",monospace;font-size:.6rem;display:grid;place-items:center;font-weight:500}
+
+.vista{flex:1;padding:.9rem .9rem 5.6rem;display:flex;flex-direction:column;gap:.85rem}
+.oculto{display:none!important}
+
+/* ---------- Pestañas ---------- */
+nav.tabs{position:fixed;bottom:0;left:0;right:0;z-index:30;max-width:600px;margin:0 auto;
+  display:grid;grid-template-columns:repeat(5,1fr);background:var(--sup);
+  border-top:1px solid var(--linea);padding-bottom:env(safe-area-inset-bottom)}
+nav.tabs button{background:none;border:0;padding:.55rem .1rem .7rem;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:.22rem;position:relative;
+  font-size:.63rem;font-weight:600;letter-spacing:.02em;color:var(--tinta3)}
+nav.tabs button svg{width:19px;height:19px}
+nav.tabs button[aria-current="page"]{color:var(--mandarina)}
+nav.tabs button[aria-current="page"]::before{content:"";position:absolute;top:0;left:22%;right:22%;
+  height:2px;background:var(--mandarina);border-radius:0 0 2px 2px}
+nav.tabs .pip{position:absolute;top:.45rem;right:23%;width:6px;height:6px;border-radius:50%;
+  background:var(--mandarina)}
+
+/* ---------- Piezas ---------- */
+.card{background:var(--sup);border:1px solid var(--linea);border-radius:var(--radio)}
+.pad{padding:.9rem 1rem}
+.col{display:flex;flex-direction:column;gap:.75rem}
+.fila{display:flex;align-items:center;gap:.65rem}
+.rot{font-size:.66rem;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--tinta3)}
+.tenue{color:var(--tinta3);font-size:.82rem}
+.mand{color:var(--mandarina)} .men{color:var(--menta)} .amb{color:var(--ambar)}
+.nota{border:1px solid var(--linea);border-left:3px solid var(--ambar);background:var(--sup);
+  border-radius:var(--radio-s);padding:.7rem .85rem;font-size:.83rem;color:var(--tinta2)}
+.nota b{color:var(--tinta)}
+
+button.b{border:1px solid var(--linea);background:var(--sup2);color:var(--tinta);
+  padding:.62rem 1rem;cursor:pointer;font-weight:600;font-size:.88rem;border-radius:var(--radio-s)}
+button.b:hover{background:var(--sup3)}
+button.b:disabled{opacity:.4;cursor:not-allowed}
+button.b.pri{background:var(--mandarina);border-color:var(--mandarina);color:var(--sobre-mandarina)}
+button.b.pri:hover{background:var(--mandarina-hover);border-color:var(--mandarina-hover)}
+button.b.peligro{color:var(--rojo);border-color:var(--linea)}
+button.b.ancho{width:100%}
+button.b.chico{padding:.4rem .7rem;font-size:.8rem}
+
+input,select,textarea{width:100%;background:var(--sup2);border:1px solid var(--linea);
+  padding:.6rem .7rem;border-radius:var(--radio-s)}
+input::placeholder,textarea::placeholder{color:var(--tinta3)}
+label.campo{display:flex;flex-direction:column;gap:.28rem;font-size:.76rem;color:var(--tinta2)}
+.rej2{display:grid;grid-template-columns:1fr 1fr;gap:.65rem}
+
+.chips{display:flex;flex-wrap:wrap;gap:.35rem}
+.chip{border:1px solid var(--linea);background:var(--sup2);color:var(--tinta2);
+  padding:.28rem .6rem;font-size:.78rem;border-radius:100px;cursor:pointer;white-space:nowrap}
+.chip[aria-pressed="true"]{border-color:var(--mandarina);color:var(--mandarina);background:transparent}
+.chip.fijo{cursor:default}
+.chip.men{border-color:var(--menta);color:var(--menta);background:transparent}
+.chip.amb{border-color:var(--ambar);color:var(--ambar);background:transparent}
+
+.av{border-radius:var(--radio-s);display:grid;place-items:center;flex:none;
+  font-family:"Bricolage Grotesque",sans-serif;font-weight:700;color:#16121D}
+.av.s{width:38px;height:38px;font-size:.9rem}
+.av.m{width:52px;height:52px;font-size:1.2rem;border-radius:var(--radio)}
+.av.l{width:88px;height:88px;font-size:2.1rem;border-radius:14px}
+
+.vacio{text-align:center;color:var(--tinta3);padding:2.2rem 1rem;display:flex;
+  flex-direction:column;gap:.5rem;align-items:center}
+.vacio b{color:var(--tinta2);font-family:"Bricolage Grotesque",sans-serif;font-size:1rem}
+
+/* ---------- Mazo ---------- */
+.tira{display:flex;gap:.5rem;overflow-x:auto;padding-bottom:.2rem;margin:0 -.9rem;padding-inline:.9rem}
+.tira::-webkit-scrollbar{height:0}
+.mini{flex:none;width:74px;display:flex;flex-direction:column;align-items:center;gap:.3rem;
+  cursor:pointer;background:none;border:0;padding:0}
+.mini .av{border:2px solid var(--mandarina)}
+.mini span{font-size:.68rem;color:var(--tinta2);text-align:center;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap;width:100%}
+
+.ficha{background:var(--sup);border:1px solid var(--linea);border-radius:var(--radio);
+  overflow:hidden;display:flex;flex-direction:column}
+.ficha .top{padding:1rem;display:flex;gap:.85rem;align-items:flex-start;
+  border-bottom:1px dashed var(--linea)}
+.ficha h2{font-size:1.3rem}
+.marcador{margin-left:auto;text-align:right;flex:none}
+.marcador b{font-family:"DM Mono",monospace;font-size:1.45rem;color:var(--mandarina);
+  display:block;line-height:1;font-weight:500}
+.marcador span{font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:var(--tinta3)}
+.ficha .cuerpo{padding:.9rem 1rem;display:flex;flex-direction:column;gap:.7rem}
+.porq{display:flex;flex-direction:column;gap:.32rem;font-size:.84rem;color:var(--tinta2)}
+.porq div{display:flex;gap:.5rem;align-items:baseline}
+.porq i{width:5px;height:5px;border-radius:50%;background:var(--menta);flex:none;
+  transform:translateY(-2px)}
+.acciones{display:grid;grid-template-columns:auto 1fr;gap:.6rem;padding:0 1rem 1rem}
+
+/* ---------- Parches: tarjeta con talón ---------- */
+.parche{display:flex;width:100%;text-align:left;background:var(--sup);
+  border:1px solid var(--linea);border-radius:var(--radio);overflow:hidden;cursor:pointer}
+.parche:hover{border-color:var(--sup3);background:var(--sup2)}
+.talon{flex:none;width:74px;padding:.8rem .5rem;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:.15rem;background:var(--sup2);
+  border-right:1px dashed var(--linea)}
+.talon .d{font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;color:var(--tinta3)}
+.talon .h{font-family:"DM Mono",monospace;font-size:1.02rem;color:var(--tinta);font-weight:500}
+.talon .e{font-size:1.1rem;line-height:1.2}
+.parche .info{flex:1;min-width:0;padding:.75rem .85rem;display:flex;flex-direction:column;gap:.35rem}
+.parche h3{font-size:.98rem;font-weight:600;font-family:"Instrument Sans",sans-serif;
+  letter-spacing:0;line-height:1.25}
+.parche .sub{font-size:.78rem;color:var(--tinta3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cupo{display:flex;align-items:center;gap:.5rem;font-size:.76rem;color:var(--tinta2)}
+.barra-cupo{flex:1;max-width:88px;height:3px;background:var(--sup3);border-radius:2px;overflow:hidden}
+.barra-cupo i{display:block;height:100%;background:var(--menta)}
+.barra-cupo.lleno i{background:var(--ambar)}
+
+/* ---------- Hoja modal ---------- */
+.hoja{position:fixed;inset:0;z-index:50;background:rgba(10,7,16,.6);display:flex;
+  align-items:flex-end;justify-content:center}
+.hoja .panel{background:var(--fondo);width:100%;max-width:600px;max-height:93dvh;
+  display:flex;flex-direction:column;border-radius:14px 14px 0 0;
+  border-top:1px solid var(--linea)}
+.hoja .cab{display:flex;align-items:center;gap:.55rem;padding:.85rem 1rem;
+  border-bottom:1px solid var(--linea)}
+.hoja .cab h2{font-size:1.05rem;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hoja .cuerpo{overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:.8rem}
+.tirador{width:36px;height:4px;background:var(--sup3);border-radius:2px;margin:.5rem auto 0}
+
+/* ---------- Chat ---------- */
+.hilo{display:flex;gap:.65rem;align-items:center;width:100%;text-align:left;
+  border:1px solid var(--linea);background:var(--sup);padding:.65rem .8rem;
+  border-radius:var(--radio);cursor:pointer}
+.hilo:hover{background:var(--sup2)}
+.hilo .t{flex:1;min-width:0}
+.hilo .t b{display:block;font-size:.9rem;font-weight:600}
+.hilo .t span{display:block;font-size:.79rem;color:var(--tinta3);overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.conversa{display:flex;flex-direction:column;gap:.4rem;padding:.2rem 0}
+.msj{max-width:80%;padding:.5rem .72rem;border-radius:12px;font-size:.9rem;
+  white-space:pre-wrap;word-wrap:break-word;background:var(--sup);border:1px solid var(--linea)}
+.msj .q{display:block;font-size:.68rem;color:var(--mandarina);font-weight:600;margin-bottom:.12rem}
+.msj.mio{align-self:flex-end;background:var(--mandarina);border-color:var(--mandarina);
+  color:var(--sobre-mandarina)}
+.msj.sis{align-self:center;max-width:100%;text-align:center;background:none;border:0;
+  color:var(--tinta3);font-size:.75rem;font-family:"DM Mono",monospace}
+.escritor{display:flex;gap:.5rem;padding:.65rem .9rem;border-top:1px solid var(--linea);
+  background:var(--fondo);position:sticky;bottom:0}
+.escritor input{flex:1;border-radius:100px}
+
+.estado{font-size:.68rem;color:var(--tinta3);display:flex;align-items:center;gap:.3rem;flex:none}
+.estado i{width:6px;height:6px;border-radius:50%;background:var(--tinta3)}
+.estado.viva i{background:var(--menta)}
+
+.lista{display:flex;flex-direction:column;gap:.5rem}
+.reng{display:flex;gap:.65rem;align-items:center;padding:.6rem .8rem;background:var(--sup);
+  border:1px solid var(--linea);border-radius:var(--radio)}
+.reng .t{flex:1;min-width:0}
+.reng .t b{display:block;font-size:.88rem;font-weight:600}
+</style>
+
+<div id="app">
+  <header class="barra">
+    <svg width="22" height="22" viewBox="0 0 26 26" aria-hidden="true" style="flex:none">
+      <rect x="1.5" y="1.5" width="15" height="15" rx="3" fill="none" stroke="var(--mandarina)" stroke-width="2.2"></rect>
+      <rect x="9.5" y="9.5" width="15" height="15" rx="3" fill="none" stroke="var(--menta)" stroke-width="2.2"></rect>
+      <rect x="9.5" y="9.5" width="7" height="7" rx="1.5" fill="var(--mandarina)"></rect>
+    </svg>
+    <h1 id="titulo">SENA Match</h1>
+    <span class="estado" id="estado"><i></i><span>conectando</span></span>
+    <button class="icono-b oculto" id="b-noti" title="Novedades" aria-label="Novedades">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M18 9a6 6 0 1 0-12 0c0 5-2 6-2 6h16s-2-1-2-6"/><path d="M10.5 20a2 2 0 0 0 3 0"/></svg>
+    </button>
+    <button class="icono-b" id="b-tema" title="Cambiar tema" aria-label="Cambiar tema">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg>
+    </button>
+  </header>
+
+  <main class="vista" id="vista"></main>
+  <nav class="tabs oculto" id="tabs"></nav>
+</div>
+<div id="modal"></div>
+
+<script>
+"use strict";
+
+/* ==========================================================================
+   Catálogos (en la versión Postgres son las tablas de 0001)
+   ========================================================================== */
+const CENTROS = [
+  {id:9101, nombre:"Centro de Servicios Financieros", ciudad:"Bogotá"},
+  {id:9207, nombre:"Centro de Diseño y Metrología", ciudad:"Bogotá"},
+  {id:9302, nombre:"Centro de Comercio", ciudad:"Medellín"},
+  {id:9410, nombre:"Centro de Gestión Industrial", ciudad:"Bogotá"},
+  {id:9505, nombre:"Centro Agropecuario", ciudad:"Cali"}
+];
+const INTERESES = ["Fútbol","Gimnasio","Ciclismo","Música","Fotografía","Baile","Desayunos",
+  "Café","Programación","Diseño","Inglés","Emprendimiento","Videojuegos","Voluntariado",
+  "Cine","Lectura","Cocina","Senderismo"];
+const JORNADAS = [["manana","Mañana"],["tarde","Tarde"],["noche","Noche"],["virtual","Virtual"]];
+const TIPOS = [
+  ["desayuno","🥐","Desayuno"],["almuerzo","🍽️","Almuerzo"],["cafe","☕","Café"],
+  ["estudio","📚","Estudio"],["deporte","⚽","Deporte"],["integracion","🎉","Integración"],
+  ["cultural","🎭","Cultural"],["tramite","📄","Trámite"],["otro","📍","Otro"]
+];
+const PLANTILLAS = [
+  {t:"Desayuno en la cafetería", tipo:"desayuno", lugar:"Cafetería central", hora:8,  min:0,  dur:60, cupo:6},
+  {t:"Café entre clases",        tipo:"cafe",     lugar:"Cafetería central", hora:10, min:0,  dur:30, cupo:4},
+  {t:"Repaso antes de la entrega", tipo:"estudio", lugar:"Biblioteca",       hora:14, min:0,  dur:120, cupo:5},
+  {t:"Fútbol en la cancha",      tipo:"deporte",  lugar:"Cancha sintética",  hora:17, min:0,  dur:90, cupo:10}
+];
+const INTENCIONES = {
+  cita:    {n:"Cita",    e:"💛"}, amistad:{n:"Amistad", e:"🫂"},
+  estudio: {n:"Estudio", e:"📚"}, deporte:{n:"Deporte", e:"⚽"},
+  colegas: {n:"Colegas", e:"🤝"}
+};
+const MOTIVOS = [
+  ["acoso","Acoso o mensajes molestos"],["contenido_sexual","Contenido sexual"],
+  ["suplantacion","Se hace pasar por otra persona"],["spam","Spam o publicidad"],
+  ["discurso_de_odio","Discurso de odio"],["cruce_de_rol","Cruce de rol indebido"],
+  ["no_asistio","Confirmó y no llegó"],["otro","Otro"]
+];
+const PALETA = ["#FF6B4A","#5FE0B4","#FFC24B","#8B9CFF","#FF8FC7","#7FD8FF","#C9A7FF","#9BE080"];
+const EMOJIS_AV = ["🙂","😎","🤓","🦊","🐼","🐙","🌵","🎧","🎸","⚡","🌙","🔥","🍀","🚴","📸","🎯"];
+
+/* ==========================================================================
+   Reglas de dominio (espejo de packages/core/src/reglas.ts)
+   ========================================================================== */
+const rolPorDominio = (email) => {
+  const e = (email||"").trim().toLowerCase();
+  if(e.endsWith("@misena.edu.co")) return "aprendiz";
+  if(e.endsWith("@sena.edu.co")) return "instructor";
+  return null;
+};
+const esferaDe = (rol) => (rol === "aprendiz" || rol === "egresado") ? "aprendices" : "equipo";
+function edad(iso){
+  if(!iso) return null;
+  const n = new Date(iso), h = new Date();
+  let a = h.getFullYear()-n.getFullYear();
+  const m = h.getMonth()-n.getMonth();
+  if(m<0 || (m===0 && h.getDate()<n.getDate())) a--;
+  return a;
+}
+const mayorDeEdad = (p) => (edad(p.nacimiento) ?? 0) >= 18;
+
+/** Las seis compuertas de puedo_ver_perfil() (migración 0003). */
+function puedeVer(yo, otro, intent, cfg){
+  if(!yo || !otro || yo.id === otro.id) return false;
+  if((otro.estado||"activo") !== "activo") return false;
+  if(yo.esfera !== otro.esfera) return false;
+  if(yo.centro !== otro.centro) return false;
+  if(!(yo.intenciones||[]).includes(intent)) return false;
+  if(!(otro.intenciones||[]).includes(intent)) return false;
+  if(bloqueadoCon(otro.id)) return false;
+  if(intent === "cita"){
+    if(!cfg.modoCita) return false;
+    if(!mayorDeEdad(yo) || !mayorDeEdad(otro)) return false;
+  }
+  if(intent === "colegas" && (yo.esfera !== "equipo" || otro.esfera !== "equipo")) return false;
+  return true;
+}
+
+function afinidad(a, b){
+  const porq = [], comunes = (a.intereses||[]).filter(i => (b.intereses||[]).includes(i));
+  let p = 0;
+  if(a.centro === b.centro){ p += 22; porq.push("Del mismo centro"); }
+  const total = new Set([...(a.intereses||[]), ...(b.intereses||[])]).size || 1;
+  if(comunes.length){
+    p += Math.round(32 * comunes.length / total);
+    porq.push(comunes.length === 1 ? "A los dos les gusta " + comunes[0].toLowerCase()
+      : comunes.length + " intereses en común: " + comunes.slice(0,3).join(", "));
+  }
+  if(a.jornada && a.jornada === b.jornada){ p += 12; porq.push("Misma jornada, se cruzan en el centro"); }
+  if(a.ficha && a.ficha === b.ficha){ p += 12; porq.push("De la misma ficha"); }
+  else if(a.programa && b.programa && a.programa.trim().toLowerCase() === b.programa.trim().toLowerCase()){
+    p += 9; porq.push("Mismo programa"); }
+  const ea = edad(a.nacimiento), eb = edad(b.nacimiento);
+  if(ea && eb && Math.abs(ea-eb) <= 3){ p += 7; porq.push("Edades cercanas"); }
+  const juntos = parchesCompartidos(a.id, b.id);
+  if(juntos){ p += 10; porq.push(juntos === 1 ? "Van al mismo parche" : "Coinciden en " + juntos + " parches"); }
+  if(b.visto && Date.now() - b.visto < 48*3600e3){ p += 6; porq.push("Estuvo por aquí hace poco"); }
+  return {puntaje: Math.max(0, Math.min(100, p)), porq};
+}
+
+/* ==========================================================================
+   Almacén: base compartida del artifact, con respaldo local
+   ========================================================================== */
+const memoria = {};
+const lsLeer = (k) => { try{ return localStorage.getItem(k); }catch(e){ return memoria[k] ?? null; } };
+const lsGuardar = (k,v) => { memoria[k] = v; try{ localStorage.setItem(k,v); }catch(e){} };
+const lsBorrar = (k) => { delete memoria[k]; try{ localStorage.removeItem(k); }catch(e){} };
+const lsJson = (k) => { try{ return JSON.parse(lsLeer(k) || "{}"); }catch(e){ return {}; } };
+
+function almacenLocal(){
+  const CLAVE = "sena-match.local", subs = new Set();
+  const leer = () => lsJson(CLAVE);
+  const guardar = (d) => { lsGuardar(CLAVE, JSON.stringify(d));
+                           subs.forEach(f => { try{ f(); }catch(e){} }); };
+  const inst = (id, c) => ({id, exists:!!c, data:()=> c ? JSON.parse(JSON.stringify(c)) : undefined,
+                            metadata:{fromCache:true,hasPendingWrites:false}});
+  const docRef = (ruta) => {
+    const id = ruta.split("/").pop();
+    return {
+      id, path:ruta,
+      async get(){ return inst(id, leer()[ruta]); },
+      async set(c){ const d = leer(); d[ruta] = c; guardar(d); },
+      async update(p){ const d = leer(); if(!d[ruta]) throw {code:"invalid_argument"};
+                       d[ruta] = Object.assign({}, d[ruta], p); guardar(d); },
+      async delete(){ const d = leer(); delete d[ruta]; guardar(d); },
+      async acquire(){ return {acquired:true}; },
+      onSnapshot(sig){ const f = () => sig(inst(id, leer()[ruta]));
+                       subs.add(f); setTimeout(f,0); return () => subs.delete(f); },
+      collection(s){ return colRef(ruta + "/" + s); }
+    };
+  };
+  const consultar = (base) => {
+    const d = leer(), docs = [];
+    for(const r of Object.keys(d))
+      if(r.startsWith(base + "/") && r.slice(base.length+1).indexOf("/") === -1)
+        docs.push(inst(r.split("/").pop(), d[r]));
+    docs.sort((x,y) => x.id < y.id ? -1 : 1);
+    return {docs, size:docs.length, empty:!docs.length, docChanges:()=>[],
+            metadata:{fromCache:true,hasPendingWrites:false}};
+  };
+  const colRef = (base) => ({
+    path:base,
+    async get(){ return consultar(base); },
+    doc(id){ return docRef(base + "/" + (id || "d" + Math.random().toString(36).slice(2,10))); },
+    async add(c){ const r = this.doc(); await r.set(c); return r; },
+    onSnapshot(sig){ const f = () => sig(consultar(base));
+                     subs.add(f); setTimeout(f,0); return () => subs.delete(f); }
+  });
+  return {doc:docRef, collection:colRef, local:true};
+}
+
+/* --------------------------------------------------------------------------
+   Almacén Supabase. Expone la misma superficie doc()/collection() que el
+   almacén local, más rpc() y auth: así el resto de la app no cambia. Las
+   escrituras sensibles —swipe, cupo, mensajes— no van por la tabla sino por
+   funciones SECURITY DEFINER del esquema (supabase/app/esquema.sql).
+   -------------------------------------------------------------------------- */
+const LS_SB = "sena-match.supabase";
+const LIB_SB = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js";
+
+function credencialesSB(){
+  const c = lsJson(LS_SB);
+  return (c && c.url && c.key) ? c : null;
+}
+function cargarLibSB(){
+  return new Promise((ok, mal) => {
+    if(window.supabase && window.supabase.createClient) return ok();
+    const s = document.createElement("script");
+    s.src = LIB_SB;
+    s.onload = () => ok();
+    s.onerror = () => mal(new Error("no se pudo cargar la librería de Supabase"));
+    document.head.appendChild(s);
+  });
+}
+
+const ms = (t) => t ? new Date(t).getTime() : 0;
+const COLS = {
+  perfiles: {tabla:"perfiles", pk:"id", soloUpdate:true,
+    desde: r => ({id:r.id, nombre:r.nombre, correo:r.correo, rol:r.rol, esfera:r.esfera,
+      estado:r.estado, centro:r.centro, programa:r.programa, ficha:r.ficha, jornada:r.jornada,
+      nacimiento:r.nacimiento, bio:r.bio, intereses:r.intereses||[], intenciones:r.intenciones||[],
+      avatarEmoji:r.avatar_emoji, avatarColor:r.avatar_color, asistencias:r.asistencias||0,
+      inasistencias:r.inasistencias||0, demo:r.demo, creado:ms(r.creado), visto:ms(r.visto)}),
+    hacia: d => {
+      const o = {};
+      const par = {nombre:"nombre", centro:"centro", programa:"programa", ficha:"ficha",
+        jornada:"jornada", nacimiento:"nacimiento", bio:"bio", intereses:"intereses",
+        intenciones:"intenciones", avatarEmoji:"avatar_emoji", avatarColor:"avatar_color"};
+      Object.keys(par).forEach(k => { if(d[k] !== undefined) o[par[k]] = d[k] === "" && k === "ficha" ? null : d[k]; });
+      if(d.visto !== undefined) o.visto = new Date(d.visto).toISOString();
+      return o;
+    }},
+  parches: {tabla:"parches", pk:"id",
+    desde: r => ({id:r.id, anfitrion:r.anfitrion, titulo:r.titulo, descripcion:r.descripcion,
+      tipo:r.tipo, lugar:r.lugar, inicio:r.inicio, duracion:r.duracion, cupo:r.cupo,
+      centro:r.centro, esfera:r.esfera, mixto:r.mixto, aprobacion:r.aprobacion, codigo:r.codigo,
+      estado:r.estado, participantes:r.participantes||[], solicitudes:r.solicitudes||[],
+      asistencia:r.asistencia, creado:ms(r.creado)})},
+  chats: {tabla:"chats", pk:"id",
+    desde: r => ({id:r.id, tipo:r.tipo, titulo:r.titulo, miembros:r.miembros||[],
+      mensajes:r.mensajes||[], creado:ms(r.creado), ultimo:ms(r.ultimo)})},
+  swipes: {tabla:"swipes", pk:"perfil",
+    desde: r => ({id:r.perfil, porIntencion:r.por_intencion||{}, ts:ms(r.ts)})},
+  bloqueos:{tabla:"bloqueos", pk:"perfil",
+    desde: r => ({id:r.perfil, ids:r.ids||[], ts:ms(r.ts)}),
+    hacia: d => ({ids:d.ids||[]})},
+  reportes:{tabla:"reportes", pk:"id",
+    desde: r => r,
+    hacia: d => ({de:d.de, sobre:d.sobre, motivo:d.motivo, detalle:d.detalle, estado:d.estado})},
+  config:  {tabla:"config", pk:"id", soloUpdate:true,
+            desde: r => r.datos || {}, hacia: d => ({datos:d})},
+  matches: {tabla:"matches", pk:"id", desde: r => r}
+};
+
+function almacenSupabase(cli){
+  const inst = (id, c) => ({id, exists:!!c, data:()=> c ? JSON.parse(JSON.stringify(c)) : undefined,
+                            metadata:{fromCache:false, hasPendingWrites:false}});
+  const conf = (col) => COLS[col] || {tabla:col, pk:"id", desde:r=>r, hacia:d=>d};
+
+  const docRef = (ruta) => {
+    const parte = ruta.split("/"), col = parte[0], id = parte[1], c = conf(col);
+    return {
+      id, path:ruta,
+      async get(){
+        const {data} = await cli.from(c.tabla).select("*").eq(c.pk, id).maybeSingle();
+        return inst(id, data ? c.desde(data) : null);
+      },
+      async set(cuerpo){
+        const fila = (c.hacia || (d=>d))(cuerpo);
+        // `perfiles` y `config` no admiten INSERT desde el cliente: la fila la
+        // crean el trigger de Auth y la migración. Ahí `set` es un update.
+        if(c.soloUpdate){
+          const {error} = await cli.from(c.tabla).update(fila).eq(c.pk, id);
+          if(error) throw error;
+          return;
+        }
+        const {error} = await cli.from(c.tabla).upsert(Object.assign({[c.pk]:id}, fila));
+        if(error) throw error;
+      },
+      async update(parche){
+        const {error} = await cli.from(c.tabla).update((c.hacia || (d=>d))(parche)).eq(c.pk, id);
+        if(error) throw error;
+      },
+      async delete(){ await cli.from(c.tabla).delete().eq(c.pk, id); },
+      async acquire(){ return {acquired:true}; },   // el candado real vive en las RPC
+      onSnapshot(sig){
+        let vivo = true;
+        const traer = async () => {
+          const {data} = await cli.from(c.tabla).select("*").eq(c.pk, id).maybeSingle();
+          if(vivo) sig(inst(id, data ? c.desde(data) : null));
+        };
+        traer();
+        const ch = cli.channel("d:" + c.tabla + ":" + id + ":" + Math.random().toString(36).slice(2,7))
+          .on("postgres_changes",
+              {event:"*", schema:"public", table:c.tabla, filter:c.pk + "=eq." + id}, traer)
+          .subscribe();
+        return () => { vivo = false; cli.removeChannel(ch); };
+      },
+      collection(){ throw new Error("subcolecciones no se usan"); }
+    };
+  };
+
+  const colRef = (col) => {
+    const c = conf(col);
+    const leer = async () => {
+      const {data} = await cli.from(c.tabla).select("*");
+      const docs = (data||[]).map(r => inst(String(r[c.pk]), c.desde(r)));
+      return {docs, size:docs.length, empty:!docs.length, docChanges:()=>[],
+              metadata:{fromCache:false, hasPendingWrites:false}};
+    };
+    return {
+      path:col,
+      get: leer,
+      doc(id){ return docRef(col + "/" + (id || crypto.randomUUID())); },
+      async add(cuerpo){ const r = this.doc(); await r.set(cuerpo); return r; },
+      onSnapshot(sig){
+        let vivo = true, pend = null;
+        const traer = async () => { const s = await leer(); if(vivo) sig(s); };
+        traer();
+        const rebote = () => { clearTimeout(pend); pend = setTimeout(traer, 250); };
+        const ch = cli.channel("c:" + c.tabla + ":" + Math.random().toString(36).slice(2,7))
+          .on("postgres_changes", {event:"*", schema:"public", table:c.tabla}, rebote)
+          .subscribe();
+        return () => { vivo = false; clearTimeout(pend); cli.removeChannel(ch); };
+      }
+    };
+  };
+
+  return {
+    doc:docRef, collection:colRef, supabase:true, cli,
+    async rpc(nombre, args){
+      const {data, error} = await cli.rpc(nombre, args || {});
+      if(error) throw error;
+      return data;
+    }
+  };
+}
+
+let DB = null, COMPARTIDA = false, MODO = "local";
+
+async function abrirAlmacen(){
+  const cred = credencialesSB();
+  if(cred){
+    try{
+      await cargarLibSB();
+      const cli = window.supabase.createClient(cred.url, cred.key,
+        {auth:{persistSession:true, autoRefreshToken:true, detectSessionInUrl:false}});
+      MODO = "supabase"; COMPARTIDA = true;
+      return almacenSupabase(cli);
+    }catch(e){
+      setTimeout(() => toast("Supabase: " + (e.message || "no se pudo conectar"), true), 400);
+    }
+  }
+  try{
+    if(window.claude && typeof window.claude.use === "function"){
+      const db = await window.claude.use("db");
+      if(db){ MODO = "artifact"; COMPARTIDA = true; return db; }
+    }
+  }catch(e){}
+  MODO = "local";
+  return almacenLocal();
+}
+
+/* ==========================================================================
+   Estado
+   ========================================================================== */
+const LS_UID = "sena-match.uid", LS_TEMA = "sena-match.tema",
+      LS_LEIDOS = "sena-match.leidos", LS_VISTO_NOTI = "sena-match.notis";
+let yo = null, cfg = {modoCita:false}, pestana = "descubrir", intencion = null;
+let perfiles = [], parches = [], chats = [], swipesTodos = [], bloqueos = [];
+let misSwipes = {}, desub = [], desubConversa = null, filtroTipo = null, filtroDia = null;
+
+const $ = (s,r=document) => r.querySelector(s);
+const vista = $("#vista"), modal = $("#modal");
+const esc = (t) => String(t==null?"":t).replace(/[&<>"']/g, c =>
+  ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const idPar = (a,b) => [a,b].sort().join("__");
+const hash = (s) => Math.abs([...String(s)].reduce((h,c)=>h*31+c.charCodeAt(0)|0,7));
+const colorDe = (id) => PALETA[hash(id) % PALETA.length];
+const centroDe = (id) => CENTROS.find(c=>c.id===id) || {nombre:"—",ciudad:""};
+const tipoDe = (k) => TIPOS.find(t=>t[0]===k) || TIPOS[TIPOS.length-1];
+const jornadaDe = (k) => (JORNADAS.find(j=>j[0]===k)||["","—"])[1];
+const perfilDe = (id) => perfiles.find(p=>p.id===id);
+const nombreCorto = (n) => String(n||"Alguien").split(" ").slice(0,2).join(" ");
+
+function avatar(p, t){
+  const cls = "av " + (t||"s");
+  const col = p.avatarColor || colorDe(p.id);
+  const cont = p.avatarEmoji || String(p.nombre||"?").trim().charAt(0).toUpperCase();
+  return '<span class="' + cls + '" style="background:' + col + '">' + esc(cont) + '</span>';
+}
+
+function cuando(iso){
+  const d = new Date(iso), h = new Date();
+  const dif = Math.round((new Date(d.getFullYear(),d.getMonth(),d.getDate()) -
+                          new Date(h.getFullYear(),h.getMonth(),h.getDate())) / 86400e3);
+  const hora = d.toLocaleTimeString("es-CO",{hour:"2-digit",minute:"2-digit",hour12:false});
+  if(dif === 0) return "Hoy " + hora;
+  if(dif === 1) return "Mañana " + hora;
+  if(dif < 0) return "Ya pasó";
+  return d.toLocaleDateString("es-CO",{day:"numeric",month:"short"}) + " " + hora;
+}
+function diaCorto(iso){
+  const d = new Date(iso), h = new Date();
+  const dif = Math.round((new Date(d.getFullYear(),d.getMonth(),d.getDate()) -
+                          new Date(h.getFullYear(),h.getMonth(),h.getDate())) / 86400e3);
+  if(dif === 0) return "hoy";
+  if(dif === 1) return "mañ";
+  return d.toLocaleDateString("es-CO",{day:"numeric",month:"short"}).replace(".","");
+}
+const soloHora = (iso) => new Date(iso).toLocaleTimeString("es-CO",
+  {hour:"2-digit",minute:"2-digit",hour12:false});
+function hace(ts){
+  if(!ts) return "";
+  const s = Math.round((Date.now()-ts)/1000);
+  if(s < 60) return "ahora";
+  if(s < 3600) return Math.floor(s/60) + " min";
+  if(s < 86400) return Math.floor(s/3600) + " h";
+  return Math.floor(s/86400) + " d";
+}
+/** Estado vivo de un parche, que es lo que la gente quiere saber de un vistazo. */
+function estadoParche(a){
+  const ini = new Date(a.inicio).getTime(), fin = ini + (a.duracion||60)*60e3, n = Date.now();
+  if(a.estado === "cancelado") return {k:"cancelado", txt:"Cancelado", cls:"chip amb"};
+  if(n >= fin) return {k:"terminado", txt:"Terminó", cls:"chip fijo"};
+  if(n >= ini) return {k:"curso", txt:"En curso ahora", cls:"chip men"};
+  const min = Math.round((ini-n)/60e3);
+  if(min <= 60) return {k:"pronto", txt:"Empieza en " + min + " min", cls:"chip amb"};
+  return {k:"abierto", txt:cuando(a.inicio), cls:"chip fijo"};
+}
+function toast(txt, mal){
+  const t = document.createElement("div");
+  t.textContent = txt;
+  t.style.cssText = "position:fixed;left:50%;bottom:5.4rem;transform:translateX(-50%);z-index:80;" +
+    "background:var(--sup);border:1px solid " + (mal?"var(--rojo)":"var(--menta)") + ";" +
+    "color:var(--tinta);padding:.6rem .95rem;font-size:.86rem;max-width:90vw;text-align:center;" +
+    "border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,.4)";
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+const cerrarHoja = () => { modal.innerHTML = ""; };
+
+/* ---------- bloqueos y parches compartidos ---------- */
+function bloqueadoCon(otroId){
+  return bloqueos.some(b =>
+    (b.id === yo?.id && (b.ids||[]).includes(otroId)) ||
+    (b.id === otroId && (b.ids||[]).includes(yo?.id)));
+}
+function parchesCompartidos(a, b){
+  return parches.filter(p => {
+    const ids = (p.participantes||[]).map(x=>x.id);
+    return ids.includes(a) && ids.includes(b);
+  }).length;
+}
+
+/* ==========================================================================
+   Arranque
+   ========================================================================== */
+(function tema(){
+  const t = lsLeer(LS_TEMA);
+  if(t) document.documentElement.setAttribute("data-theme", t);
+  $("#b-tema").onclick = () => {
+    const actual = document.documentElement.getAttribute("data-theme");
+    const oscuro = actual ? actual === "dark"
+      : matchMedia("(prefers-color-scheme: dark)").matches;
+    const nuevo = oscuro ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", nuevo);
+    lsGuardar(LS_TEMA, nuevo);
+  };
+})();
+
+(async function inicio(){
+  DB = await abrirAlmacen();
+  const est = $("#estado");
+  est.classList.toggle("viva", COMPARTIDA);
+  est.lastElementChild.textContent =
+    MODO === "supabase" ? "supabase" : MODO === "artifact" ? "en vivo" : "local";
+  est.title = MODO === "supabase"
+    ? "Conectada a tu proyecto de Supabase: cuentas reales y datos compartidos."
+    : MODO === "artifact"
+      ? "Base compartida del artifact: la ven quienes abran este enlace."
+      : "Sin base compartida: lo que hagas se queda en este navegador.";
+
+  // En Supabase la identidad la da Auth, no el almacenamiento del navegador.
+  if(MODO === "supabase"){
+    try{
+      const {data} = await DB.cli.auth.getSession();
+      if(data && data.session) lsGuardar(LS_UID, data.session.user.id);
+      else lsBorrar(LS_UID);
+    }catch(e){ lsBorrar(LS_UID); }
+  }
+
+  try{ const c = await DB.doc("config/centro").get(); if(c.exists) cfg = Object.assign(cfg, c.data()); }catch(e){}
+
+  DB.collection("perfiles").onSnapshot(s => {
+    perfiles = s.docs.map(d => Object.assign({id:d.id}, d.data()));
+    const mio = lsLeer(LS_UID), enc = perfiles.find(p => p.id === mio);
+    if(enc) yo = enc;
+    if(yo) pintar();
+  }, ()=>{});
+  DB.collection("parches").onSnapshot(s => {
+    parches = s.docs.map(d => Object.assign({id:d.id}, d.data()));
+    if(yo) pintar();
+  }, ()=>{});
+  DB.collection("swipes").onSnapshot(s => {
+    swipesTodos = s.docs.map(d => Object.assign({id:d.id}, d.data()));
+    if(yo && pestana === "descubrir") pintar();
+    marcarPips();
+  }, ()=>{});
+  DB.collection("bloqueos").onSnapshot(s => {
+    bloqueos = s.docs.map(d => Object.assign({id:d.id}, d.data()));
+  }, ()=>{});
+  DB.collection("chats").onSnapshot(s => {
+    chats = s.docs.map(d => Object.assign({id:d.id}, d.data()));
+    if(yo && pestana === "chats" && !$("#conversa")) pintar();
+    marcarPips();
+  }, ()=>{});
+
+  const uid = lsLeer(LS_UID);
+  if(uid){
+    const d = await DB.doc("perfiles/" + uid).get();
+    if(d.exists){
+      yo = Object.assign({id:uid}, d.data());
+      DB.doc("perfiles/" + uid).update({visto: Date.now()}).catch(()=>{});
+      // Con Supabase la fila nace del trigger, incompleta: falta el onboarding.
+      if(!yo.centro){ pintarCompletar(); return; }
+      await cargarSwipes();
+      abrirApp();
+      return;
+    }
+    lsBorrar(LS_UID);
+  }
+  pintarEntrada();
+})();
+
+let marcaronCache = [];
+
+async function cargarSwipes(){
+  const d = await DB.doc("swipes/" + yo.id).get().catch(()=>({exists:false}));
+  misSwipes = d.exists ? (d.data().porIntencion || {}) : {};
+  await refrescarMarcaron();
+}
+
+/* Con Supabase nadie puede leer los swipes ajenos —así debe ser—, así que
+   «quién me marcó» lo responde una función del servidor. */
+async function refrescarMarcaron(){
+  if(MODO !== "supabase" || !yo) return;
+  try{
+    const filas = await DB.rpc("me_marcaron");
+    marcaronCache = (filas || [])
+      .map(f => ({p: perfilDe(f.perfil), k: f.intencion}))
+      .filter(x => x.p);
+  }catch(e){ marcaronCache = []; }
+}
+function abrirApp(){
+  intencion = (yo.intenciones && yo.intenciones[0]) || null;
+  $("#tabs").classList.remove("oculto");
+  $("#b-noti").classList.remove("oculto");
+  $("#b-noti").onclick = hojaNovedades;
+  pintarTabs();
+  // El reloj: los parches cambian de estado solos, sin recargar.
+  setInterval(() => { if(yo && (pestana === "parches" || pestana === "agenda")) pintar(); }, 60000);
+  pintar();
+}
+
+/* ==========================================================================
+   Entrada
+   ========================================================================== */
+function pintarEntrada(){
+  if(MODO === "supabase") return pintarEntradaOTP();
+  return pintarEntradaLocal();
+}
+
+/* Tarjeta de conexión: pegar URL y clave anónima del proyecto de Supabase.
+   La clave anónima es pública por diseño; lo que protege los datos es la RLS
+   del esquema, no el secreto de esta cadena. */
+function htmlConexion(){
+  const c = credencialesSB() || {};
+  return '<div class="card pad col">' +
+    '<span class="rot">Conexión</span>' +
+    '<p class="tenue" style="margin:0">' +
+      (MODO === "supabase"
+        ? 'Conectada a <b class="mand">' + esc(c.url || "") + '</b>. Cuentas reales por correo ' +
+          'institucional y datos compartidos con todo el que use la app.'
+        : 'Ahora mismo ' + (MODO === "artifact"
+            ? "usa la base del enlace, que solo abre gente de tu organización."
+            : "guarda todo en este navegador.") +
+          ' Para que entre tu ficha, conéctala a un proyecto de Supabase: ejecuta ' +
+          '<b>supabase/app/esquema.sql</b> en el editor SQL y pega aquí los datos de ' +
+          'Project Settings → API.') +
+    "</p>" +
+    '<label class="campo">Project URL<input id="sb-url" placeholder="https://xxxx.supabase.co" value="' +
+      esc(c.url || "") + '"></label>' +
+    '<label class="campo">Anon key<input id="sb-key" placeholder="eyJhbGciOi…" value="' +
+      esc(c.key || "") + '"></label>' +
+    '<div class="rej2"><button class="b pri" id="sb-guardar">Conectar</button>' +
+    '<button class="b" id="sb-quitar">Desconectar</button></div>' +
+  "</div>";
+}
+function cablearConexion(){
+  const g = $("#sb-guardar"); if(!g) return;
+  g.onclick = () => {
+    const url = $("#sb-url").value.trim().replace(/\/+$/, "");
+    const key = $("#sb-key").value.trim();
+    if(!/^https:\/\/.+\.supabase\.co$/.test(url))
+      return toast("La URL se ve así: https://xxxx.supabase.co", true);
+    if(key.length < 40) return toast("Esa clave anónima se ve incompleta", true);
+    lsGuardar(LS_SB, JSON.stringify({url, key}));
+    lsBorrar(LS_UID);
+    toast("Conectando…");
+    setTimeout(() => location.reload(), 600);
+  };
+  $("#sb-quitar").onclick = () => {
+    lsBorrar(LS_SB); lsBorrar(LS_UID);
+    setTimeout(() => location.reload(), 300);
+  };
+}
+
+/* Entrada con Supabase: código de un solo uso al correo institucional. */
+function pintarEntradaOTP(){
+  $("#titulo").textContent = "Entrar";
+  vista.innerHTML =
+    '<div class="col">' +
+      '<div class="card pad col">' +
+        '<span class="rot">Correo institucional</span>' +
+        '<p class="tenue" style="margin:0">Te llega un código de seis dígitos. El dominio ' +
+          'decide tu rol y la base rechaza cualquier otro: <b class="mand">@misena.edu.co</b> ' +
+          'entra como aprendiz, <b class="mand">@sena.edu.co</b> como instructor.</p>' +
+        '<label class="campo">Correo<input id="o-mail" type="email" inputmode="email" ' +
+          'placeholder="nombre@misena.edu.co"></label>' +
+        '<button class="b pri ancho" id="o-enviar">Enviarme el código</button>' +
+        '<div id="o-paso2" class="col oculto">' +
+          '<label class="campo">Código recibido<input id="o-cod" inputmode="numeric" ' +
+            'maxlength="8" placeholder="123456" style="font-family:\'DM Mono\',monospace;' +
+            'letter-spacing:.3em;text-align:center"></label>' +
+          '<button class="b pri ancho" id="o-verificar">Entrar</button>' +
+          '<button class="b ancho" id="o-otro">Usar otro correo</button>' +
+        "</div>" +
+      "</div>" +
+      htmlConexion() +
+    "</div>";
+
+  cablearConexion();
+  const mail = $("#o-mail");
+
+  $("#o-enviar").onclick = async () => {
+    const correo = mail.value.trim().toLowerCase();
+    if(!rolPorDominio(correo)) return toast("Usa tu correo institucional del SENA", true);
+    $("#o-enviar").disabled = true;
+    try{
+      const {error} = await DB.cli.auth.signInWithOtp({email:correo, options:{shouldCreateUser:true}});
+      if(error) throw error;
+      $("#o-paso2").classList.remove("oculto");
+      $("#o-enviar").textContent = "Reenviar el código";
+      toast("Código enviado a " + correo);
+    }catch(e){ toast(e.message || "No se pudo enviar el código", true); }
+    $("#o-enviar").disabled = false;
+  };
+
+  $("#o-verificar").onclick = async () => {
+    const correo = mail.value.trim().toLowerCase();
+    const token = $("#o-cod").value.trim();
+    if(token.length < 6) return toast("El código tiene seis dígitos", true);
+    $("#o-verificar").disabled = true;
+    try{
+      const {data, error} = await DB.cli.auth.verifyOtp({email:correo, token, type:"email"});
+      if(error) throw error;
+      lsGuardar(LS_UID, data.session.user.id);
+      const d = await DB.doc("perfiles/" + data.session.user.id).get();
+      yo = d.exists ? Object.assign({id:data.session.user.id}, d.data()) : null;
+      if(!yo) throw new Error("La cuenta se creó pero falta el perfil. ¿Ejecutaste esquema.sql?");
+      if(!yo.centro){ pintarCompletar(); return; }
+      await cargarSwipes(); abrirApp();
+    }catch(e){ toast(e.message || "Código incorrecto", true); }
+    $("#o-verificar").disabled = false;
+  };
+
+  $("#o-otro").onclick = () => pintarEntradaOTP();
+}
+
+/* Onboarding cuando la cuenta ya existe pero el perfil está vacío. */
+function pintarCompletar(){
+  $("#titulo").textContent = "Completa tu perfil";
+  const eq = yo.esfera === "equipo";
+  vista.innerHTML =
+    '<div class="card pad col">' +
+      '<span class="rot">Entraste como ' + esc(yo.rol) + "</span>" +
+      '<p class="tenue" style="margin:0">' + esc(yo.correo) + '. Falta lo que la app necesita ' +
+        'para mostrarte gente y planes de tu centro.</p>' +
+      '<label class="campo">Nombre completo<input id="e-nombre" placeholder="Ana María Rodríguez" value="' +
+        esc(yo.nombre || "") + '"></label>' +
+      '<div class="rej2">' +
+        '<label class="campo">Nacimiento<input id="e-nac" type="date"></label>' +
+        '<label class="campo">Jornada<select id="e-jornada">' + JORNADAS.map(j =>
+          '<option value="' + j[0] + '">' + j[1] + "</option>").join("") + "</select></label>" +
+      "</div>" +
+      '<label class="campo">Centro<select id="e-centro">' + CENTROS.map(c =>
+        '<option value="' + c.id + '">' + esc(c.nombre) + " · " + esc(c.ciudad) + "</option>").join("") +
+      "</select></label>" +
+      '<div class="rej2">' +
+        '<label class="campo">' + (eq ? "Área" : "Programa") +
+          '<input id="e-programa" placeholder="ADSO"></label>' +
+        (eq ? "" : '<label class="campo">Ficha<input id="e-ficha" inputmode="numeric" placeholder="2758412"></label>') +
+      "</div>" +
+      '<label class="campo">Sobre ti<textarea id="e-bio" rows="2" maxlength="240" ' +
+        'placeholder="Dos líneas: qué estudias y qué te gusta hacer."></textarea></label>' +
+      '<span class="rot" style="margin-top:.3rem">Intereses</span>' +
+      '<div class="chips" id="e-int">' + INTERESES.map(i =>
+        '<button type="button" class="chip" aria-pressed="false" data-i="' + esc(i) + '">' +
+        esc(i) + "</button>").join("") + "</div>" +
+      '<span class="rot" style="margin-top:.3rem">Qué buscas</span>' +
+      '<div class="chips" id="e-intent"></div><div id="e-nota"></div>' +
+      '<button class="b pri ancho" id="e-guardar" style="margin-top:.4rem">Guardar y entrar</button>' +
+    "</div>";
+
+  const pintarIntent = () => {
+    const dis = eq ? ["colegas","estudio","deporte"] : ["amistad","estudio","deporte"];
+    const adulto = (edad($("#e-nac").value) ?? 0) >= 18;
+    if(cfg.modoCita && adulto) dis.unshift("cita");
+    $("#e-intent").innerHTML = dis.map(k =>
+      '<button type="button" class="chip" aria-pressed="' + (k !== "cita") + '" data-k="' + k + '">' +
+      INTENCIONES[k].e + " " + INTENCIONES[k].n + "</button>").join("");
+    $("#e-nota").innerHTML = (!cfg.modoCita)
+      ? '<div class="nota"><b>El modo cita está apagado</b> en este centro. Lo enciende bienestar.</div>'
+      : ($("#e-nac").value && !adulto
+        ? '<div class="nota"><b>Eres menor de edad.</b> El modo cita no está disponible para tu perfil.</div>'
+        : "");
+  };
+  pintarIntent();
+  $("#e-nac").addEventListener("change", pintarIntent);
+  const alternar = ev => {
+    const b = ev.target.closest(".chip"); if(!b) return;
+    b.setAttribute("aria-pressed", b.getAttribute("aria-pressed") === "true" ? "false" : "true");
+  };
+  $("#e-int").addEventListener("click", alternar);
+  $("#e-intent").addEventListener("click", alternar);
+
+  $("#e-guardar").onclick = async () => {
+    const nombre = $("#e-nombre").value.trim(), nac = $("#e-nac").value;
+    const intenciones = [...$("#e-intent").querySelectorAll('[aria-pressed="true"]')].map(b => b.dataset.k);
+    if(nombre.length < 3) return toast("Escribe tu nombre completo", true);
+    if(!nac) return toast("Falta la fecha de nacimiento", true);
+    if(!intenciones.length) return toast("Elige al menos una intención", true);
+    const fichaEl = $("#e-ficha");
+    const cambio = {
+      nombre, nacimiento:nac, jornada:$("#e-jornada").value,
+      centro:Number($("#e-centro").value), programa:$("#e-programa").value.trim(),
+      bio:$("#e-bio").value.trim(),
+      intereses:[...$("#e-int").querySelectorAll('[aria-pressed="true"]')].map(b => b.dataset.i),
+      intenciones
+    };
+    if(fichaEl) cambio.ficha = fichaEl.value.trim();
+    try{
+      await DB.doc("perfiles/" + yo.id).update(cambio);
+      Object.assign(yo, cambio);
+      await cargarSwipes();
+      abrirApp();
+      toast("Listo, ya estás dentro");
+    }catch(e){ toast(e.message || "No se pudo guardar", true); }
+  };
+}
+
+function pintarEntradaLocal(){
+  $("#titulo").textContent = "Entrar";
+  vista.innerHTML =
+  '<div class="col">' +
+    '<div class="card pad col">' +
+      '<span class="rot">Paso 1 · Correo institucional</span>' +
+      '<p class="tenue" style="margin:0">El dominio decide tu rol: <b class="mand">@misena.edu.co</b> ' +
+        'entra como aprendiz, <b class="mand">@sena.edu.co</b> como instructor. ' +
+        'Ningún otro dominio crea cuenta.</p>' +
+      '<label class="campo">Correo<input id="e-mail" type="email" inputmode="email" ' +
+        'placeholder="nombre@misena.edu.co"></label>' +
+      '<div id="e-rol" class="tenue"></div>' +
+    '</div>' +
+    '<div class="card pad col">' +
+      '<span class="rot">Probar sin llenar nada</span>' +
+      '<button class="b ancho" id="e-invitado">Entrar con un perfil de prueba</button>' +
+      '<p class="tenue" style="margin:0">Perfil temporal de aprendiz en el Centro de Servicios ' +
+        'Financieros, que es donde están los datos de ejemplo. Queda guardado en este ' +
+        'navegador; se borra desde Perfil.</p>' +
+    '</div>' +
+    '<div class="card pad col" id="e-resto" style="opacity:.4;pointer-events:none">' +
+      '<span class="rot">Paso 2 · Quién eres</span>' +
+      '<label class="campo">Nombre completo<input id="e-nombre" placeholder="Ana María Rodríguez"></label>' +
+      '<div class="rej2">' +
+        '<label class="campo">Nacimiento<input id="e-nac" type="date"></label>' +
+        '<label class="campo">Jornada<select id="e-jornada">' +
+          JORNADAS.map(j => '<option value="'+j[0]+'">'+j[1]+'</option>').join("") +
+        '</select></label>' +
+      '</div>' +
+      '<label class="campo">Centro<select id="e-centro">' +
+        CENTROS.map(c => '<option value="'+c.id+'">'+esc(c.nombre)+' · '+esc(c.ciudad)+'</option>').join("") +
+      '</select></label>' +
+      '<div class="rej2">' +
+        '<label class="campo" id="e-lprog">Programa<input id="e-programa" placeholder="ADSO"></label>' +
+        '<label class="campo" id="e-lficha">Ficha<input id="e-ficha" inputmode="numeric" placeholder="2758412"></label>' +
+      '</div>' +
+      '<label class="campo">Sobre ti<textarea id="e-bio" rows="2" maxlength="240" ' +
+        'placeholder="Dos líneas: qué estudias y qué te gusta hacer."></textarea></label>' +
+      '<span class="rot" style="margin-top:.3rem">Paso 3 · Intereses</span>' +
+      '<div class="chips" id="e-int">' + INTERESES.map(i =>
+        '<button type="button" class="chip" aria-pressed="false" data-i="'+esc(i)+'">'+esc(i)+'</button>').join("") +
+      '</div>' +
+      '<span class="rot" style="margin-top:.3rem">Paso 4 · Qué buscas</span>' +
+      '<div class="chips" id="e-intent"></div><div id="e-nota"></div>' +
+      '<button class="b pri ancho" id="e-crear" style="margin-top:.4rem">Crear mi perfil</button>' +
+      '<p class="tenue" style="margin:0">Prototipo de pilotaje: no hay verificación real del ' +
+        'correo, y las reglas de separación corren en esta página, no en un servidor.</p>' +
+    '</div>' +
+    htmlConexion() +
+  '</div>';
+
+  cablearConexion();
+  const mail = $("#e-mail"), resto = $("#e-resto");
+  let rol = null;
+
+  mail.addEventListener("input", () => {
+    rol = rolPorDominio(mail.value);
+    const t = $("#e-rol");
+    if(!mail.value.trim()) t.textContent = "";
+    else if(rol) t.innerHTML = 'Entrarás como <b class="mand">' + rol + '</b> · esfera <b class="mand">' +
+      (esferaDe(rol) === "equipo" ? "equipo" : "aprendices") + "</b>";
+    else t.innerHTML = '<span style="color:var(--rojo)">Ese dominio no pertenece al SENA.</span>';
+    resto.style.opacity = rol ? "1" : ".4";
+    resto.style.pointerEvents = rol ? "auto" : "none";
+    $("#e-lficha").style.display = rol === "aprendiz" ? "" : "none";
+    $("#e-lprog").firstChild.textContent = rol === "aprendiz" ? "Programa" : "Área";
+    intencionesEntrada(rol);
+  });
+  $("#e-nac").addEventListener("change", () => intencionesEntrada(rol));
+  $("#e-int").addEventListener("click", e => alternar(e));
+  $("#e-intent").addEventListener("click", e => alternar(e));
+
+  function alternar(e){
+    const b = e.target.closest(".chip"); if(!b) return;
+    b.setAttribute("aria-pressed", b.getAttribute("aria-pressed") === "true" ? "false" : "true");
+  }
+  function intencionesEntrada(rol){
+    if(!rol) return;
+    const eq = esferaDe(rol) === "equipo";
+    const dis = eq ? ["colegas","estudio","deporte"] : ["amistad","estudio","deporte"];
+    const adulto = (edad($("#e-nac").value) ?? 0) >= 18;
+    if(cfg.modoCita && adulto) dis.unshift("cita");
+    $("#e-intent").innerHTML = dis.map(k =>
+      '<button type="button" class="chip" aria-pressed="' + (k !== "cita") + '" data-k="' + k + '">' +
+      INTENCIONES[k].e + " " + INTENCIONES[k].n + "</button>").join("");
+    const nota = $("#e-nota");
+    if(!cfg.modoCita)
+      nota.innerHTML = '<div class="nota"><b>El modo cita está apagado</b> en este centro. ' +
+        'Se enciende en Perfil → Ajustes del centro, y nunca aparece para menores de edad.</div>';
+    else if($("#e-nac").value && !adulto)
+      nota.innerHTML = '<div class="nota"><b>Eres menor de edad.</b> El modo cita no está ' +
+        'disponible para tu perfil ni te muestra en el mazo de nadie.</div>';
+    else nota.innerHTML = "";
+  }
+
+  $("#e-invitado").addEventListener("click", async () => {
+    const n = Math.floor(Math.random()*900 + 100);
+    await crearPerfil("prueba" + Date.now().toString(36) + Math.random().toString(36).slice(2,6), {
+      nombre:"Invitado " + n, correo:"prueba" + n + "@misena.edu.co",
+      rol:"aprendiz", esfera:"aprendices", estado:"activo",
+      centro:9101, programa:"ADSO", ficha:"2758412", jornada:"manana",
+      nacimiento:"2003-01-15", bio:"Perfil de prueba para revisar la app.",
+      intereses:["Café","Desayunos","Programación","Fútbol"],
+      intenciones:["amistad","estudio","deporte"],
+      avatarEmoji:EMOJIS_AV[n % EMOJIS_AV.length], avatarColor:PALETA[n % PALETA.length],
+      demo:true
+    }, "Entraste como Invitado " + n);
+  });
+
+  $("#e-crear").addEventListener("click", async () => {
+    const nombre = $("#e-nombre").value.trim(), nac = $("#e-nac").value;
+    const intenciones = [...$("#e-intent").querySelectorAll('[aria-pressed="true"]')].map(b=>b.dataset.k);
+    if(!rol) return toast("Necesitas un correo institucional", true);
+    if(nombre.length < 3) return toast("Escribe tu nombre completo", true);
+    if(!nac) return toast("Falta la fecha de nacimiento", true);
+    if(!intenciones.length) return toast("Elige al menos una intención", true);
+    await crearPerfil("u" + Date.now().toString(36) + Math.random().toString(36).slice(2,6), {
+      nombre, correo:mail.value.trim().toLowerCase(), rol, esfera:esferaDe(rol), estado:"activo",
+      centro:Number($("#e-centro").value), programa:$("#e-programa").value.trim(),
+      ficha: rol === "aprendiz" ? $("#e-ficha").value.trim() : "",
+      jornada:$("#e-jornada").value, nacimiento:nac, bio:$("#e-bio").value.trim(),
+      intereses:[...$("#e-int").querySelectorAll('[aria-pressed="true"]')].map(b=>b.dataset.i),
+      intenciones
+    }, "Perfil creado");
+  });
+}
+
+async function crearPerfil(id, datos, msg){
+  const perfil = Object.assign({asistencias:0, inasistencias:0,
+    creado:Date.now(), visto:Date.now()}, datos);
+  try{
+    await DB.doc("perfiles/" + id).set(perfil);
+    lsGuardar(LS_UID, id);
+    yo = Object.assign({id}, perfil);
+    await cargarSwipes();
+    abrirApp();
+    toast(msg);
+  }catch(e){ toast("No se pudo crear el perfil", true); }
+}
+
+/* ==========================================================================
+   Pestañas y novedades
+   ========================================================================== */
+const IC = {
+  descubrir:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="2.5" y="3.5" width="12" height="14" rx="2"/><rect x="9.5" y="6.5" width="12" height="14" rx="2"/></svg>',
+  parches:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
+  agenda:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="9"/><path d="M12 7v5.5l3.5 2"/></svg>',
+  chats:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M21 12a8 8 0 0 1-11.5 7.2L3 21l1.8-6.5A8 8 0 1 1 21 12z"/></svg>',
+  perfil:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="8" r="3.8"/><path d="M4.5 20.5c0-4.2 3.4-6.8 7.5-6.8s7.5 2.6 7.5 6.8"/></svg>'
+};
+function pintarTabs(){
+  const eq = yo.esfera === "equipo";
+  const t = [["descubrir", eq ? "Sala" : "Descubrir"],["parches","Parches"],
+             ["agenda","Agenda"],["chats","Chats"],["perfil","Perfil"]];
+  $("#tabs").innerHTML = t.map(([k,n]) =>
+    '<button data-t="' + k + '"' + (pestana===k?' aria-current="page"':"") + '>' + IC[k] +
+    '<span>' + n + '</span></button>').join("");
+  $("#tabs").onclick = e => {
+    const b = e.target.closest("button"); if(!b) return;
+    pestana = b.dataset.t; cerrarConversa(); pintarTabs(); pintar(); scrollTo(0,0);
+  };
+  marcarPips();
+}
+function cerrarConversa(){ if(desubConversa){ try{ desubConversa(); }catch(e){} desubConversa = null; } }
+
+/** Novedades derivadas del estado: no hay tabla de notificaciones que mantener. */
+function novedades(){
+  if(!yo) return [];
+  const leidos = lsJson(LS_LEIDOS), out = [];
+  quienMeMarco().forEach(m => {
+    out.push({tipo:"like", ts:0,
+      txt:nombreCorto(m.p.nombre) + " te marcó en " + INTENCIONES[m.k].n.toLowerCase(),
+      ir:()=>{ pestana = "descubrir"; intencion = m.k; pintarTabs(); pintar(); }});
+  });
+  parches.filter(a => a.anfitrion === yo.id && (a.solicitudes||[]).length).forEach(a => {
+    out.push({tipo:"solicitud", ts:a.creado||0,
+      txt:(a.solicitudes.length) + " " + (a.solicitudes.length===1?"solicitud":"solicitudes") +
+          " en «" + a.titulo + "»", ir:()=>hojaParche(a.id)});
+  });
+  misChats().forEach(c => {
+    if((c.ultimo||0) > (leidos[c.id]||0)){
+      const otro = c.tipo === "match" ? perfilDe((c.miembros||[]).find(m=>m!==yo.id)) : null;
+      out.push({tipo:"mensaje", ts:c.ultimo,
+        txt:"Mensajes nuevos en " + (otro ? nombreCorto(otro.nombre) : (c.titulo||"un parche")),
+        ir:()=>abrirConversacion(c.id)});
+    }
+  });
+  parches.filter(a => (a.participantes||[]).some(p=>p.id===yo.id))
+    .filter(a => estadoParche(a).k === "pronto")
+    .forEach(a => out.push({tipo:"pronto", ts:Date.now(),
+      txt:"«" + a.titulo + "» " + estadoParche(a).txt.toLowerCase(), ir:()=>hojaParche(a.id)}));
+  return out.sort((a,b) => (b.ts||0) - (a.ts||0));
+}
+function marcarPips(){
+  const n = $("#tabs"); if(!n || !yo) return;
+  const nov = novedades();
+  const cont = nov.length;
+  const b = $("#b-noti");
+  b.querySelectorAll(".globo").forEach(g => g.remove());
+  if(cont){ const g = document.createElement("span"); g.className = "globo";
+            g.textContent = cont > 9 ? "9+" : cont; b.appendChild(g); }
+  const marcar = (tab, hay) => {
+    const el = n.querySelector('[data-t="' + tab + '"]'); if(!el) return;
+    const p = el.querySelector(".pip");
+    if(hay && !p){ const s = document.createElement("span"); s.className = "pip"; el.appendChild(s); }
+    if(!hay && p) p.remove();
+  };
+  marcar("chats", nov.some(x => x.tipo === "mensaje"));
+  marcar("descubrir", nov.some(x => x.tipo === "like"));
+  marcar("agenda", nov.some(x => x.tipo === "solicitud" || x.tipo === "pronto"));
+}
+function hojaNovedades(){
+  const nov = novedades();
+  abrirHoja("Novedades", nov.length
+    ? '<div class="lista">' + nov.map((x,i) =>
+        '<button class="reng" data-n="' + i + '" style="cursor:pointer;text-align:left">' +
+        '<span class="t"><b>' + esc(x.txt) + '</b>' +
+        '<span class="tenue">' + esc(hace(x.ts)) + '</span></span></button>').join("") + '</div>'
+    : '<div class="vacio"><b>Nada nuevo</b><span>Aquí llegan los me interesa, las solicitudes ' +
+      'de tus parches y los mensajes sin leer.</span></div>');
+  modal.querySelectorAll("[data-n]").forEach(b => b.onclick = () => {
+    cerrarHoja(); nov[Number(b.dataset.n)].ir();
+  });
+}
+
+function abrirHoja(titulo, html){
+  modal.innerHTML =
+    '<div class="hoja"><div class="panel"><div class="tirador"></div>' +
+    '<div class="cab"><h2>' + esc(titulo) + '</h2>' +
+    '<button class="b chico" data-x>Cerrar</button></div>' +
+    '<div class="cuerpo">' + html + '</div></div></div>';
+  modal.querySelector("[data-x]").onclick = cerrarHoja;
+  modal.querySelector(".hoja").addEventListener("click", e => {
+    if(e.target.classList.contains("hoja")) cerrarHoja();
+  });
+}
+
+function pintar(){
+  if(!yo) return;
+  const eq = yo.esfera === "equipo";
+  $("#titulo").textContent = {descubrir: eq ? "Sala de profes" : "Descubrir",
+    parches:"Parches", agenda:"Mi agenda", chats:"Chats", perfil:"Mi perfil"}[pestana];
+  if(pestana === "descubrir") pintarDescubrir();
+  else if(pestana === "parches") pintarParches();
+  else if(pestana === "agenda") pintarAgenda();
+  else if(pestana === "chats") pintarChats();
+  else pintarPerfil();
+  marcarPips();
+}
+
+/* ==========================================================================
+   Descubrir / Sala
+   ========================================================================== */
+function candidatos(){
+  if(!intencion) return [];
+  const hechos = misSwipes[intencion] || {};
+  return perfiles.filter(p => puedeVer(yo, p, intencion, cfg) && !hechos[p.id])
+    .map(p => ({p, a:afinidad(yo, p)}))
+    .sort((x,y) => y.a.puntaje - x.a.puntaje);
+}
+function quienMeMarco(){
+  if(MODO === "supabase") return marcaronCache;
+  const out = [];
+  swipesTodos.forEach(s => {
+    if(s.id === yo.id) return;
+    Object.keys(s.porIntencion || {}).forEach(k => {
+      if((s.porIntencion[k]||{})[yo.id] !== "like") return;
+      if((misSwipes[k]||{})[s.id]) return;
+      const p = perfilDe(s.id);
+      if(p && puedeVer(yo, p, k, cfg)) out.push({p, k});
+    });
+  });
+  return out;
+}
+
+function pintarDescubrir(){
+  const mias = yo.intenciones || [];
+  const marcaron = quienMeMarco();
+  const lista = candidatos();
+  let html = "";
+
+  if(mias.length > 1)
+    html += '<div class="chips">' + mias.map(k =>
+      '<button class="chip" aria-pressed="' + (k===intencion) + '" data-int="' + k + '">' +
+      INTENCIONES[k].e + " " + INTENCIONES[k].n + "</button>").join("") + "</div>";
+
+  if(marcaron.length)
+    html += '<div class="col" style="gap:.4rem"><span class="rot">Te marcaron · ' +
+      marcaron.length + '</span><div class="tira">' + marcaron.map((m,i) =>
+        '<button class="mini" data-me="' + i + '">' + avatar(m.p, "m") +
+        '<span>' + esc(String(m.p.nombre).split(" ")[0]) + '</span></button>').join("") +
+      '</div></div>';
+
+  if(!intencion){
+    html += '<div class="vacio"><b>Elige qué buscas</b><span>Activa una intención en ' +
+      'Mi perfil para empezar.</span></div>';
+  } else if(!lista.length){
+    html += '<div class="vacio"><b>No hay más perfiles por ahora</b>' +
+      '<span>El mazo solo trae gente de <b>' + esc(centroDe(yo.centro).nombre) + '</b>, de tu ' +
+      'misma esfera y que también marcó «' + esc(INTENCIONES[intencion].n) + '».</span>' +
+      (puedeDeshacer() ? "" : '<span class="tenue">Comparte el enlace con tu ficha: entre más ' +
+      'gente entre, más se llena.</span>') + '</div>';
+    if(puedeDeshacer())
+      html += '<button class="b ancho" id="deshacer">Deshacer el último descarte</button>';
+  } else {
+    const {p, a} = lista[0], e = edad(p.nacimiento);
+    html +=
+      '<div class="ficha">' +
+        '<div class="top">' + avatar(p, "l") +
+          '<div style="flex:1;min-width:0">' +
+            '<h2>' + esc(nombreCorto(p.nombre)) + (e ? ", " + e : "") + "</h2>" +
+            '<div class="tenue">' + esc(p.programa || (p.rol === "instructor" ? "Instructor" : "Aprendiz")) +
+              (p.jornada ? " · " + esc(jornadaDe(p.jornada).toLowerCase()) : "") + "</div>" +
+            (p.demo ? '<span class="chip fijo amb" style="margin-top:.4rem;display:inline-block">ejemplo</span>' : "") +
+          "</div>" +
+          '<span class="marcador"><b>' + a.puntaje + '</b><span>afín</span></span>' +
+        "</div>" +
+        '<div class="cuerpo">' +
+          (p.bio ? '<p style="margin:0;font-size:.9rem;color:var(--tinta2)">' + esc(p.bio) + "</p>" : "") +
+          '<div class="porq">' + (a.porq.length ? a.porq.map(x =>
+            '<div><i></i><span>' + esc(x) + "</span></div>").join("")
+            : '<div><i></i><span>Del mismo centro, sin nada más en común todavía</span></div>') + "</div>" +
+          ((p.intereses||[]).length ? '<div class="chips">' + p.intereses.slice(0,6).map(i =>
+            '<span class="chip fijo">' + esc(i) + "</span>").join("") + "</div>" : "") +
+          '<button class="b chico" data-ver="' + esc(p.id) + '" style="align-self:flex-start">Ver perfil completo</button>' +
+        "</div>" +
+        '<div class="acciones">' +
+          '<button class="b" data-sw="pass" title="Pasar">Pasar</button>' +
+          '<button class="b pri" data-sw="like">Me interesa</button>' +
+        "</div>" +
+      "</div>" +
+      '<div class="fila" style="justify-content:space-between">' +
+        '<span class="tenue mono">' + lista.length + " en el mazo</span>" +
+        (puedeDeshacer() ? '<button class="b chico" id="deshacer">Deshacer</button>' : "") +
+      "</div>";
+  }
+
+  if(yo.esfera === "equipo") html += directorioEquipo();
+  vista.innerHTML = html;
+
+  vista.querySelectorAll("[data-int]").forEach(b => b.onclick = () => { intencion = b.dataset.int; pintar(); });
+  vista.querySelectorAll("[data-sw]").forEach(b => b.onclick = () => {
+    b.parentElement.querySelectorAll("button").forEach(x => x.disabled = true);
+    hacerSwipe(lista[0].p, b.dataset.sw);
+  });
+  vista.querySelectorAll("[data-ver]").forEach(b => b.onclick = () => hojaPerfil(b.dataset.ver));
+  vista.querySelectorAll("[data-me]").forEach(b => b.onclick = () => {
+    const m = marcaron[Number(b.dataset.me)];
+    intencion = m.k; pintar(); hojaPerfil(m.p.id);
+  });
+  const des = $("#deshacer"); if(des) des.onclick = deshacer;
+}
+
+function directorioEquipo(){
+  const otros = perfiles.filter(p => p.id !== yo.id && p.esfera === "equipo" &&
+    p.centro === yo.centro && !bloqueadoCon(p.id));
+  if(!otros.length) return "";
+  return '<div class="col" style="gap:.45rem;margin-top:.4rem">' +
+    '<span class="rot">Directorio del centro · ' + otros.length + '</span>' +
+    '<div class="lista">' + otros.map(p =>
+      '<button class="reng" data-ver="' + esc(p.id) + '" style="cursor:pointer;text-align:left">' +
+      avatar(p, "s") + '<span class="t"><b>' + esc(p.nombre) + "</b>" +
+      '<span class="tenue">' + esc(p.programa || p.cargo || "Funcionario") + "</span></span></button>").join("") +
+    "</div></div>";
+}
+
+const CLAVE_ULT = "sena-match.ultimo";
+function puedeDeshacer(){
+  const u = lsJson(CLAVE_ULT);
+  return !!(u && u.id && u.intencion === intencion && Date.now() - (u.ts||0) < 5*60e3);
+}
+async function deshacer(){
+  const u = lsJson(CLAVE_ULT);
+  if(!u || !u.id) return;
+  if(misSwipes[u.intencion]) delete misSwipes[u.intencion][u.id];
+  try{ await DB.doc("swipes/" + yo.id).set({porIntencion:misSwipes, de:yo.id, ts:Date.now()}); }catch(e){}
+  lsGuardar(CLAVE_ULT, "{}");
+  pintar();
+  toast("Vuelve al mazo");
+}
+
+async function hacerSwipe(otro, dir){
+  if(!misSwipes[intencion]) misSwipes[intencion] = {};
+  misSwipes[intencion][otro.id] = dir;
+  lsGuardar(CLAVE_ULT, JSON.stringify({id:otro.id, intencion, ts:Date.now()}));
+
+  // Con Supabase todo esto —cupo de escritura, reciprocidad, creación del match
+  // y del chat— ocurre en una sola transacción del servidor.
+  if(MODO === "supabase"){
+    try{
+      const r = await DB.rpc("registrar_swipe",
+        {p_otro:otro.id, p_intencion:intencion, p_dir:dir});
+      await refrescarMarcaron();
+      if(r && r.match){ celebrar(otro, r.chat); return; }
+    }catch(e){ toast(e.message || "No se pudo registrar", true); }
+    pintar();
+    return;
+  }
+
+  try{ await DB.doc("swipes/" + yo.id).set({porIntencion:misSwipes, de:yo.id, ts:Date.now()}); }catch(e){}
+
+  if(dir === "like"){
+    let recip = false;
+    try{
+      const d = await DB.doc("swipes/" + otro.id).get();
+      if(d.exists) recip = (((d.data().porIntencion||{})[intencion])||{})[yo.id] === "like";
+    }catch(e){}
+    if(recip){
+      const mid = idPar(yo.id, otro.id) + "__" + intencion;
+      try{
+        await DB.doc("matches/" + mid).set({a:yo.id, b:otro.id, intencion, activo:true, creado:Date.now()});
+        await DB.doc("chats/" + mid).set({tipo:"match", titulo:"", miembros:[yo.id, otro.id],
+          creado:Date.now(), ultimo:Date.now(),
+          mensajes:[{de:null, txt:"Coincidieron en " + INTENCIONES[intencion].n.toLowerCase() + ".", ts:Date.now()}]});
+      }catch(e){}
+      celebrar(otro, mid);
+      return;
+    }
+  }
+  pintar();
+}
+
+function celebrar(otro, mid){
+  abrirHoja("Coincidencia",
+    '<div class="col" style="align-items:center;text-align:center;gap:1rem;padding:.5rem 0 1rem">' +
+      '<div class="fila" style="gap:.6rem">' + avatar(yo,"l") + avatar(otro,"l") + "</div>" +
+      '<h2 style="font-size:1.4rem">Tú y ' + esc(String(otro.nombre).split(" ")[0]) + "</h2>" +
+      '<p class="tenue" style="margin:0">Los dos marcaron «' + esc(INTENCIONES[intencion].n) +
+      '». El chat ya está abierto.</p>' +
+      '<button class="b pri ancho" data-chat>Escribirle</button>' +
+      '<button class="b ancho" data-seguir>Seguir viendo</button>' +
+    "</div>");
+  modal.querySelector("[data-seguir]").onclick = () => { cerrarHoja(); pintar(); };
+  modal.querySelector("[data-chat]").onclick = () => { cerrarHoja(); abrirConversacion(mid); };
+}
+
+/* ==========================================================================
+   Perfil de otra persona, bloqueo y reporte
+   ========================================================================== */
+function hojaPerfil(id){
+  const p = perfilDe(id); if(!p) return;
+  const e = edad(p.nacimiento), a = afinidad(yo, p);
+  const fiab = (p.asistencias||0) + (p.inasistencias||0);
+  abrirHoja(nombreCorto(p.nombre),
+    '<div class="fila" style="align-items:flex-start">' + avatar(p,"l") +
+      '<div style="flex:1;min-width:0">' +
+        '<h2 style="font-size:1.25rem">' + esc(p.nombre) + (e ? ", " + e : "") + "</h2>" +
+        '<div class="tenue">' + esc(p.programa || "—") + (p.ficha ? " · ficha " + esc(p.ficha) : "") + "</div>" +
+        '<div class="tenue">' + esc(centroDe(p.centro).nombre) + "</div>" +
+      "</div>" +
+      '<span class="marcador"><b>' + a.puntaje + '</b><span>afín</span></span></div>' +
+    (p.bio ? '<p style="margin:0;color:var(--tinta2)">' + esc(p.bio) + "</p>" : "") +
+    '<div class="porq">' + a.porq.map(x => '<div><i></i><span>' + esc(x) + "</span></div>").join("") + "</div>" +
+    ((p.intereses||[]).length ? '<span class="rot">Intereses</span><div class="chips">' +
+      p.intereses.map(i => '<span class="chip fijo">' + esc(i) + "</span>").join("") + "</div>" : "") +
+    (fiab ? '<span class="rot">Parches</span><p class="tenue mono" style="margin:0">' +
+      (p.asistencias||0) + " asistió · " + (p.inasistencias||0) + " no llegó</p>" : "") +
+    '<div class="rej2" style="margin-top:.4rem">' +
+      '<button class="b" data-reportar>Reportar</button>' +
+      '<button class="b peligro" data-bloquear>Bloquear</button></div>');
+  modal.querySelector("[data-bloquear]").onclick = () => bloquear(p);
+  modal.querySelector("[data-reportar]").onclick = () => hojaReporte(p);
+}
+
+async function bloquear(p){
+  if(!confirm("Al bloquear a " + nombreCorto(p.nombre) + " dejan de verse en el mazo, en los " +
+              "parches y en el chat. ¿Continuar?")) return;
+  const mios = (bloqueos.find(b => b.id === yo.id) || {}).ids || [];
+  try{
+    await DB.doc("bloqueos/" + yo.id).set({ids: mios.concat([p.id]), ts:Date.now()});
+    cerrarHoja(); pintar(); toast("Bloqueaste a " + nombreCorto(p.nombre));
+  }catch(e){ toast("No se pudo bloquear", true); }
+}
+
+function hojaReporte(p){
+  abrirHoja("Reportar a " + nombreCorto(p.nombre),
+    '<span class="rot">Motivo</span><div class="chips" id="r-mot">' +
+    MOTIVOS.map((m,i) => '<button class="chip" aria-pressed="' + (i===0) + '" data-m="' + m[0] + '">' +
+      esc(m[1]) + "</button>").join("") + "</div>" +
+    '<label class="campo">Qué pasó<textarea id="r-det" rows="3" maxlength="600" ' +
+      'placeholder="Cuenta lo que ocurrió. Lo lee el equipo de moderación."></textarea></label>' +
+    '<button class="b pri ancho" id="r-env">Enviar reporte</button>' +
+    '<p class="tenue" style="margin:0">Un reporte por persona y día. Queda registrado con tu ' +
+      'nombre para que moderación pueda contactarte.</p>');
+  const chips = modal.querySelector("#r-mot");
+  chips.onclick = e => {
+    const b = e.target.closest(".chip"); if(!b) return;
+    chips.querySelectorAll(".chip").forEach(c => c.setAttribute("aria-pressed","false"));
+    b.setAttribute("aria-pressed","true");
+  };
+  modal.querySelector("#r-env").onclick = async () => {
+    const motivo = chips.querySelector('[aria-pressed="true"]').dataset.m;
+    try{
+      await DB.doc("reportes/" + yo.id + "__" + p.id + "__" + new Date().toISOString().slice(0,10))
+        .set({de:yo.id, sobre:p.id, motivo, detalle:modal.querySelector("#r-det").value.trim(),
+              estado:"pendiente", ts:Date.now()});
+      cerrarHoja(); toast("Reporte enviado a moderación");
+    }catch(e){ toast("No se pudo enviar", true); }
+  };
+}
+
+/* ==========================================================================
+   Parches
+   ========================================================================== */
+const confirmados = (a) => (a.participantes||[]).length;
+const estoyEn = (a) => (a.participantes||[]).some(p => p.id === yo.id);
+const solicite = (a) => (a.solicitudes||[]).some(s => s.id === yo.id);
+
+function parchesVisibles(){
+  return parches
+    .filter(a => a.centro === yo.centro)
+    .filter(a => a.mixto || a.esfera === yo.esfera)
+    .filter(a => a.estado !== "cancelado")
+    .filter(a => !bloqueadoCon(a.anfitrion))
+    .filter(a => new Date(a.inicio).getTime() + (a.duracion||60)*60e3 > Date.now())
+    .sort((x,y) => new Date(x.inicio) - new Date(y.inicio));
+}
+
+function tarjetaParche(a){
+  const t = tipoDe(a.tipo), libres = Math.max(0, a.cupo - confirmados(a));
+  const est = estadoParche(a), host = perfilDe(a.anfitrion);
+  const pct = Math.min(100, confirmados(a) / a.cupo * 100);
+  return '<button class="parche" data-p="' + esc(a.id) + '">' +
+    '<span class="talon"><span class="e">' + t[1] + '</span>' +
+      '<span class="d">' + esc(diaCorto(a.inicio)) + '</span>' +
+      '<span class="h">' + esc(soloHora(a.inicio)) + "</span></span>" +
+    '<span class="info">' +
+      "<h3>" + esc(a.titulo) + "</h3>" +
+      '<span class="sub">' + esc(a.lugar) + " · " + esc(host ? String(host.nombre).split(" ")[0] : "—") +
+        (a.mixto ? ' · <span class="men">institucional</span>' : "") + "</span>" +
+      '<span class="cupo"><span class="barra-cupo' + (libres ? "" : " lleno") +
+        '"><i style="width:' + pct + '%"></i></span>' +
+        '<span class="mono">' + confirmados(a) + "/" + a.cupo + "</span>" +
+        (estoyEn(a) ? '<span class="men" style="margin-left:auto;font-weight:600">vas</span>'
+          : solicite(a) ? '<span class="amb" style="margin-left:auto">pediste cupo</span>'
+          : est.k === "pronto" ? '<span class="amb" style="margin-left:auto">' + esc(est.txt) + "</span>"
+          : "") +
+      "</span>" +
+    "</span></button>";
+}
+
+function pintarParches(){
+  let lista = parchesVisibles();
+  if(filtroTipo) lista = lista.filter(a => a.tipo === filtroTipo);
+  if(filtroDia === "hoy") lista = lista.filter(a => diaCorto(a.inicio) === "hoy");
+
+  vista.innerHTML =
+    '<div class="rej2"><button class="b pri" id="nuevo">Publicar parche</button>' +
+    '<button class="b" id="codigo">Entrar con código</button></div>' +
+    '<div class="chips">' +
+      '<button class="chip" aria-pressed="' + (filtroDia==="hoy") + '" data-dia="hoy">Hoy</button>' +
+      TIPOS.map(t => '<button class="chip" aria-pressed="' + (filtroTipo===t[0]) +
+        '" data-tipo="' + t[0] + '">' + t[1] + " " + t[2] + "</button>").join("") +
+    "</div>" +
+    (lista.length ? '<div class="col" style="gap:.5rem">' + lista.map(tarjetaParche).join("") + "</div>"
+      : '<div class="vacio"><b>No hay planes con ese filtro</b>' +
+        '<span>Publica el primero: un desayuno, una jugada, un repaso antes de la entrega.</span></div>');
+
+  $("#nuevo").onclick = hojaNuevoParche;
+  $("#codigo").onclick = hojaCodigo;
+  vista.querySelectorAll("[data-tipo]").forEach(b => b.onclick = () => {
+    filtroTipo = filtroTipo === b.dataset.tipo ? null : b.dataset.tipo; pintar();
+  });
+  vista.querySelectorAll("[data-dia]").forEach(b => b.onclick = () => {
+    filtroDia = filtroDia === "hoy" ? null : "hoy"; pintar();
+  });
+  vista.querySelectorAll("[data-p]").forEach(b => b.onclick = () => hojaParche(b.dataset.p));
+}
+
+function hojaNuevoParche(){
+  const base = new Date(Date.now() + 3600e3);
+  const local = (d) => new Date(d.getTime() - d.getTimezoneOffset()*60e3).toISOString().slice(0,16);
+  abrirHoja("Nuevo parche",
+    '<span class="rot">Plantillas rápidas</span>' +
+    '<div class="chips" id="p-plant">' + PLANTILLAS.map((p,i) =>
+      '<button class="chip" data-pl="' + i + '">' + tipoDe(p.tipo)[1] + " " + esc(p.t) + "</button>").join("") + "</div>" +
+    '<label class="campo">¿Qué plan es?<input id="p-tit" maxlength="80" ' +
+      'placeholder="Desayuno en la cafetería antes de clase"></label>' +
+    '<span class="rot">Tipo</span><div class="chips" id="p-tipo">' + TIPOS.map((t,i) =>
+      '<button class="chip" aria-pressed="' + (i===0) + '" data-k="' + t[0] + '">' +
+      t[1] + " " + t[2] + "</button>").join("") + "</div>" +
+    '<label class="campo">Lugar<input id="p-lug" maxlength="80" placeholder="Cafetería central, bloque B"></label>' +
+    '<div class="rej2">' +
+      '<label class="campo">Cuándo<input id="p-ini" type="datetime-local" value="' + local(base) + '"></label>' +
+      '<label class="campo">Cupo<input id="p-cupo" type="number" min="2" max="60" value="6"></label>' +
+    "</div>" +
+    '<label class="campo">Duración (minutos)<input id="p-dur" type="number" min="15" max="480" value="60"></label>' +
+    '<label class="campo">Detalle<textarea id="p-desc" rows="2" maxlength="300" ' +
+      'placeholder="Llevo balón. Nos vemos en la portería."></textarea></label>' +
+    '<label class="fila" style="gap:.55rem;font-size:.86rem;color:var(--tinta2)">' +
+      '<input type="checkbox" id="p-apro" style="width:auto"> Quiero aprobar quién entra</label>' +
+    (["instructor","bienestar"].includes(yo.rol)
+      ? '<label class="fila" style="gap:.55rem;font-size:.86rem;color:var(--tinta2)">' +
+        '<input type="checkbox" id="p-mixto" style="width:auto"> Parche institucional ' +
+        '(también lo ven los aprendices)</label>' : "") +
+    '<button class="b pri ancho" id="p-crear">Publicar</button>' +
+    '<p class="tenue" style="margin:0">Se cierra solo cuando termina la hora y el chat se archiva después.</p>');
+
+  const chips = modal.querySelector("#p-tipo");
+  chips.onclick = e => {
+    const b = e.target.closest(".chip"); if(!b) return;
+    chips.querySelectorAll(".chip").forEach(c => c.setAttribute("aria-pressed","false"));
+    b.setAttribute("aria-pressed","true");
+  };
+  modal.querySelector("#p-plant").onclick = e => {
+    const b = e.target.closest("[data-pl]"); if(!b) return;
+    const pl = PLANTILLAS[Number(b.dataset.pl)];
+    const d = new Date(); d.setHours(pl.hora, pl.min, 0, 0);
+    if(d.getTime() < Date.now()) d.setDate(d.getDate() + 1);
+    modal.querySelector("#p-tit").value = pl.t;
+    modal.querySelector("#p-lug").value = pl.lugar;
+    modal.querySelector("#p-ini").value = local(d);
+    modal.querySelector("#p-cupo").value = pl.cupo;
+    modal.querySelector("#p-dur").value = pl.dur;
+    chips.querySelectorAll(".chip").forEach(c =>
+      c.setAttribute("aria-pressed", String(c.dataset.k === pl.tipo)));
+  };
+
+  modal.querySelector("#p-crear").onclick = async () => {
+    const titulo = modal.querySelector("#p-tit").value.trim();
+    const lugar = modal.querySelector("#p-lug").value.trim();
+    const inicio = modal.querySelector("#p-ini").value;
+    const cupo = Number(modal.querySelector("#p-cupo").value);
+    const dur = Number(modal.querySelector("#p-dur").value) || 60;
+    if(titulo.length < 5) return toast("Ponle un título más claro", true);
+    if(lugar.length < 3) return toast("Falta el lugar", true);
+    if(!inicio || new Date(inicio).getTime() < Date.now() - 3e5) return toast("Esa hora ya pasó", true);
+    if(!(cupo >= 2)) return toast("El cupo mínimo es 2", true);
+
+    const id = "p" + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+    const parche = {
+      anfitrion:yo.id, titulo, lugar, descripcion:modal.querySelector("#p-desc").value.trim(),
+      tipo:chips.querySelector('[aria-pressed="true"]').dataset.k,
+      inicio:new Date(inicio).toISOString(), duracion:dur, cupo,
+      centro:yo.centro, esfera:yo.esfera,
+      mixto: !!(modal.querySelector("#p-mixto")||{}).checked,
+      aprobacion: !!modal.querySelector("#p-apro").checked,
+      codigo: Math.random().toString(36).slice(2,7).toUpperCase(),
+      estado:"abierto", solicitudes:[], asistencia:null,
+      participantes:[{id:yo.id, rol:"anfitrion", desde:Date.now()}], creado:Date.now()
+    };
+
+    if(MODO === "supabase"){
+      try{
+        const fila = await DB.rpc("crear_parche", {p_datos:{
+          titulo, lugar, descripcion:parche.descripcion, tipo:parche.tipo,
+          inicio:parche.inicio, duracion:dur, cupo,
+          mixto:parche.mixto, aprobacion:parche.aprobacion
+        }});
+        cerrarHoja();
+        toast("Parche publicado" + (fila && fila.codigo ? " · código " + fila.codigo : ""));
+      }catch(e){ toast(e.message || "No se pudo publicar", true); }
+      return;
+    }
+
+    try{
+      await DB.doc("parches/" + id).set(parche);
+      await DB.doc("chats/" + id).set({tipo:"parche", titulo, miembros:[yo.id],
+        creado:Date.now(), ultimo:Date.now(),
+        mensajes:[{de:null, txt:titulo + " · " + lugar + " · " + cuando(parche.inicio), ts:Date.now()}]});
+      cerrarHoja(); toast("Parche publicado · código " + parche.codigo);
+    }catch(e){ toast("No se pudo publicar", true); }
+  };
+}
+
+function hojaCodigo(){
+  abrirHoja("Entrar con código",
+    '<p class="tenue" style="margin:0">Quien organiza el parche te pasa un código de cinco ' +
+      'caracteres. Sirve para planes que no salen en el feed.</p>' +
+    '<label class="campo">Código<input id="c-cod" maxlength="5" placeholder="A7K2M" ' +
+      'style="text-transform:uppercase;font-family:\'DM Mono\',monospace;letter-spacing:.2em"></label>' +
+    '<button class="b pri ancho" id="c-ir">Buscar el parche</button>');
+  modal.querySelector("#c-ir").onclick = () => {
+    const cod = modal.querySelector("#c-cod").value.trim().toUpperCase();
+    const a = parches.find(x => x.codigo === cod);
+    if(!a) return toast("No hay ningún parche con ese código", true);
+    if(a.centro !== yo.centro) return toast("Ese parche es de otro centro", true);
+    if(!a.mixto && a.esfera !== yo.esfera) return toast("Ese parche no corresponde a tu perfil", true);
+    cerrarHoja(); hojaParche(a.id);
+  };
+}
+
+function hojaParche(id){
+  const a = parches.find(x => x.id === id); if(!a) return;
+  const t = tipoDe(a.tipo), libres = Math.max(0, a.cupo - confirmados(a));
+  const host = perfilDe(a.anfitrion) || {nombre:"—", id:a.anfitrion};
+  const dentro = estoyEn(a), soyHost = a.anfitrion === yo.id, est = estadoParche(a);
+  const pedidas = a.solicitudes || [];
+
+  let acciones = "";
+  if(est.k === "cancelado") acciones = '<div class="nota">Este parche fue cancelado.</div>';
+  else if(est.k === "terminado" && soyHost && !a.asistencia)
+    acciones = '<button class="b pri ancho" data-asist>Marcar quién llegó</button>';
+  else if(est.k === "terminado") acciones = '<div class="nota">Este parche ya terminó.</div>';
+  else if(dentro) acciones =
+    '<button class="b pri ancho" data-chat>Abrir el chat</button>' +
+    (soyHost ? '<button class="b ancho" data-cancel>Cancelar el parche</button>'
+             : '<button class="b ancho" data-salir>Ya no voy</button>');
+  else if(solicite(a)) acciones = '<div class="nota">Pediste cupo. Falta que ' +
+    esc(String(host.nombre).split(" ")[0]) + " te apruebe.</div>";
+  else if(!libres && !a.aprobacion) acciones = '<button class="b ancho" disabled>Sin cupos</button>';
+  else acciones = '<button class="b pri ancho" data-unir>' +
+    (a.aprobacion ? "Pedir cupo" : "Unirme") + (libres ? " · quedan " + libres : " · lista de espera") + "</button>";
+
+  abrirHoja(a.titulo,
+    '<div class="fila" style="gap:.5rem;flex-wrap:wrap"><span class="chip fijo">' + t[1] + " " + t[2] + "</span>" +
+      '<span class="' + est.cls + '">' + esc(est.txt) + "</span>" +
+      (a.aprobacion ? '<span class="chip fijo">con aprobación</span>' : "") +
+      (a.mixto ? '<span class="chip men">institucional</span>' : "") + "</div>" +
+    '<div class="card pad col" style="gap:.55rem">' +
+      '<div class="fila"><span class="rot" style="flex:1">Cuándo</span><b class="mono">' +
+        esc(cuando(a.inicio)) + "</b></div>" +
+      '<div class="fila"><span class="rot" style="flex:1">Dónde</span><span>' + esc(a.lugar) + "</span></div>" +
+      '<div class="fila"><span class="rot" style="flex:1">Cupo</span><span class="mono">' +
+        confirmados(a) + "/" + a.cupo + "</span></div>" +
+      (soyHost ? '<div class="fila"><span class="rot" style="flex:1">Código</span>' +
+        '<b class="mono" style="letter-spacing:.2em">' + esc(a.codigo||"—") + "</b></div>" : "") +
+    "</div>" +
+    (a.descripcion ? '<p style="margin:0;color:var(--tinta2)">' + esc(a.descripcion) + "</p>" : "") +
+    '<span class="rot">Quiénes van</span><div class="lista">' +
+      (a.participantes||[]).map(pp => {
+        const per = perfilDe(pp.id) || {nombre:"Alguien", id:pp.id};
+        return '<button class="reng" data-ver="' + esc(pp.id) + '" style="cursor:pointer;text-align:left">' +
+          avatar(per,"s") + '<span class="t"><b>' + esc(per.nombre) + "</b>" +
+          '<span class="tenue">' + (pp.rol === "anfitrion" ? "Anfitrión" : "Confirmado") +
+          "</span></span></button>";
+      }).join("") + "</div>" +
+    (soyHost && pedidas.length
+      ? '<span class="rot">Solicitudes · ' + pedidas.length + "</span>" + '<div class="lista">' +
+        pedidas.map(s => {
+          const per = perfilDe(s.id) || {nombre:"Alguien", id:s.id};
+          return '<div class="reng">' + avatar(per,"s") +
+            '<span class="t"><b>' + esc(per.nombre) + "</b>" +
+            '<span class="tenue">' + esc(s.nota || "Sin mensaje") + "</span></span>" +
+            '<button class="b chico" data-si="' + esc(s.id) + '">Aceptar</button>' +
+            '<button class="b chico" data-no="' + esc(s.id) + '">No</button></div>';
+        }).join("") + "</div>"
+      : "") +
+    (a.asistencia ? '<div class="nota">Asistencia registrada: ' +
+      (a.asistencia.llegaron||[]).length + " llegaron de " +
+      ((a.asistencia.llegaron||[]).length + (a.asistencia.faltaron||[]).length) + ".</div>" : "") +
+    acciones);
+
+  const q = (s) => modal.querySelector(s);
+  modal.querySelectorAll("[data-ver]").forEach(b => b.onclick = () => hojaPerfil(b.dataset.ver));
+  if(q("[data-unir]")) q("[data-unir]").onclick = () => unirme(a.id);
+  if(q("[data-salir]")) q("[data-salir]").onclick = () => salirme(a.id);
+  if(q("[data-cancel]")) q("[data-cancel]").onclick = () => cancelarParche(a.id);
+  if(q("[data-chat]")) q("[data-chat]").onclick = () => { cerrarHoja(); abrirConversacion(a.id); };
+  if(q("[data-asist]")) q("[data-asist]").onclick = () => hojaAsistencia(a.id);
+  modal.querySelectorAll("[data-si]").forEach(b => b.onclick = () => decidir(a.id, b.dataset.si, true));
+  modal.querySelectorAll("[data-no]").forEach(b => b.onclick = () => decidir(a.id, b.dataset.no, false));
+}
+
+/** El cupo bajo concurrencia: concesión breve sobre el documento antes de
+    contar, igual que el `select … for update` de la migración 0005. */
+async function unirme(id){
+  if(MODO === "supabase"){
+    try{
+      const r = await DB.rpc("entrar_parche", {p_id:id, p_nota:""});
+      cerrarHoja();
+      toast(r && r.estado === "solicitado"
+        ? "Pediste cupo. Falta la aprobación del anfitrión."
+        : "Listo, quedaste dentro");
+    }catch(e){ toast(e.message || "No se pudo unir", true); }
+    return;
+  }
+  const ref = DB.doc("parches/" + id);
+  try{
+    const lease = await ref.acquire({holder:yo.id, ttlMs:5000});
+    if(!lease.acquired) return toast("Alguien más está entrando ahora mismo, reintenta", true);
+    const d = await ref.get(); if(!d.exists) return toast("Ese parche ya no existe", true);
+    const a = d.data();
+    if((a.participantes||[]).some(p => p.id === yo.id)) return toast("Ya estabas dentro");
+
+    const faltas = yo.inasistencias || 0;
+    if(faltas >= 3 && faltas > (yo.asistencias||0) && !a.aprobacion)
+      return toast("Tienes " + faltas + " inasistencias: solo puedes pedir cupo en parches con aprobación", true);
+
+    if(a.aprobacion){
+      const sol = (a.solicitudes||[]).filter(s => s.id !== yo.id)
+        .concat([{id:yo.id, nota:"", ts:Date.now()}]);
+      await ref.update({solicitudes:sol});
+      cerrarHoja(); return toast("Pediste cupo. Falta la aprobación del anfitrión.");
+    }
+    if((a.participantes||[]).length >= a.cupo) return toast("Se acabaron los cupos", true);
+
+    const parts = (a.participantes||[]).concat([{id:yo.id, rol:"asistente", desde:Date.now()}]);
+    await ref.update({participantes:parts});
+    await mensajeSistema(id, String(yo.nombre).split(" ")[0] + " se unió.", parts.map(p=>p.id));
+    cerrarHoja(); toast("Listo, quedaste dentro");
+  }catch(e){ toast("No se pudo unir", true); }
+}
+
+async function decidir(id, quien, aprobar){
+  if(MODO === "supabase"){
+    try{
+      await DB.rpc("decidir_solicitud", {p_id:id, p_quien:quien, p_aprobar:aprobar});
+      cerrarHoja(); hojaParche(id);
+      toast(aprobar ? "Aprobado" : "Solicitud rechazada");
+    }catch(e){ toast(e.message || "No se pudo decidir", true); }
+    return;
+  }
+  const ref = DB.doc("parches/" + id);
+  try{
+    const d = await ref.get(); if(!d.exists) return;
+    const a = d.data();
+    const sol = (a.solicitudes||[]).filter(s => s.id !== quien);
+    const cambio = {solicitudes:sol};
+    if(aprobar){
+      if((a.participantes||[]).length >= a.cupo) return toast("No quedan cupos", true);
+      cambio.participantes = (a.participantes||[]).concat([{id:quien, rol:"asistente", desde:Date.now()}]);
+    }
+    await ref.update(cambio);
+    if(aprobar){
+      const per = perfilDe(quien);
+      await mensajeSistema(id, (per ? String(per.nombre).split(" ")[0] : "Alguien") + " entró al parche.",
+        cambio.participantes.map(p => p.id));
+    }
+    cerrarHoja(); hojaParche(id);
+    toast(aprobar ? "Aprobado" : "Solicitud rechazada");
+  }catch(e){ toast("No se pudo decidir", true); }
+}
+
+async function salirme(id){
+  if(MODO === "supabase"){
+    try{ await DB.rpc("salir_parche", {p_id:id}); cerrarHoja(); toast("Saliste del parche"); }
+    catch(e){ toast(e.message || "No se pudo salir", true); }
+    return;
+  }
+  try{
+    const ref = DB.doc("parches/" + id), d = await ref.get(); if(!d.exists) return;
+    const parts = (d.data().participantes||[]).filter(p => p.id !== yo.id);
+    await ref.update({participantes:parts});
+    await mensajeSistema(id, String(yo.nombre).split(" ")[0] + " ya no va.", parts.map(p=>p.id));
+    cerrarHoja(); toast("Saliste del parche");
+  }catch(e){ toast("No se pudo salir", true); }
+}
+async function cancelarParche(id){
+  if(!confirm("Se cancela para todos los confirmados. ¿Seguro?")) return;
+  if(MODO === "supabase"){
+    try{ await DB.rpc("cancelar_parche", {p_id:id}); cerrarHoja(); toast("Parche cancelado"); }
+    catch(e){ toast(e.message || "No se pudo cancelar", true); }
+    return;
+  }
+  try{
+    await DB.doc("parches/" + id).update({estado:"cancelado"});
+    await mensajeSistema(id, "El anfitrión canceló el parche.", null);
+    cerrarHoja(); toast("Parche cancelado");
+  }catch(e){ toast("No se pudo cancelar", true); }
+}
+
+function hojaAsistencia(id){
+  const a = parches.find(x => x.id === id); if(!a) return;
+  const otros = (a.participantes||[]).filter(p => p.id !== yo.id);
+  abrirHoja("Quién llegó",
+    '<p class="tenue" style="margin:0">Marca a quienes sí llegaron. Esto alimenta la ' +
+      'reputación: quien confirma y no aparece pierde acceso a los cupos abiertos.</p>' +
+    (otros.length ? '<div class="lista">' + otros.map(pp => {
+      const per = perfilDe(pp.id) || {nombre:"Alguien", id:pp.id};
+      return '<label class="reng" style="cursor:pointer">' + avatar(per,"s") +
+        '<span class="t"><b>' + esc(per.nombre) + "</b></span>" +
+        '<input type="checkbox" checked data-a="' + esc(pp.id) + '" style="width:auto"></label>';
+    }).join("") + "</div>" : '<div class="nota">Nadie más confirmó este parche.</div>') +
+    '<button class="b pri ancho" id="a-guardar">Guardar asistencia</button>');
+
+  modal.querySelector("#a-guardar").onclick = async () => {
+    const llegaron = [...modal.querySelectorAll("[data-a]")].filter(c => c.checked).map(c => c.dataset.a);
+    const faltaron = otros.map(p => p.id).filter(id2 => !llegaron.includes(id2));
+
+    if(MODO === "supabase"){
+      try{
+        await DB.rpc("marcar_asistencia", {p_id:id, p_llegaron:llegaron});
+        cerrarHoja(); toast("Asistencia registrada");
+      }catch(e){ toast(e.message || "No se pudo guardar", true); }
+      return;
+    }
+
+    try{
+      await DB.doc("parches/" + id).update({asistencia:{llegaron, faltaron, ts:Date.now()},
+                                            estado:"finalizado"});
+      for(const pid of llegaron){
+        const p = perfilDe(pid);
+        if(p) await DB.doc("perfiles/" + pid).update({asistencias:(p.asistencias||0)+1}).catch(()=>{});
+      }
+      for(const pid of faltaron){
+        const p = perfilDe(pid);
+        if(p) await DB.doc("perfiles/" + pid).update({inasistencias:(p.inasistencias||0)+1}).catch(()=>{});
+      }
+      cerrarHoja(); toast("Asistencia registrada");
+    }catch(e){ toast("No se pudo guardar", true); }
+  };
+}
+
+/* ==========================================================================
+   Agenda
+   ========================================================================== */
+function pintarAgenda(){
+  const mios = parches.filter(a => estoyEn(a) || solicite(a));
+  const proximos = mios.filter(a => estadoParche(a).k !== "terminado" && a.estado !== "cancelado")
+    .sort((x,y) => new Date(x.inicio) - new Date(y.inicio));
+  const pasados = mios.filter(a => estadoParche(a).k === "terminado" || a.estado === "cancelado")
+    .sort((x,y) => new Date(y.inicio) - new Date(x.inicio)).slice(0, 10);
+  const porAprobar = parches.filter(a => a.anfitrion === yo.id && (a.solicitudes||[]).length);
+  const fiab = (yo.asistencias||0) + (yo.inasistencias||0);
+
+  vista.innerHTML =
+    (porAprobar.length
+      ? '<span class="rot">Esperan tu respuesta</span><div class="col" style="gap:.5rem">' +
+        porAprobar.map(tarjetaParche).join("") + "</div>" : "") +
+    '<span class="rot">Lo que viene</span>' +
+    (proximos.length ? '<div class="col" style="gap:.5rem">' + proximos.map(tarjetaParche).join("") + "</div>"
+      : '<div class="vacio"><b>Sin planes confirmados</b>' +
+        '<span>Únete a algo en Parches, o publica tú el plan.</span></div>') +
+    (fiab ? '<div class="card pad fila" style="gap:1.2rem">' +
+      '<span><b class="mono men" style="font-size:1.3rem">' + (yo.asistencias||0) + "</b>" +
+        '<span class="rot" style="display:block">asististe</span></span>' +
+      '<span><b class="mono" style="font-size:1.3rem">' + (yo.inasistencias||0) + "</b>" +
+        '<span class="rot" style="display:block">no llegaste</span></span>' +
+      ((yo.inasistencias||0) >= 3 ? '<span class="tenue" style="flex:1">Con tres plantones solo ' +
+        'puedes pedir cupo en parches con aprobación.</span>' : "") + "</div>" : "") +
+    (pasados.length ? '<span class="rot">Historial</span><div class="col" style="gap:.5rem">' +
+      pasados.map(tarjetaParche).join("") + "</div>" : "");
+
+  vista.querySelectorAll("[data-p]").forEach(b => b.onclick = () => hojaParche(b.dataset.p));
+}
+
+/* ==========================================================================
+   Chats
+   ========================================================================== */
+function misChats(){
+  return chats.filter(c => (c.miembros||[]).includes(yo.id))
+    .filter(c => {
+      if(c.tipo !== "match") return true;
+      const otro = (c.miembros||[]).find(m => m !== yo.id);
+      return !bloqueadoCon(otro);
+    })
+    .sort((a,b) => (b.ultimo||0) - (a.ultimo||0));
+}
+function pintarChats(){
+  const lista = misChats(), leidos = lsJson(LS_LEIDOS);
+  vista.innerHTML = lista.length
+    ? '<div class="lista">' + lista.map(c => {
+        const otro = c.tipo === "match" ? perfilDe((c.miembros||[]).find(m => m !== yo.id)) : null;
+        const nombre = c.tipo === "match" ? (otro ? nombreCorto(otro.nombre) : "Alguien") : (c.titulo || "Parche");
+        const ult = (c.mensajes||[]).slice(-1)[0];
+        const nuevo = (c.ultimo||0) > (leidos[c.id]||0);
+        const par = c.tipo === "parche" ? parches.find(p => p.id === c.id) : null;
+        return '<button class="hilo" data-c="' + esc(c.id) + '">' +
+          (otro ? avatar(otro,"s")
+                : '<span class="av s" style="background:var(--sup3);color:var(--tinta2)">' +
+                  (par ? tipoDe(par.tipo)[1] : "·") + "</span>") +
+          '<span class="t"><b>' + esc(nombre) + "</b><span>" +
+            (ult ? esc((ult.de === yo.id ? "Tú: " : "") + ult.txt) : "Sin mensajes") + "</span></span>" +
+          '<span class="tenue mono" style="text-align:right">' + esc(hace(c.ultimo)) +
+            (nuevo ? '<br><span class="mand">nuevo</span>' : "") + "</span></button>";
+      }).join("") + "</div>"
+    : '<div class="vacio"><b>Sin conversaciones</b><span>Un chat nace de dos sitios: ' +
+      'una coincidencia o un parche al que entraste.</span></div>';
+  vista.querySelectorAll("[data-c]").forEach(b => b.onclick = () => abrirConversacion(b.dataset.c));
+}
+
+function abrirConversacion(cid){
+  pestana = "chats"; pintarTabs();
+  const leidos = lsJson(LS_LEIDOS);
+  const chat = chats.find(c => c.id === cid);
+  const otroId = chat && chat.tipo === "match" ? (chat.miembros||[]).find(m => m !== yo.id) : null;
+  const otro = perfilDe(otroId);
+  const par = chat && chat.tipo === "parche" ? parches.find(p => p.id === cid) : null;
+  $("#titulo").textContent = chat
+    ? (chat.tipo === "match" ? (otro ? nombreCorto(otro.nombre) : "Alguien") : (chat.titulo || "Parche"))
+    : "Chat";
+
+  vista.innerHTML =
+    '<div class="fila"><button class="b chico" id="volver">← Chats</button>' +
+    (otro ? '<button class="b chico" id="ver-perfil">Ver perfil</button>' : "") +
+    (par ? '<button class="b chico" id="ver-parche">Ver el parche</button>' +
+      '<span class="' + estadoParche(par).cls + '" style="margin-left:auto">' +
+      esc(estadoParche(par).txt) + "</span>" : "") + "</div>" +
+    '<div class="conversa" id="conversa"></div>' +
+    '<div class="escritor"><input id="txt" placeholder="Escribe…" maxlength="500" autocomplete="off">' +
+    '<button class="b pri" id="enviar">Enviar</button></div>';
+
+  $("#volver").onclick = () => { cerrarConversa(); pintar(); scrollTo(0,0); };
+  if(otro) $("#ver-perfil").onclick = () => hojaPerfil(otro.id);
+  if(par) $("#ver-parche").onclick = () => hojaParche(par.id);
+
+  const pintarMsjs = (c) => {
+    const cont = $("#conversa"); if(!cont) return;
+    cont.innerHTML = (c.mensajes||[]).map(m => {
+      if(!m.de) return '<div class="msj sis">' + esc(m.txt) + "</div>";
+      const autor = perfilDe(m.de), mio = m.de === yo.id;
+      return '<div class="msj' + (mio ? " mio" : "") + '">' +
+        (!mio && c.tipo === "parche"
+          ? '<span class="q">' + esc(autor ? String(autor.nombre).split(" ")[0] : "Alguien") + "</span>" : "") +
+        esc(m.txt) + "</div>";
+    }).join("");
+    scrollTo(0, document.body.scrollHeight);
+  };
+
+  cerrarConversa();
+  desubConversa = DB.doc("chats/" + cid).onSnapshot(s => {
+    if(!s.exists) return;
+    const c = Object.assign({id:cid}, s.data());
+    const i = chats.findIndex(h => h.id === cid);
+    if(i >= 0) chats[i] = c; else chats.push(c);
+    if($("#conversa")) pintarMsjs(c);
+    leidos[cid] = Date.now();
+    lsGuardar(LS_LEIDOS, JSON.stringify(leidos));
+    marcarPips();
+  }, ()=>{});
+
+  const enviar = async () => {
+    const inp = $("#txt"), txt = inp.value.trim();
+    if(!txt) return;
+    inp.value = "";
+    await agregarMensaje(cid, yo.id, txt, null);
+  };
+  $("#enviar").onclick = enviar;
+  $("#txt").addEventListener("keydown", e => { if(e.key === "Enter") enviar(); });
+  $("#txt").focus();
+}
+
+const mensajeSistema = (cid, txt, miembros) => agregarMensaje(cid, null, txt, miembros);
+
+/** Los mensajes viven dentro del documento del chat, no como documentos
+    sueltos: el almacén admite 5.000 en total y un chat activo los gastaría. */
+async function agregarMensaje(cid, de, txt, miembros){
+  if(MODO === "supabase"){
+    // Los avisos de sistema los escribe el servidor dentro de cada RPC.
+    if(!de) return;
+    try{ await DB.rpc("enviar_mensaje", {p_chat:cid, p_txt:txt}); }
+    catch(e){ toast(e.message || "No se pudo enviar", true); }
+    return;
+  }
+  const ref = DB.doc("chats/" + cid);
+  try{
+    const d = await ref.get(); if(!d.exists) return;
+    const c = d.data();
+    const cambio = {mensajes:(c.mensajes||[]).concat([{de, txt, ts:Date.now()}]).slice(-200),
+                    ultimo:Date.now()};
+    if(miembros) cambio.miembros = miembros;
+    else if(de && !(c.miembros||[]).includes(de)) cambio.miembros = (c.miembros||[]).concat([de]);
+    await ref.update(cambio);
+  }catch(e){ toast("No se pudo enviar", true); }
+}
+
+/* ==========================================================================
+   Perfil propio
+   ========================================================================== */
+function pintarPerfil(){
+  const e = edad(yo.nacimiento), c = centroDe(yo.centro), mias = yo.intenciones || [];
+  const posibles = yo.esfera === "equipo" ? ["colegas","estudio","deporte"] : ["amistad","estudio","deporte"];
+  if(cfg.modoCita && mayorDeEdad(yo)) posibles.unshift("cita");
+  const misBloqueos = ((bloqueos.find(b => b.id === yo.id) || {}).ids) || [];
+
+  vista.innerHTML =
+    '<div class="card pad col">' +
+      '<div class="fila" style="align-items:flex-start">' + avatar(yo,"l") +
+        '<div style="flex:1;min-width:0">' +
+          '<h2 style="font-size:1.25rem">' + esc(yo.nombre) + "</h2>" +
+          '<div class="tenue">' + esc(yo.correo) + "</div>" +
+          '<div class="chips" style="margin-top:.45rem">' +
+            '<span class="chip fijo">' + esc(yo.rol) + "</span>" +
+            '<span class="chip fijo">esfera ' + esc(yo.esfera) + "</span>" +
+            (e ? '<span class="chip fijo mono">' + e + " años</span>" : "") + "</div>" +
+        "</div></div>" +
+      '<div class="tenue">' + esc(c.nombre) + " · " + esc(c.ciudad) +
+        (yo.ficha ? " · ficha " + esc(yo.ficha) : "") + "</div>" +
+      (yo.bio ? '<p style="margin:0;color:var(--tinta2)">' + esc(yo.bio) + "</p>" : "") +
+      ((yo.intereses||[]).length ? '<div class="chips">' + yo.intereses.map(i =>
+        '<span class="chip fijo">' + esc(i) + "</span>").join("") + "</div>" : "") +
+      '<button class="b ancho" id="editar">Editar mi perfil</button>' +
+    "</div>" +
+
+    '<div class="card pad col"><span class="rot">Qué buscas</span>' +
+      '<div class="chips" id="mis-int">' + posibles.map(k =>
+        '<button class="chip" aria-pressed="' + mias.includes(k) + '" data-k="' + k + '">' +
+        INTENCIONES[k].e + " " + INTENCIONES[k].n + "</button>").join("") + "</div>" +
+      '<p class="tenue" style="margin:0">Solo hay coincidencia si las dos personas marcaron lo mismo.</p>' +
+    "</div>" +
+
+    '<div class="card pad col"><span class="rot">Ajustes del centro</span>' +
+      '<label class="fila" style="gap:.6rem"><input type="checkbox" id="sw-cita" style="width:auto"' +
+        (cfg.modoCita ? " checked" : "") + '><span style="flex:1;font-size:.9rem">Habilitar el modo cita</span></label>' +
+      '<p class="tenue" style="margin:0">Apagado por defecto. Aun encendido nunca aparece para ' +
+        'menores de edad ni cruza la frontera entre aprendices y funcionarios. En la app real ' +
+        'lo maneja bienestar del centro, no los usuarios.</p>' +
+    "</div>" +
+
+    (misBloqueos.length ? '<div class="card pad col"><span class="rot">Bloqueados · ' +
+      misBloqueos.length + "</span>" + '<div class="lista">' + misBloqueos.map(id => {
+        const p = perfilDe(id) || {nombre:"Perfil eliminado", id};
+        return '<div class="reng">' + avatar(p,"s") + '<span class="t"><b>' + esc(p.nombre) +
+          "</b></span><button class=\"b chico\" data-desbl=\"" + esc(id) + "\">Quitar</button></div>";
+      }).join("") + "</div></div>" : "") +
+
+    htmlConexion() +
+
+    '<div class="card pad col"><span class="rot">Sobre esta versión</span>' +
+      '<p class="tenue" style="margin:0">' +
+      (MODO === "supabase"
+        ? "Conectada a Supabase: las reglas de separación, el cupo y los mensajes los aplica " +
+          "Postgres con RLS, no esta página. Es la versión que sí protege los datos."
+        : "Prototipo para pilotaje. " +
+          (MODO === "artifact"
+            ? "Los datos se comparten con quien abra este enlace."
+            : "Todo se queda en este navegador.") +
+          " Las reglas de separación corren aquí, en el cliente; conéctala a Supabase para " +
+          "que las aplique el servidor.") + "</p>" +
+      (MODO === "supabase"
+        ? '<button class="b ancho" id="cerrar-sesion">Cerrar sesión</button>'
+        : "") +
+      '<button class="b peligro ancho" id="salir">Borrar mi perfil' +
+      (MODO === "supabase" ? "" : " de este dispositivo") + "</button>" +
+    "</div>";
+
+  $("#editar").onclick = hojaEditar;
+  $("#mis-int").onclick = async ev => {
+    const b = ev.target.closest(".chip"); if(!b) return;
+    const set = new Set(yo.intenciones || []);
+    set.has(b.dataset.k) ? set.delete(b.dataset.k) : set.add(b.dataset.k);
+    yo.intenciones = [...set];
+    if(!yo.intenciones.includes(intencion)) intencion = yo.intenciones[0] || null;
+    try{ await DB.doc("perfiles/" + yo.id).update({intenciones:yo.intenciones}); }catch(e){}
+    pintar();
+  };
+  $("#sw-cita").onchange = async ev => {
+    const antes = cfg.modoCita;
+    cfg.modoCita = ev.target.checked;
+    try{ await DB.doc("config/centro").set(cfg); }
+    catch(e){
+      // Con Supabase este interruptor es de bienestar: la RLS rechaza al resto.
+      cfg.modoCita = antes;
+      ev.target.checked = antes;
+      return toast("Este interruptor solo lo mueve bienestar del centro", true);
+    }
+    if(!cfg.modoCita){
+      yo.intenciones = (yo.intenciones||[]).filter(k => k !== "cita");
+      try{ await DB.doc("perfiles/" + yo.id).update({intenciones:yo.intenciones}); }catch(e){}
+      if(intencion === "cita") intencion = yo.intenciones[0] || null;
+    }
+    pintar();
+    toast(cfg.modoCita ? "Modo cita habilitado en el centro" : "Modo cita apagado");
+  };
+  vista.querySelectorAll("[data-desbl]").forEach(b => b.onclick = async () => {
+    const ids = misBloqueos.filter(x => x !== b.dataset.desbl);
+    try{ await DB.doc("bloqueos/" + yo.id).set({ids, ts:Date.now()}); pintar(); toast("Desbloqueado"); }
+    catch(e){ toast("No se pudo", true); }
+  });
+  cablearConexion();
+
+  const cs = $("#cerrar-sesion");
+  if(cs) cs.onclick = async () => {
+    try{ await DB.cli.auth.signOut(); }catch(e){}
+    lsBorrar(LS_UID);
+    location.reload();
+  };
+
+  $("#salir").onclick = async () => {
+    if(!confirm("Se borra tu perfil del almacén y esta sesión. ¿Seguro?")) return;
+    try{ await DB.doc("perfiles/" + yo.id).delete(); }catch(e){}
+    if(MODO === "supabase"){ try{ await DB.cli.auth.signOut(); }catch(e){} }
+    lsBorrar(LS_UID);
+    yo = null; $("#tabs").classList.add("oculto"); $("#b-noti").classList.add("oculto");
+    pintarEntrada();
+  };
+}
+
+function hojaEditar(){
+  abrirHoja("Editar perfil",
+    '<span class="rot">Avatar</span>' +
+    '<div class="chips" id="ed-emoji">' + EMOJIS_AV.map(x =>
+      '<button class="chip" aria-pressed="' + (yo.avatarEmoji === x) + '" data-e="' + x + '">' + x + "</button>").join("") + "</div>" +
+    '<div class="chips" id="ed-color">' + PALETA.map(c =>
+      '<button class="chip" aria-pressed="' + ((yo.avatarColor||colorDe(yo.id)) === c) + '" data-c="' + c +
+      '" style="background:' + c + ';width:30px;height:26px;border-color:' + c + '"></button>').join("") + "</div>" +
+    '<label class="campo">Nombre<input id="ed-nom" value="' + esc(yo.nombre) + '" maxlength="80"></label>' +
+    '<label class="campo">Sobre ti<textarea id="ed-bio" rows="3" maxlength="240">' + esc(yo.bio||"") + "</textarea></label>" +
+    '<div class="rej2">' +
+      '<label class="campo">' + (yo.esfera === "equipo" ? "Área" : "Programa") +
+        '<input id="ed-prog" value="' + esc(yo.programa||"") + '"></label>' +
+      '<label class="campo">Jornada<select id="ed-jor">' + JORNADAS.map(j =>
+        '<option value="' + j[0] + '"' + (yo.jornada === j[0] ? " selected" : "") + ">" + j[1] + "</option>").join("") +
+      "</select></label></div>" +
+    (yo.esfera === "aprendices"
+      ? '<label class="campo">Ficha<input id="ed-ficha" inputmode="numeric" value="' + esc(yo.ficha||"") + '"></label>' : "") +
+    '<span class="rot">Intereses</span><div class="chips" id="ed-int">' + INTERESES.map(i =>
+      '<button class="chip" aria-pressed="' + (yo.intereses||[]).includes(i) + '" data-i="' + esc(i) + '">' +
+      esc(i) + "</button>").join("") + "</div>" +
+    '<button class="b pri ancho" id="ed-guardar">Guardar</button>');
+
+  const unico = (cont, attr) => {
+    cont.onclick = ev => {
+      const b = ev.target.closest(".chip"); if(!b) return;
+      const ya = b.getAttribute("aria-pressed") === "true";
+      cont.querySelectorAll(".chip").forEach(c => c.setAttribute("aria-pressed","false"));
+      b.setAttribute("aria-pressed", ya ? "false" : "true");
+    };
+  };
+  unico(modal.querySelector("#ed-emoji"));
+  unico(modal.querySelector("#ed-color"));
+  modal.querySelector("#ed-int").onclick = ev => {
+    const b = ev.target.closest(".chip"); if(!b) return;
+    b.setAttribute("aria-pressed", b.getAttribute("aria-pressed") === "true" ? "false" : "true");
+  };
+
+  modal.querySelector("#ed-guardar").onclick = async () => {
+    const emo = modal.querySelector('#ed-emoji [aria-pressed="true"]');
+    const col = modal.querySelector('#ed-color [aria-pressed="true"]');
+    const fichaEl = modal.querySelector("#ed-ficha");
+    const cambio = {
+      nombre: modal.querySelector("#ed-nom").value.trim() || yo.nombre,
+      bio: modal.querySelector("#ed-bio").value.trim(),
+      programa: modal.querySelector("#ed-prog").value.trim(),
+      jornada: modal.querySelector("#ed-jor").value,
+      avatarEmoji: emo ? emo.dataset.e : "",
+      avatarColor: col ? col.dataset.c : colorDe(yo.id),
+      intereses: [...modal.querySelectorAll('#ed-int [aria-pressed="true"]')].map(b => b.dataset.i)
+    };
+    if(fichaEl) cambio.ficha = fichaEl.value.trim();
+    try{
+      await DB.doc("perfiles/" + yo.id).update(cambio);
+      Object.assign(yo, cambio);
+      cerrarHoja(); pintar(); toast("Perfil actualizado");
+    }catch(e){ toast("No se pudo guardar", true); }
+  };
+}
+</script>
