@@ -169,10 +169,6 @@ app.get(['/', '/api', '/health', '/api/health'], async (req, res) => {
     status: 'ok',
     name: 'sena-match-server',
     database: dbStatus,
-    config: {
-      mongoUriConfigured: !!getMongoUri(),
-      jwtSecretConfigured: !!process.env.JWT_SECRET,
-    },
     timestamp: new Date().toISOString()
   });
 });

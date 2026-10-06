@@ -9,12 +9,13 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const { rolPorDominio } = require('../helpers/reglas');
 const Perfil = require('../models/Perfil');
+const OtpToken = require('../models/OtpToken');
 
 const router = express.Router();
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-const CORREOS_VALIDOS = /@gmail\.com$|@misena\.edu\.co$|@sena\.edu\.co$/i;
+const CORREOS_VALIDOS = /^[a-zA-Z0-9._%+-]+@(gmail\.com|misena\.edu\.co|sena\.edu\.co)$/i;
 
 function rolPorCorreo(correo) {
   if (/@sena\.edu\.co$/i.test(correo)) return 'instructor';
@@ -52,7 +53,16 @@ function perfilPublico(perfil) {
   };
 }
 
+/** Genera código numérico de 6 dígitos criptográficamente seguro (100000 - 999999) */
+function generarCodigoSeguro() {
+  return String(crypto.randomInt(100000, 1000000));
+}
+
+// Mapas in-memory de respaldo/fallback y para testing sincrónico
 const pendingRegistrations = new Map();
+const otpStore = new Map();
+const loginAttempts = new Map(); // Para limitar fuerza bruta en login
+
 let nodemailer;
 try {
   nodemailer = require('nodemailer');
@@ -61,51 +71,204 @@ try {
 }
 
 async function enviarCodigoVerificacion(correo, code) {
-  if (process.env.NODE_ENV === 'test' || !process.env.SMTP_USER || !process.env.SMTP_PASS || !nodemailer) {
-    console.log(`\n  📧 [SENA Match] Código de verificación generado para ${correo}: ${code}\n`);
+  if (process.env.NODE_ENV === 'test') {
     return { simulated: true };
   }
-  try {
+
+  const proveedor = (process.env.EMAIL_PROVIDER || '').trim().toLowerCase();
+  const brevoApiKey = process.env.BREVO_API_KEY;
+  const brevoSenderEmail = process.env.BREVO_SENDER_EMAIL;
+  const usarBrevo = proveedor === 'brevo' || Boolean(brevoApiKey || brevoSenderEmail);
+
+  const textContent = `Tu código de verificación para completar tu registro en SENA Match es: ${code}. Es válido por 15 minutos.`;
+  const htmlContent = `
+      <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 24px; border: 1px solid #e0e0e0; border-radius: 12px;">
+        <h2 style="color: #39A900; margin-top: 0;">SENA Match</h2>
+        <p style="font-size: 15px; color: #333;">Hola,</p>
+        <p style="font-size: 15px; color: #333;">Introduce el siguiente código de verificación para completar la creación de tu cuenta en SENA Match:</p>
+        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; font-size: 28px; font-weight: bold; text-align: center; padding: 14px; letter-spacing: 6px; border-radius: 8px; margin: 20px 0;">
+          ${code}
+        </div>
+        <p style="font-size: 13px; color: #666;">Este código es de un solo uso y vencerá en 15 minutos.</p>
+        <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+        <p style="font-size: 12px; color: #888; text-align: center; margin: 0;">SENA Match · Creado por Miguel Toncel Herrera</p>
+      </div>
+    `;
+
+  if (usarBrevo) {
+    if (!brevoApiKey || !brevoSenderEmail) {
+      throw crearErrorCorreo('EMAIL_CONFIGURATION_MISSING');
+    }
+
+    try {
+      const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+          accept: 'application/json',
+          'api-key': brevoApiKey,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          sender: { name: 'SENA Match', email: brevoSenderEmail },
+          to: [{ email: correo }],
+          subject: 'Tu código de verificación de SENA Match',
+          textContent,
+          htmlContent,
+        }),
+        signal: AbortSignal.timeout(10000),
+      });
+
+      if (!response.ok) {
+        throw crearErrorCorreo(`EMAIL_API_REJECTED_${response.status}`);
+      }
+
+      return { provider: 'brevo' };
+    } catch (error) {
+      if (error?.code?.startsWith('EMAIL_')) throw error;
+      throw crearErrorCorreo('EMAIL_API_UNAVAILABLE', error);
+    }
+  }
+
+  if (process.env.SMTP_USER && process.env.SMTP_PASS && nodemailer) {
     const transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST || 'smtp.gmail.com',
       port: Number(process.env.SMTP_PORT) || 587,
-      secure: false,
+      secure: Number(process.env.SMTP_PORT) === 465,
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
       },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
     });
-    await transporter.sendMail({
-      from: `"SENA Match" <${process.env.SMTP_USER}>`,
-      to: correo,
-      subject: 'Tu código de verificación de SENA Match',
-      text: `Tu código de verificación para completar tu registro en SENA Match es: ${code}. Es válido por 15 minutos. Creado por Miguel Toncel Herrera.`,
-      html: `
-        <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 24px; border: 1px solid #e0e0e0; border-radius: 12px;">
-          <h2 style="color: #39A900; margin-top: 0;">SENA Match</h2>
-          <p style="font-size: 15px; color: #333;">Hola,</p>
-          <p style="font-size: 15px; color: #333;">Introduce el siguiente código de verificación para completar la creación de tu cuenta en SENA Match:</p>
-          <div style="background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; font-size: 28px; font-weight: bold; text-align: center; padding: 14px; letter-spacing: 6px; border-radius: 8px; margin: 20px 0;">
-            ${code}
-          </div>
-          <p style="font-size: 13px; color: #666;">Este código es de un solo uso y vencerá en 15 minutos.</p>
-          <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
-          <p style="font-size: 12px; color: #888; text-align: center; margin: 0;">SENA Match · Creado por Miguel Toncel Herrera</p>
-        </div>
-      `
-    });
-  } catch (err) {
-    console.error('Error al enviar correo de verificación:', err.message);
+
+    try {
+      await transporter.sendMail({
+        from: `"SENA Match" <${process.env.SMTP_USER}>`,
+        to: correo,
+        subject: 'Tu código de verificación de SENA Match',
+        text: textContent,
+        html: htmlContent,
+      });
+      return { provider: 'smtp' };
+    } catch (error) {
+      throw crearErrorCorreo('EMAIL_SMTP_FAILED', error);
+    }
   }
+
+  if (process.env.NODE_ENV === 'production') {
+    throw crearErrorCorreo('EMAIL_CONFIGURATION_MISSING');
+  }
+
+  // Entorno local: simular envío sin exponer secretos.
+  return { simulated: true };
+}
+
+function crearErrorCorreo(code, cause) {
+  const error = new Error(code, cause ? { cause } : undefined);
+  error.code = code;
+  return error;
+}
+
+function esErrorCorreo(error) {
+  return Boolean(error?.code?.startsWith('EMAIL_')) || /SMTP/i.test(error?.message || '');
+}
+
+// ─── Helpers de persistencia para OTP y Registros ──────────────────────────
+
+async function getStoredRegistration(correo) {
+  try {
+    const doc = await OtpToken.findOne({ correo, tipo: 'registro' });
+    if (doc) {
+      return {
+        correo: doc.correo,
+        nombre: doc.nombre,
+        rol: doc.rol,
+        hash: doc.hash,
+        foto_url: doc.foto_url,
+        code: doc.code,
+        intentos: doc.intentos,
+        lastSent: doc.lastSent ? new Date(doc.lastSent).getTime() : Date.now(),
+        expires: new Date(doc.expiresAt).getTime(),
+      };
+    }
+  } catch (_) {}
+  return pendingRegistrations.get(correo) || null;
+}
+
+async function saveStoredRegistration(correo, data) {
+  pendingRegistrations.set(correo, data);
+  try {
+    await OtpToken.findOneAndUpdate(
+      { correo, tipo: 'registro' },
+      {
+        correo,
+        tipo: 'registro',
+        code: data.code,
+        nombre: data.nombre,
+        rol: data.rol,
+        hash: data.hash,
+        foto_url: data.foto_url,
+        intentos: data.intentos || 0,
+        lastSent: new Date(data.lastSent || Date.now()),
+        expiresAt: new Date(data.expires),
+      },
+      { upsert: true, new: true }
+    );
+  } catch (_) {}
+}
+
+async function removeStoredRegistration(correo) {
+  pendingRegistrations.delete(correo);
+  try {
+    await OtpToken.deleteOne({ correo, tipo: 'registro' });
+  } catch (_) {}
+}
+
+async function getStoredOtp(correo) {
+  try {
+    const doc = await OtpToken.findOne({ correo, tipo: 'otp_login' });
+    if (doc) {
+      return {
+        correo: doc.correo,
+        code: doc.code,
+        intentos: doc.intentos,
+        lastSent: doc.lastSent ? new Date(doc.lastSent).getTime() : Date.now(),
+        expires: new Date(doc.expiresAt).getTime(),
+      };
+    }
+  } catch (_) {}
+  return otpStore.get(correo) || null;
+}
+
+async function saveStoredOtp(correo, data) {
+  otpStore.set(correo, data);
+  try {
+    await OtpToken.findOneAndUpdate(
+      { correo, tipo: 'otp_login' },
+      {
+        correo,
+        tipo: 'otp_login',
+        code: data.code,
+        intentos: data.intentos || 0,
+        lastSent: new Date(data.lastSent || Date.now()),
+        expiresAt: new Date(data.expires),
+      },
+      { upsert: true, new: true }
+    );
+  } catch (_) {}
+}
+
+async function removeStoredOtp(correo) {
+  otpStore.delete(correo);
+  try {
+    await OtpToken.deleteOne({ correo, tipo: 'otp_login' });
+  } catch (_) {}
 }
 
 // ─── POST /auth/register ─────────────────────────────────────────────────────
 
-/**
- * Crea una cuenta nueva o solicita código de verificación al correo.
- * Si se incluye 'codigo', verifica y crea la cuenta devolviendo { token, user }.
- * Si no se incluye 'codigo', envía el código al correo y devuelve { ok: true, requiresVerification: true }.
- */
 router.post('/register', async (req, res) => {
   try {
     const nombre = (req.body.nombre || req.body.name || '').trim();
@@ -143,18 +306,18 @@ router.post('/register', async (req, res) => {
 
     // Si se pasa código de verificación, validar e insertar directamente
     if (codigo) {
-      const pending = pendingRegistrations.get(correo);
+      const pending = await getStoredRegistration(correo);
       if (!pending) {
         return res.status(400).json({ error: 'No hay un código pendiente para este correo o ya expiró' });
       }
       if (Date.now() > pending.expires) {
-        pendingRegistrations.delete(correo);
+        await removeStoredRegistration(correo);
         return res.status(400).json({ error: 'El código de verificación ha expirado. Por favor solicita uno nuevo.' });
       }
 
       const MAX_INTENTOS = 5;
       if ((pending.intentos || 0) >= MAX_INTENTOS) {
-        pendingRegistrations.delete(correo);
+        await removeStoredRegistration(correo);
         return res.status(429).json({ error: 'Has superado el límite de intentos permitidos. Por seguridad, solicita un nuevo código.' });
       }
 
@@ -162,13 +325,14 @@ router.post('/register', async (req, res) => {
         pending.intentos = (pending.intentos || 0) + 1;
         const restantes = MAX_INTENTOS - pending.intentos;
         if (restantes <= 0) {
-          pendingRegistrations.delete(correo);
+          await removeStoredRegistration(correo);
           return res.status(429).json({ error: 'Has superado el límite de intentos permitidos. Por seguridad, solicita un nuevo código.' });
         }
+        await saveStoredRegistration(correo, pending);
         return res.status(400).json({ error: `Código de verificación incorrecto. Intentos restantes: ${restantes}` });
       }
 
-      pendingRegistrations.delete(correo);
+      await removeStoredRegistration(correo);
 
       const id = crypto.randomUUID();
       const perfil = await Perfil.create({
@@ -189,16 +353,16 @@ router.post('/register', async (req, res) => {
     }
 
     // Cooldown para evitar spam de solicitudes de código
-    const pendingExistente = pendingRegistrations.get(correo);
+    const pendingExistente = await getStoredRegistration(correo);
     const COOLDOWN_MS = 30 * 1000;
     if (pendingExistente && pendingExistente.lastSent && (Date.now() - pendingExistente.lastSent) < COOLDOWN_MS) {
       const espera = Math.ceil((COOLDOWN_MS - (Date.now() - pendingExistente.lastSent)) / 1000);
       return res.status(429).json({ error: `Por favor espera ${espera} segundos antes de solicitar otro código.` });
     }
 
-    // Flujo estándar: Generar código de 6 dígitos y enviar al correo
-    const code = String(Math.floor(100000 + Math.random() * 900000));
-    pendingRegistrations.set(correo, {
+    // Flujo estándar: Generar código de 6 dígitos criptográficamente seguro
+    const code = generarCodigoSeguro();
+    const registrationData = {
       nombre,
       correo,
       hash,
@@ -208,9 +372,13 @@ router.post('/register', async (req, res) => {
       intentos: 0,
       lastSent: Date.now(),
       expires: Date.now() + 15 * 60 * 1000 // 15 minutos
-    });
+    };
 
+    // Guardar el registro pendiente solo cuando el proveedor confirma el envío.
     await enviarCodigoVerificacion(correo, code);
+
+    // Guardar solo si el envío no arrojó excepción
+    await saveStoredRegistration(correo, registrationData);
 
     return res.status(200).json({
       ok: true,
@@ -218,16 +386,16 @@ router.post('/register', async (req, res) => {
       message: `Código de verificación enviado a ${correo}`
     });
   } catch (e) {
-    console.error('Error en /auth/register:', e);
+    console.error('Error en /auth/register:', e.message);
+    if (esErrorCorreo(e)) {
+      return res.status(502).json({ error: 'No se pudo enviar el código de verificación al correo. Inténtalo más tarde.' });
+    }
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
 // ─── POST /auth/verify-registration ──────────────────────────────────────────
 
-/**
- * Valida el código de verificación e inserta la cuenta en la base de datos.
- */
 router.post('/verify-registration', async (req, res) => {
   try {
     const correo = (req.body.email || req.body.correo || '').trim().toLowerCase();
@@ -237,19 +405,19 @@ router.post('/verify-registration', async (req, res) => {
       return res.status(400).json({ error: 'El correo y el código son obligatorios' });
     }
 
-    const pending = pendingRegistrations.get(correo);
+    const pending = await getStoredRegistration(correo);
     if (!pending) {
       return res.status(400).json({ error: 'No hay un registro pendiente para este correo o el código expiró' });
     }
 
     if (Date.now() > pending.expires) {
-      pendingRegistrations.delete(correo);
+      await removeStoredRegistration(correo);
       return res.status(400).json({ error: 'El código de verificación ha expirado. Por favor, regístrate nuevamente.' });
     }
 
     const MAX_INTENTOS = 5;
     if ((pending.intentos || 0) >= MAX_INTENTOS) {
-      pendingRegistrations.delete(correo);
+      await removeStoredRegistration(correo);
       return res.status(429).json({ error: 'Has superado el límite de intentos permitidos. Por seguridad, solicita un nuevo código.' });
     }
 
@@ -257,20 +425,21 @@ router.post('/verify-registration', async (req, res) => {
       pending.intentos = (pending.intentos || 0) + 1;
       const restantes = MAX_INTENTOS - pending.intentos;
       if (restantes <= 0) {
-        pendingRegistrations.delete(correo);
+        await removeStoredRegistration(correo);
         return res.status(429).json({ error: 'Has superado el límite de intentos permitidos. Por seguridad, solicita un nuevo código.' });
       }
+      await saveStoredRegistration(correo, pending);
       return res.status(400).json({ error: `Código de verificación incorrecto. Intentos restantes: ${restantes}` });
     }
 
     // Verificar una vez más que no exista ya en la BD
     const existe = await Perfil.findOne({ correo });
     if (existe) {
-      pendingRegistrations.delete(correo);
+      await removeStoredRegistration(correo);
       return res.status(409).json({ error: 'Este correo ya está registrado. Debes iniciar sesión o recuperar tu cuenta.' });
     }
 
-    pendingRegistrations.delete(correo);
+    await removeStoredRegistration(correo);
 
     const id = crypto.randomUUID();
     const perfil = await Perfil.create({
@@ -289,22 +458,19 @@ router.post('/verify-registration', async (req, res) => {
     const token = firmarToken(perfil);
     res.status(201).json({ ok: true, token, user: perfilPublico(perfil) });
   } catch (e) {
-    console.error('Error en /auth/verify-registration:', e);
+    console.error('Error en /auth/verify-registration:', e.message);
     res.status(500).json({ error: 'Error al verificar el registro' });
   }
 });
 
 // ─── POST /auth/resend-code ──────────────────────────────────────────────────
 
-/**
- * Reenvía un nuevo código de verificación si hay un registro pendiente.
- */
 router.post('/resend-code', async (req, res) => {
   try {
     const correo = (req.body.email || req.body.correo || '').trim().toLowerCase();
     if (!correo) return res.status(400).json({ error: 'El correo es obligatorio' });
 
-    const pending = pendingRegistrations.get(correo);
+    const pending = await getStoredRegistration(correo);
     if (!pending) {
       return res.status(400).json({ error: 'No hay un registro pendiente para este correo' });
     }
@@ -315,28 +481,27 @@ router.post('/resend-code', async (req, res) => {
       return res.status(429).json({ error: `Por favor espera ${espera} segundos antes de reenviar el código.` });
     }
 
-    const newCode = String(Math.floor(100000 + Math.random() * 900000));
+    const newCode = generarCodigoSeguro();
     pending.code = newCode;
     pending.expires = Date.now() + 15 * 60 * 1000;
     pending.intentos = 0;
     pending.lastSent = Date.now();
-    pendingRegistrations.set(correo, pending);
 
     await enviarCodigoVerificacion(correo, newCode);
+    await saveStoredRegistration(correo, pending);
 
     res.json({ ok: true, message: `Nuevo código enviado a ${correo}` });
   } catch (e) {
-    console.error('Error en /auth/resend-code:', e);
+    console.error('Error en /auth/resend-code:', e.message);
+    if (esErrorCorreo(e)) {
+      return res.status(502).json({ error: 'No se pudo enviar el código al correo. Inténtalo más tarde.' });
+    }
     res.status(500).json({ error: 'Error al reenviar código' });
   }
 });
 
 // ─── POST /auth/login ────────────────────────────────────────────────────────
 
-/**
- * Inicia sesión con correo y contraseña.
- * Devuelve { token, user }.
- */
 router.post('/login', async (req, res) => {
   try {
     const correo = (req.body.email || req.body.correo || '').trim().toLowerCase();
@@ -346,16 +511,44 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'Correo y contraseña son obligatorios' });
     }
 
+    // Limitador de intentos por fuerza bruta de contraseñas
+    const LOGIN_MAX_INTENTOS = 5;
+    const LOGIN_BLOCK_TIME = 15 * 60 * 1000; // 15 minutos
+    const intentoInfo = loginAttempts.get(correo);
+    if (intentoInfo) {
+      if (intentoInfo.bloqueadoHasta && Date.now() < intentoInfo.bloqueadoHasta) {
+        const mins = Math.ceil((intentoInfo.bloqueadoHasta - Date.now()) / 60000);
+        return res.status(429).json({ error: `Demasiados intentos fallidos. Inténtalo nuevamente en ${mins} minutos.` });
+      }
+      if (intentoInfo.bloqueadoHasta && Date.now() >= intentoInfo.bloqueadoHasta) {
+        loginAttempts.delete(correo);
+      }
+    }
+
     const perfil = await Perfil.findOne({ correo }).select('+password_hash');
     if (!perfil || !perfil.password_hash) {
-      // Respuesta deliberadamente vaga: no revelar si el correo existe
+      const actual = loginAttempts.get(correo) || { count: 0 };
+      actual.count = (actual.count || 0) + 1;
+      if (actual.count >= LOGIN_MAX_INTENTOS) {
+        actual.bloqueadoHasta = Date.now() + LOGIN_BLOCK_TIME;
+      }
+      loginAttempts.set(correo, actual);
       return res.status(401).json({ error: 'Correo o contraseña incorrectos' });
     }
 
     const coincide = await bcrypt.compare(password, perfil.password_hash);
     if (!coincide) {
+      const actual = loginAttempts.get(correo) || { count: 0 };
+      actual.count = (actual.count || 0) + 1;
+      if (actual.count >= LOGIN_MAX_INTENTOS) {
+        actual.bloqueadoHasta = Date.now() + LOGIN_BLOCK_TIME;
+      }
+      loginAttempts.set(correo, actual);
       return res.status(401).json({ error: 'Correo o contraseña incorrectos' });
     }
+
+    // Login exitoso: reiniciar contador de intentos
+    loginAttempts.delete(correo);
 
     if (perfil.estado === 'suspendido') {
       return res.status(403).json({ error: 'Tu cuenta ha sido suspendida. Contacta a soporte.' });
@@ -364,18 +557,12 @@ router.post('/login', async (req, res) => {
     const token = firmarToken(perfil);
     res.json({ ok: true, token, user: perfilPublico(perfil) });
   } catch (e) {
-    console.error('Error en /auth/login:', e);
+    console.error('Error en /auth/login:', e.message);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
-// ─── Rutas OTP (mantenidas para compatibilidad) ──────────────────────────────
-
-const otpStore = new Map();
-
-function generarOTP() {
-  return String(Math.floor(100000 + Math.random() * 900000));
-}
+// ─── Rutas OTP (compatibilidad) ──────────────────────────────────────────────
 
 router.post('/otp', async (req, res) => {
   try {
@@ -390,27 +577,33 @@ router.post('/otp', async (req, res) => {
       return res.status(403).json({ error: 'Tu cuenta ha sido suspendida. Contacta a soporte.' });
     }
 
-    const stored = otpStore.get(correo);
+    const stored = await getStoredOtp(correo);
     const COOLDOWN_MS = 30 * 1000;
     if (stored && stored.lastSent && (Date.now() - stored.lastSent) < COOLDOWN_MS) {
       const espera = Math.ceil((COOLDOWN_MS - (Date.now() - stored.lastSent)) / 1000);
       return res.status(429).json({ error: `Por favor espera ${espera} segundos antes de solicitar otro código.` });
     }
 
-    const code = generarOTP();
-    otpStore.set(correo, {
+    const code = generarCodigoSeguro();
+    const otpData = {
       code,
       expires: Date.now() + 10 * 60 * 1000,
       intentos: 0,
       lastSent: Date.now()
-    });
+    };
+
+    // Enviar código primero
+    await enviarCodigoVerificacion(correo, code);
+    await saveStoredOtp(correo, otpData);
 
     if (!perfil) {
-      perfil = await Perfil.create({ _id: crypto.randomUUID(), correo, nombre: correo.split('@')[0], rol });
+      await Perfil.create({ _id: crypto.randomUUID(), correo, nombre: correo.split('@')[0], rol });
     }
-    console.log(`\n  📧 OTP para ${correo}: ${code}\n`);
     res.json({ ok: true, message: 'Código enviado' });
   } catch (e) {
+    if (esErrorCorreo(e)) {
+      return res.status(502).json({ error: 'No se pudo enviar el código OTP por correo.' });
+    }
     res.status(500).json({ error: e.message });
   }
 });
@@ -421,30 +614,31 @@ router.post('/verify', async (req, res) => {
     const token = (req.body.token || '').trim();
     if (!correo || !token) return res.status(400).json({ error: 'Faltan correo o código' });
 
-    const stored = otpStore.get(correo);
+    const stored = await getStoredOtp(correo);
     if (!stored) return res.status(400).json({ error: 'No hay código pendiente para ese correo' });
     if (Date.now() > stored.expires) {
-      otpStore.delete(correo);
+      await removeStoredOtp(correo);
       return res.status(400).json({ error: 'El código expiró' });
     }
 
     const MAX_INTENTOS = 5;
     if ((stored.intentos || 0) >= MAX_INTENTOS) {
-      otpStore.delete(correo);
+      await removeStoredOtp(correo);
       return res.status(429).json({ error: 'Has superado el límite de intentos permitidos. Por seguridad, solicita un nuevo código.' });
     }
 
-    if (stored.code !== token) {
+    if (String(stored.code).trim() !== token) {
       stored.intentos = (stored.intentos || 0) + 1;
       const restantes = MAX_INTENTOS - stored.intentos;
       if (restantes <= 0) {
-        otpStore.delete(correo);
+        await removeStoredOtp(correo);
         return res.status(429).json({ error: 'Has superado el límite de intentos permitidos. Por seguridad, solicita un nuevo código.' });
       }
+      await saveStoredOtp(correo, stored);
       return res.status(400).json({ error: `Código incorrecto. Intentos restantes: ${restantes}` });
     }
 
-    otpStore.delete(correo);
+    await removeStoredOtp(correo);
     const perfil = await Perfil.findOne({ correo });
     if (!perfil) return res.status(400).json({ error: 'Perfil no encontrado' });
 
