@@ -61,42 +61,107 @@ try {
 }
 
 async function enviarCodigoVerificacion(correo, code) {
-  if (process.env.NODE_ENV === 'test' || !process.env.SMTP_USER || !process.env.SMTP_PASS || !nodemailer) {
-    console.log(`\n  📧 [SENA Match] Código de verificación generado para ${correo}: ${code}\n`);
+  if (process.env.NODE_ENV === 'test') {
     return { simulated: true };
   }
-  try {
+
+  const proveedor = (process.env.EMAIL_PROVIDER || '').trim().toLowerCase();
+  const brevoApiKey = process.env.BREVO_API_KEY;
+  const brevoSenderEmail = process.env.BREVO_SENDER_EMAIL;
+  const usarBrevo = proveedor === 'brevo' || Boolean(brevoApiKey || brevoSenderEmail);
+  const textContent = `Tu código de verificación para completar tu registro en SENA Match es: ${code}. Es válido por 15 minutos. Creado por Miguel Toncel Herrera.`;
+  const htmlContent = `
+    <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 24px; border: 1px solid #e0e0e0; border-radius: 12px;">
+      <h2 style="color: #39A900; margin-top: 0;">SENA Match</h2>
+      <p style="font-size: 15px; color: #333;">Hola,</p>
+      <p style="font-size: 15px; color: #333;">Introduce el siguiente código de verificación para completar la creación de tu cuenta en SENA Match:</p>
+      <div style="background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; font-size: 28px; font-weight: bold; text-align: center; padding: 14px; letter-spacing: 6px; border-radius: 8px; margin: 20px 0;">
+        ${code}
+      </div>
+      <p style="font-size: 13px; color: #666;">Este código es de un solo uso y vencerá en 15 minutos.</p>
+      <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+      <p style="font-size: 12px; color: #888; text-align: center; margin: 0;">SENA Match · Creado por Miguel Toncel Herrera</p>
+    </div>
+  `;
+
+  if (usarBrevo) {
+    if (!brevoApiKey || !brevoSenderEmail) {
+      throw crearErrorCorreo('EMAIL_CONFIGURATION_MISSING');
+    }
+
+    try {
+      const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+          accept: 'application/json',
+          'api-key': brevoApiKey,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          sender: { name: 'SENA Match', email: brevoSenderEmail },
+          to: [{ email: correo }],
+          subject: 'Tu código de verificación de SENA Match',
+          textContent,
+          htmlContent,
+        }),
+        signal: AbortSignal.timeout(10000),
+      });
+
+      if (!response.ok) {
+        throw crearErrorCorreo(`EMAIL_API_REJECTED_${response.status}`);
+      }
+      return { provider: 'brevo' };
+    } catch (error) {
+      if (error?.code?.startsWith('EMAIL_')) throw error;
+      throw crearErrorCorreo('EMAIL_API_UNAVAILABLE', error);
+    }
+  }
+
+  if (process.env.SMTP_USER && process.env.SMTP_PASS && nodemailer) {
     const transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST || 'smtp.gmail.com',
       port: Number(process.env.SMTP_PORT) || 587,
-      secure: false,
+      secure: Number(process.env.SMTP_PORT) === 465,
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
       },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
     });
-    await transporter.sendMail({
-      from: `"SENA Match" <${process.env.SMTP_USER}>`,
-      to: correo,
-      subject: 'Tu código de verificación de SENA Match',
-      text: `Tu código de verificación para completar tu registro en SENA Match es: ${code}. Es válido por 15 minutos. Creado por Miguel Toncel Herrera.`,
-      html: `
-        <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 24px; border: 1px solid #e0e0e0; border-radius: 12px;">
-          <h2 style="color: #39A900; margin-top: 0;">SENA Match</h2>
-          <p style="font-size: 15px; color: #333;">Hola,</p>
-          <p style="font-size: 15px; color: #333;">Introduce el siguiente código de verificación para completar la creación de tu cuenta en SENA Match:</p>
-          <div style="background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; font-size: 28px; font-weight: bold; text-align: center; padding: 14px; letter-spacing: 6px; border-radius: 8px; margin: 20px 0;">
-            ${code}
-          </div>
-          <p style="font-size: 13px; color: #666;">Este código es de un solo uso y vencerá en 15 minutos.</p>
-          <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
-          <p style="font-size: 12px; color: #888; text-align: center; margin: 0;">SENA Match · Creado por Miguel Toncel Herrera</p>
-        </div>
-      `
-    });
-  } catch (err) {
-    console.error('Error al enviar correo de verificación:', err.message);
+    try {
+      await transporter.sendMail({
+        from: `"SENA Match" <${process.env.SMTP_USER}>`,
+        to: correo,
+        subject: 'Tu código de verificación de SENA Match',
+        text: textContent,
+        html: htmlContent,
+      });
+      return { provider: 'smtp' };
+    } catch (error) {
+      throw crearErrorCorreo('EMAIL_SMTP_FAILED', error);
+    }
   }
+
+  if (process.env.NODE_ENV === 'production') {
+    throw crearErrorCorreo('EMAIL_CONFIGURATION_MISSING');
+  }
+  return { simulated: true };
+}
+
+function generarCodigoSeguro() {
+  return String(crypto.randomInt(100000, 1000000));
+}
+
+function crearErrorCorreo(code, cause) {
+  const error = new Error(code, cause ? { cause } : undefined);
+  error.code = code;
+  return error;
+}
+
+function esErrorCorreo(error) {
+  return Boolean(error?.code?.startsWith('EMAIL_')) || /SMTP/i.test(error?.message || '');
 }
 
 // ─── POST /auth/register ─────────────────────────────────────────────────────
@@ -196,7 +261,7 @@ router.post('/register', async (req, res) => {
     }
 
     // Flujo normal interactivo: Generar código de 6 dígitos y enviar al correo
-    const code = String(Math.floor(100000 + Math.random() * 900000));
+    const code = generarCodigoSeguro();
     pendingRegistrations.set(correo, {
       nombre,
       correo,
@@ -215,7 +280,10 @@ router.post('/register', async (req, res) => {
       message: `Código de verificación enviado a ${correo}`
     });
   } catch (e) {
-    console.error('Error en /auth/register:', e);
+    console.error('Error en /auth/register:', e.message);
+    if (esErrorCorreo(e)) {
+      return res.status(502).json({ error: 'No se pudo enviar el código de verificación. Revisa la configuración del servicio de correo e inténtalo nuevamente.' });
+    }
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
@@ -294,7 +362,7 @@ router.post('/resend-code', async (req, res) => {
       return res.status(400).json({ error: 'No hay un registro pendiente para este correo' });
     }
 
-    const newCode = String(Math.floor(100000 + Math.random() * 900000));
+    const newCode = generarCodigoSeguro();
     pending.code = newCode;
     pending.expires = Date.now() + 15 * 60 * 1000;
     pendingRegistrations.set(correo, pending);
@@ -303,7 +371,10 @@ router.post('/resend-code', async (req, res) => {
 
     res.json({ ok: true, message: `Nuevo código enviado a ${correo}` });
   } catch (e) {
-    console.error('Error en /auth/resend-code:', e);
+    console.error('Error en /auth/resend-code:', e.message);
+    if (esErrorCorreo(e)) {
+      return res.status(502).json({ error: 'No se pudo reenviar el código. Revisa la configuración del servicio de correo e inténtalo nuevamente.' });
+    }
     res.status(500).json({ error: 'Error al reenviar código' });
   }
 });
@@ -347,7 +418,7 @@ router.post('/login', async (req, res) => {
 const otpStore = new Map();
 
 function generarOTP() {
-  return String(Math.floor(100000 + Math.random() * 900000));
+  return generarCodigoSeguro();
 }
 
 router.post('/otp', async (req, res) => {
@@ -397,3 +468,4 @@ router.post('/verify', async (req, res) => {
 });
 
 module.exports = router;
+
