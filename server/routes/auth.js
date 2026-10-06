@@ -151,8 +151,21 @@ router.post('/register', async (req, res) => {
         pendingRegistrations.delete(correo);
         return res.status(400).json({ error: 'El código de verificación ha expirado. Por favor solicita uno nuevo.' });
       }
+
+      const MAX_INTENTOS = 5;
+      if ((pending.intentos || 0) >= MAX_INTENTOS) {
+        pendingRegistrations.delete(correo);
+        return res.status(429).json({ error: 'Has superado el límite de intentos permitidos. Por seguridad, solicita un nuevo código.' });
+      }
+
       if (String(pending.code).trim() !== codigo) {
-        return res.status(400).json({ error: 'Código de verificación incorrecto' });
+        pending.intentos = (pending.intentos || 0) + 1;
+        const restantes = MAX_INTENTOS - pending.intentos;
+        if (restantes <= 0) {
+          pendingRegistrations.delete(correo);
+          return res.status(429).json({ error: 'Has superado el límite de intentos permitidos. Por seguridad, solicita un nuevo código.' });
+        }
+        return res.status(400).json({ error: `Código de verificación incorrecto. Intentos restantes: ${restantes}` });
       }
 
       pendingRegistrations.delete(correo);
@@ -175,27 +188,15 @@ router.post('/register', async (req, res) => {
       return res.status(201).json({ ok: true, token, user: perfilPublico(perfil) });
     }
 
-    // En entorno de test automatizado sin código, permitir completar inmediatamente
-    const isTestMock = process.env.JWT_SECRET === 'senamatch-test-secret-key-3.0';
-    if (isTestMock) {
-      const id = crypto.randomUUID();
-      const perfil = await Perfil.create({
-        _id: id,
-        correo,
-        nombre,
-        rol,
-        estado: 'activo',
-        password_hash: hash,
-        foto_url,
-        primera_publicacion_completada: false,
-        creado: new Date(),
-        visto: new Date()
-      });
-      const token = firmarToken(perfil);
-      return res.status(201).json({ ok: true, token, user: perfilPublico(perfil) });
+    // Cooldown para evitar spam de solicitudes de código
+    const pendingExistente = pendingRegistrations.get(correo);
+    const COOLDOWN_MS = 30 * 1000;
+    if (pendingExistente && pendingExistente.lastSent && (Date.now() - pendingExistente.lastSent) < COOLDOWN_MS) {
+      const espera = Math.ceil((COOLDOWN_MS - (Date.now() - pendingExistente.lastSent)) / 1000);
+      return res.status(429).json({ error: `Por favor espera ${espera} segundos antes de solicitar otro código.` });
     }
 
-    // Flujo normal interactivo: Generar código de 6 dígitos y enviar al correo
+    // Flujo estándar: Generar código de 6 dígitos y enviar al correo
     const code = String(Math.floor(100000 + Math.random() * 900000));
     pendingRegistrations.set(correo, {
       nombre,
@@ -204,6 +205,8 @@ router.post('/register', async (req, res) => {
       foto_url,
       rol,
       code,
+      intentos: 0,
+      lastSent: Date.now(),
       expires: Date.now() + 15 * 60 * 1000 // 15 minutos
     });
 
@@ -244,8 +247,20 @@ router.post('/verify-registration', async (req, res) => {
       return res.status(400).json({ error: 'El código de verificación ha expirado. Por favor, regístrate nuevamente.' });
     }
 
+    const MAX_INTENTOS = 5;
+    if ((pending.intentos || 0) >= MAX_INTENTOS) {
+      pendingRegistrations.delete(correo);
+      return res.status(429).json({ error: 'Has superado el límite de intentos permitidos. Por seguridad, solicita un nuevo código.' });
+    }
+
     if (String(pending.code).trim() !== codigo) {
-      return res.status(400).json({ error: 'Código de verificación incorrecto' });
+      pending.intentos = (pending.intentos || 0) + 1;
+      const restantes = MAX_INTENTOS - pending.intentos;
+      if (restantes <= 0) {
+        pendingRegistrations.delete(correo);
+        return res.status(429).json({ error: 'Has superado el límite de intentos permitidos. Por seguridad, solicita un nuevo código.' });
+      }
+      return res.status(400).json({ error: `Código de verificación incorrecto. Intentos restantes: ${restantes}` });
     }
 
     // Verificar una vez más que no exista ya en la BD
@@ -294,9 +309,17 @@ router.post('/resend-code', async (req, res) => {
       return res.status(400).json({ error: 'No hay un registro pendiente para este correo' });
     }
 
+    const COOLDOWN_MS = 30 * 1000;
+    if (pending.lastSent && (Date.now() - pending.lastSent) < COOLDOWN_MS) {
+      const espera = Math.ceil((COOLDOWN_MS - (Date.now() - pending.lastSent)) / 1000);
+      return res.status(429).json({ error: `Por favor espera ${espera} segundos antes de reenviar el código.` });
+    }
+
     const newCode = String(Math.floor(100000 + Math.random() * 900000));
     pending.code = newCode;
     pending.expires = Date.now() + 15 * 60 * 1000;
+    pending.intentos = 0;
+    pending.lastSent = Date.now();
     pendingRegistrations.set(correo, pending);
 
     await enviarCodigoVerificacion(correo, newCode);
@@ -334,6 +357,10 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Correo o contraseña incorrectos' });
     }
 
+    if (perfil.estado === 'suspendido') {
+      return res.status(403).json({ error: 'Tu cuenta ha sido suspendida. Contacta a soporte.' });
+    }
+
     const token = firmarToken(perfil);
     res.json({ ok: true, token, user: perfilPublico(perfil) });
   } catch (e) {
@@ -357,10 +384,27 @@ router.post('/otp', async (req, res) => {
     if (!rol) {
       return res.status(400).json({ error: 'Solo se admiten correos @misena.edu.co o @sena.edu.co' });
     }
-    const code = generarOTP();
-    otpStore.set(correo, { code, expires: Date.now() + 10 * 60 * 1000 });
 
     let perfil = await Perfil.findOne({ correo });
+    if (perfil && perfil.estado === 'suspendido') {
+      return res.status(403).json({ error: 'Tu cuenta ha sido suspendida. Contacta a soporte.' });
+    }
+
+    const stored = otpStore.get(correo);
+    const COOLDOWN_MS = 30 * 1000;
+    if (stored && stored.lastSent && (Date.now() - stored.lastSent) < COOLDOWN_MS) {
+      const espera = Math.ceil((COOLDOWN_MS - (Date.now() - stored.lastSent)) / 1000);
+      return res.status(429).json({ error: `Por favor espera ${espera} segundos antes de solicitar otro código.` });
+    }
+
+    const code = generarOTP();
+    otpStore.set(correo, {
+      code,
+      expires: Date.now() + 10 * 60 * 1000,
+      intentos: 0,
+      lastSent: Date.now()
+    });
+
     if (!perfil) {
       perfil = await Perfil.create({ _id: crypto.randomUUID(), correo, nombre: correo.split('@')[0], rol });
     }
@@ -383,11 +427,30 @@ router.post('/verify', async (req, res) => {
       otpStore.delete(correo);
       return res.status(400).json({ error: 'El código expiró' });
     }
-    if (stored.code !== token) return res.status(400).json({ error: 'Código incorrecto' });
+
+    const MAX_INTENTOS = 5;
+    if ((stored.intentos || 0) >= MAX_INTENTOS) {
+      otpStore.delete(correo);
+      return res.status(429).json({ error: 'Has superado el límite de intentos permitidos. Por seguridad, solicita un nuevo código.' });
+    }
+
+    if (stored.code !== token) {
+      stored.intentos = (stored.intentos || 0) + 1;
+      const restantes = MAX_INTENTOS - stored.intentos;
+      if (restantes <= 0) {
+        otpStore.delete(correo);
+        return res.status(429).json({ error: 'Has superado el límite de intentos permitidos. Por seguridad, solicita un nuevo código.' });
+      }
+      return res.status(400).json({ error: `Código incorrecto. Intentos restantes: ${restantes}` });
+    }
 
     otpStore.delete(correo);
     const perfil = await Perfil.findOne({ correo });
     if (!perfil) return res.status(400).json({ error: 'Perfil no encontrado' });
+
+    if (perfil.estado === 'suspendido') {
+      return res.status(403).json({ error: 'Tu cuenta ha sido suspendida. Contacta a soporte.' });
+    }
 
     const jwtToken = firmarToken(perfil);
     res.json({ ok: true, token: jwtToken, user: perfilPublico(perfil) });
@@ -395,5 +458,8 @@ router.post('/verify', async (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
+
+router._pendingRegistrations = pendingRegistrations;
+router._otpStore = otpStore;
 
 module.exports = router;

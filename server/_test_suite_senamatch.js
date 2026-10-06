@@ -629,7 +629,7 @@ async function runTests() {
     });
     assert(r.status === 400, 'Registro nuevo sin foto de perfil rechazado (400)');
 
-    // 2. Registro con foto -> Permitido
+    // 2. Registro con foto -> Requiere verificación de código (sin bypass de prueba)
     r = await fetch(`${BASE}/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -640,8 +640,35 @@ async function runTests() {
         foto_url: 'https://res.cloudinary.com/jsts4pi6/image/upload/v1/senamatch/avatar1.jpg'
       })
     });
+    const preRegData = await r.json();
+    assert(r.status === 200 && preRegData.requiresVerification === true, 'Registro con foto solicita verificación obligatoria de código (200)');
+
+    // Obtener código generado para verificar de forma segura
+    const codigoGenerado = authRoutes._pendingRegistrations.get('nuevo.aprendiz@misena.edu.co')?.code;
+    assert(!!codigoGenerado, 'Código de verificación generado y almacenado en pending');
+
+    // Código incorrecto es rechazado
+    const rMal = await fetch(`${BASE}/auth/verify-registration`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: 'nuevo.aprendiz@misena.edu.co',
+        codigo: '000000'
+      })
+    });
+    assert(rMal.status === 400, 'Código incorrecto rechazado con error (400)');
+
+    // Verificación exitosa con código válido -> Crea cuenta y devuelve token (201)
+    r = await fetch(`${BASE}/auth/verify-registration`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: 'nuevo.aprendiz@misena.edu.co',
+        codigo: codigoGenerado
+      })
+    });
     const regData = await r.json();
-    assert(r.status === 201 && regData.token, 'Registro con foto de perfil permitido (201)');
+    assert(r.status === 201 && regData.token, 'Registro verificado con código permitido (201)');
     const tokenNuevo = regData.token;
     const uidNuevo = regData.user.id;
 
@@ -723,6 +750,97 @@ async function runTests() {
     const msgsParche = chatParche.mensajes || [];
     const todosTienenNombre = msgsParche.every(m => m.senderNombre && !m.senderNombre.startsWith('id_'));
     assert(todosTienenNombre, 'Mensajes grupales muestran el nombre real del remitente y no su ID');
+
+    // ========================================================
+    // TEST 11 — BLOQUEO DE CUENTAS SUSPENDIDAS
+    // ========================================================
+    console.log('\n[TEST 11 — ACCESO DENEGADO A CUENTAS SUSPENDIDAS]');
+    // Suspender a un usuario
+    const userSuspendidoId = 'user_suspendido_1';
+    await Perfil.create({
+      _id: userSuspendidoId,
+      correo: 'suspendido@misena.edu.co',
+      nombre: 'Usuario Suspendido',
+      rol: 'aprendiz',
+      estado: 'suspendido',
+      password_hash: await bcrypt.hash('clave12345', 10),
+      creado: new Date(),
+      visto: new Date()
+    });
+
+    // Login denegado (403)
+    r = await fetch(`${BASE}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'suspendido@misena.edu.co', password: 'clave12345' })
+    });
+    assert(r.status === 403, 'Login de cuenta suspendida rechazado con 403 Forbidden');
+
+    // Token existente de cuenta suspendida rechazado en endpoints con auth (403)
+    const tokenSuspendido = jwt.sign(
+      { uid: userSuspendidoId, correo: 'suspendido@misena.edu.co', rol: 'aprendiz' },
+      process.env.JWT_SECRET
+    );
+    r = await fetch(`${BASE}/perfiles`, {
+      headers: { Authorization: `Bearer ${tokenSuspendido}` }
+    });
+    assert(r.status === 403, 'Acceso con token de cuenta suspendida denegado con 403 Forbidden');
+
+    // ========================================================
+    // TEST 12 — SALIDA DE PARCHE COMPRUEBA MEMBRESÍA
+    // ========================================================
+    console.log('\n[TEST 12 — SALIDA DE PARCHE COMPRUEBA MEMBRESÍA]');
+    // Usuario C ajeno que NO está en el parche intenta salir
+    r = await fetch(`${BASE}/parches/${parcheId}/salir`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokenC}` }
+    });
+    assert(r.status === 400, 'Salida de parche rechazada para usuario no miembro (400)');
+
+    // ========================================================
+    // TEST 13 — LÍMITE DE INTENTOS CONTRA CÓDIGO/OTP
+    // ========================================================
+    console.log('\n[TEST 13 — LÍMITE DE INTENTOS EN VERIFICACIÓN DE CÓDIGOS]');
+    // Iniciar registro para test de fuerza bruta de OTP
+    const correoBrute = 'fuerzabruta@misena.edu.co';
+    await fetch(`${BASE}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        nombre: 'Brute Test',
+        email: correoBrute,
+        password: 'password123',
+        foto_url: 'https://res.cloudinary.com/test/avatar.jpg'
+      })
+    });
+
+    // Enviar 4 códigos erróneos sucesivos (intentos 1 a 4)
+    for (let i = 0; i < 4; i++) {
+      const resErr = await fetch(`${BASE}/auth/verify-registration`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: correoBrute, codigo: '99999' + i })
+      });
+      assert(resErr.status === 400, `Intento erróneo ${i + 1} retorna 400`);
+    }
+
+    // El 5to intento erróneo supera el límite y bloquea con 429 Too Many Requests
+    r = await fetch(`${BASE}/auth/verify-registration`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: correoBrute, codigo: '999995' })
+    });
+    assert(r.status === 429, 'Superar intentos máximos de verificación bloquea con 429 Too Many Requests');
+
+    // ========================================================
+    // TEST 14 — BÚSQUEDAS SEGURAS (LÍMITES Y REGEX SANITIZADO)
+    // ========================================================
+    console.log('\n[TEST 14 — BÚSQUEDAS SEGURAS]');
+    // Caracteres especiales de regex no deben lanzar 500 ni provocar ReDoS
+    r = await fetch(`${BASE}/perfiles/comunidad?q=[a-z]+(*test)`, {
+      headers: { Authorization: `Bearer ${tokenA}` }
+    });
+    assert(r.status === 200, 'Búsqueda con caracteres regex complejos procesada de forma segura (200)');
 
     console.log(`\n🎉 TODAS LAS PRUEBAS COMPLETADAS EXITOSAMENTE: ${passed}/${total} PASARON SIN ERRORES\n`);
     server.close();

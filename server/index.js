@@ -30,8 +30,9 @@ app.use(cors({
     // Permitir peticiones sin origin (apps móviles Expo / React Native, curl, scripts del servidor)
     if (!origin) return callback(null, true);
 
-    // Permitir el frontend de producción en Vercel y despliegues preview
-    if (origin === ALLOWED_ORIGIN_PROD || origin.endsWith('.vercel.app')) {
+    // Permitir exclusivamente el frontend de producción y despliegues preview legítimos de este proyecto en Vercel
+    const SENAMATCH_PREVIEW_REGEX = /^https:\/\/(senamatch(-[a-z0-9-]+)?|senamatch-k9dt(-[a-z0-9-]+)?)\.vercel\.app$/i;
+    if (origin === ALLOWED_ORIGIN_PROD || SENAMATCH_PREVIEW_REGEX.test(origin)) {
       return callback(null, true);
     }
 

@@ -42,8 +42,10 @@ async function quitarMiembroChat(chatId, perfilId) {
  */
 router.get('/', auth, async (req, res) => {
   try {
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 60));
     const todos = await Parche.find({ estado: { $ne: 'cancelado' } })
       .sort({ creado: -1 })
+      .limit(limit)
       .lean();
 
     const anfitrionesIds = [...new Set(todos.map(p => String(p.anfitrion)).filter(Boolean))];
@@ -267,6 +269,11 @@ router.post('/:id/salir', auth, async (req, res) => {
       return res.status(400).json({ error: 'El anfitrión no puede salir de su propio parche; debe cancelarlo si no se realizará' });
     }
 
+    const esMiembro = (parche.participantes || []).some(p => String(p.id) === yoId);
+    if (!esMiembro) {
+      return res.status(400).json({ error: 'No eres participante de este parche' });
+    }
+
     const parts = (parche.participantes || []).filter(p => String(p.id) !== yoId);
     await Parche.findByIdAndUpdate(req.params.id, { $set: { participantes: parts } });
 
@@ -302,6 +309,11 @@ router.post('/:id/expulsar', auth, async (req, res) => {
     const targetId = String(targetUserId);
     if (targetId === String(parche.anfitrion)) {
       return res.status(400).json({ error: 'No se puede expulsar al anfitrión' });
+    }
+
+    const targetEsMiembro = (parche.participantes || []).some(p => String(p.id) === targetId);
+    if (!targetEsMiembro) {
+      return res.status(400).json({ error: 'El usuario no es participante de este parche' });
     }
 
     const parts = (parche.participantes || []).filter(p => String(p.id) !== targetId);

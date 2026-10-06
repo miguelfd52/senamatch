@@ -25,6 +25,12 @@ async function auth(req, res, next) {
     const payload = jwt.verify(token, secret);
     req.uid = payload.uid || payload.sub;
     req.perfil = await Perfil.findById(req.uid).lean({ virtuals: true });
+    if (!req.perfil) {
+      return res.status(401).json({ error: 'Usuario no encontrado' });
+    }
+    if (req.perfil.estado === 'suspendido') {
+      return res.status(403).json({ error: 'Tu cuenta ha sido suspendida. Contacta a soporte.' });
+    }
     next();
   } catch (e) {
     if (e.message && e.message.includes('JWT_SECRET')) {
@@ -50,6 +56,10 @@ async function authOpcional(req, res, next) {
     const payload = jwt.verify(token, getJwtSecret());
     req.uid = payload.uid;
     req.perfil = await Perfil.findById(payload.uid).lean({ virtuals: true });
+    if (req.perfil && req.perfil.estado === 'suspendido') {
+      req.uid = null;
+      req.perfil = null;
+    }
   } catch (e) {
     req.uid = null;
     req.perfil = null;

@@ -26,6 +26,7 @@ Perfil.findById = (id) => {
     then: (res, rej) => Promise.resolve(p).then(res, rej),
   };
 };
+Perfil.findByIdAndUpdate = async () => null;
 
 // Mock Publicacion
 Publicacion.find = () => {

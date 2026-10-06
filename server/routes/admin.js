@@ -70,19 +70,26 @@ router.get('/metricas', auth, soloStaff, async (req, res) => {
  */
 router.get('/usuarios', auth, soloStaff, async (req, res) => {
   try {
-    const { q, estado, rol } = req.query;
+    const { q, estado, rol, limit: reqLimit, page: reqPage } = req.query;
     const query = {};
 
-    if (q && q.trim()) {
-      const regex = new RegExp(q.trim(), 'i');
+    if (q && typeof q === 'string' && q.trim()) {
+      const cleanQ = q.trim().slice(0, 50);
+      const escapedQ = cleanQ.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(escapedQ, 'i');
       query.$or = [{ nombre: regex }, { correo: regex }, { programa: regex }];
     }
-    if (estado) query.estado = estado;
-    if (rol) query.rol = rol;
+    if (estado && ['activo', 'pausado', 'suspendido'].includes(estado)) query.estado = estado;
+    if (rol && ['aprendiz', 'egresado', 'instructor', 'bienestar', 'moderador', 'admin'].includes(rol)) query.rol = rol;
+
+    const limit = Math.min(100, Math.max(1, parseInt(reqLimit, 10) || 50));
+    const page = Math.max(1, parseInt(reqPage, 10) || 1);
+    const skip = (page - 1) * limit;
 
     const usuarios = await Perfil.find(query)
       .sort({ creado: -1 })
-      .limit(100)
+      .skip(skip)
+      .limit(limit)
       .lean();
 
     res.json(usuarios.map(u => ({

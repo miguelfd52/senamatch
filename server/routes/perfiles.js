@@ -97,7 +97,11 @@ router.get('/', auth, async (req, res) => {
       }
     }
 
-    const perfiles = await Perfil.find(filtro).sort({ creado: -1 }).lean();
+    const feedLimit = Math.min(60, Math.max(1, parseInt(req.query.limit, 10) || 40));
+    const perfiles = await Perfil.find(filtro)
+      .sort({ creado: -1 })
+      .limit(feedLimit)
+      .lean();
 
     const visibles = [];
     const seenIds = new Set();
@@ -139,23 +143,32 @@ router.get('/', auth, async (req, res) => {
  */
 router.get('/comunidad', auth, async (req, res) => {
   try {
-    const { q } = req.query;
+    const { q, limit: reqLimit, page: reqPage } = req.query;
     let query = {
       _id: { $ne: req.uid },
       estado: { $ne: 'suspendido' }
     };
 
-    if (q && q.trim()) {
-      const regex = new RegExp(q.trim(), 'i');
+    if (q && typeof q === 'string' && q.trim()) {
+      // Sanitizar, recortar longitud y escapar caracteres de regex para prevenir ReDoS y errores de sintaxis
+      const cleanQ = q.trim().slice(0, 50);
+      const escapedQ = cleanQ.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(escapedQ, 'i');
       query.$or = [
         { nombre: regex },
         { programa: regex }
       ];
     }
 
+    // Límite seguro y paginación
+    const limit = Math.min(50, Math.max(1, parseInt(reqLimit, 10) || 30));
+    const page = Math.max(1, parseInt(reqPage, 10) || 1);
+    const skip = (page - 1) * limit;
+
     const perfiles = await Perfil.find(query)
       .sort({ creado: -1 })
-      .limit(60)
+      .skip(skip)
+      .limit(limit)
       .lean();
 
     const visibles = [];

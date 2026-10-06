@@ -27,8 +27,11 @@ function esMiembroDelChat(chat, uid) {
  */
 router.get('/', auth, async (req, res) => {
   try {
-    const uid = String(req.uid);
-    const chats = await Chat.find({ miembros: uid }).sort({ ultimo: -1 }).lean();
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 50));
+    const chats = await Chat.find({ miembros: uid })
+      .sort({ ultimo: -1 })
+      .limit(limit)
+      .lean();
 
     // Obtener IDs de usuarios descartados con 'pass'
     const swipeDoc = await Swipe.findById(uid).lean();
