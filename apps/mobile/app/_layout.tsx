@@ -22,8 +22,8 @@ function Enrutador() {
     const esfera = user ? (['aprendiz', 'egresado'].includes(user.rol as string) ? 'aprendices' : 'equipo') : null;
 
     if (!estaAutenticado) {
-      // Si no está en auth, ir directamente al login (no a la pantalla de bienvenida)
-      if (grupo !== '(auth)') {
+      // Mantener la portada pública; las demás rutas protegidas van al login.
+      if (grupo !== '(auth)' && grupo !== 'index' && grupo != null) {
         router.replace('/(auth)/login');
       }
       return;
@@ -80,4 +80,3 @@ const styles = StyleSheet.create({
       : {}),
   },
 });
-
