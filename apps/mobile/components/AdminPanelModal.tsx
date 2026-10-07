@@ -6,6 +6,7 @@ import {
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTheme } from '../app/context/ThemeContext';
 import { api } from '../lib/api';
+import NavIcon from './NavIcon';
 
 const ACCENT = '#39A900';
 const DANGER = '#FF5B6E';
@@ -103,7 +104,7 @@ export default function AdminPanelModal({ visible, onClose }: Props) {
               <Text style={[styles.headerSubtitle, { color: colors.textSub }]}>Gestión y métricas de SENA Match</Text>
             </View>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn} activeOpacity={0.7}>
-              <Text style={[styles.closeText, { color: colors.textSub }]}>✕</Text>
+              <NavIcon name="close" size={20} color={colors.textSub} />
             </TouchableOpacity>
           </View>
 
@@ -114,9 +115,7 @@ export default function AdminPanelModal({ visible, onClose }: Props) {
               onPress={() => setActiveTab('metricas')}
               activeOpacity={0.8}
             >
-              <Text style={[styles.tabText, { color: colors.textSub }, activeTab === 'metricas' && styles.tabTextActive]}>
-                📊 Métricas
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}><NavIcon name="chart" size={15} color={activeTab === 'metricas' ? ACCENT : colors.textSub} /><Text style={[styles.tabText, { color: colors.textSub }, activeTab === 'metricas' && styles.tabTextActive]}>Métricas</Text></View>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -124,9 +123,7 @@ export default function AdminPanelModal({ visible, onClose }: Props) {
               onPress={() => setActiveTab('reportes')}
               activeOpacity={0.8}
             >
-              <Text style={[styles.tabText, { color: colors.textSub }, activeTab === 'reportes' && styles.tabTextActive]}>
-                🚩 Reportes
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}><NavIcon name="flag" size={15} color={activeTab === 'reportes' ? ACCENT : colors.textSub} /><Text style={[styles.tabText, { color: colors.textSub }, activeTab === 'reportes' && styles.tabTextActive]}>Reportes</Text></View>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -134,9 +131,7 @@ export default function AdminPanelModal({ visible, onClose }: Props) {
               onPress={() => setActiveTab('usuarios')}
               activeOpacity={0.8}
             >
-              <Text style={[styles.tabText, { color: colors.textSub }, activeTab === 'usuarios' && styles.tabTextActive]}>
-                👥 Usuarios
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}><NavIcon name="users" size={15} color={activeTab === 'usuarios' ? ACCENT : colors.textSub} /><Text style={[styles.tabText, { color: colors.textSub }, activeTab === 'usuarios' && styles.tabTextActive]}>Usuarios</Text></View>
             </TouchableOpacity>
           </View>
 
@@ -148,7 +143,7 @@ export default function AdminPanelModal({ visible, onClose }: Props) {
             </View>
           ) : error ? (
             <View style={styles.centerBox}>
-              <Text style={styles.errorEmoji}>⚠️</Text>
+              <NavIcon name="alert" size={42} color={DANGER} />
               <Text style={[styles.errorTitle, { color: colors.text }]}>Error de acceso</Text>
               <Text style={[styles.errorSubtitle, { color: colors.textSub }]}>{error}</Text>
               <TouchableOpacity
@@ -174,38 +169,38 @@ export default function AdminPanelModal({ visible, onClose }: Props) {
               {activeTab === 'metricas' && metricas && (
                 <View style={styles.gridCards}>
                   <View style={[styles.metricCard, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]}>
-                    <Text style={styles.metricEmoji}>👥</Text>
+                    <NavIcon name="users" size={24} color={ACCENT} />
                     <Text style={[styles.metricVal, { color: colors.text }]}>{metricas.usuarios?.total || 0}</Text>
                     <Text style={[styles.metricLabel, { color: colors.textSub }]}>Usuarios registrados</Text>
                     <Text style={styles.metricSub}>({metricas.usuarios?.activos || 0} activos)</Text>
                   </View>
 
                   <View style={[styles.metricCard, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]}>
-                    <Text style={styles.metricEmoji}>❤️</Text>
+                    <NavIcon name="heart" size={24} color={ACCENT} />
                     <Text style={[styles.metricVal, { color: colors.text }]}>{metricas.matches || 0}</Text>
                     <Text style={[styles.metricLabel, { color: colors.textSub }]}>Matches concretados</Text>
                   </View>
 
                   <View style={[styles.metricCard, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]}>
-                    <Text style={styles.metricEmoji}>📝</Text>
+                    <NavIcon name="edit" size={24} color={ACCENT} />
                     <Text style={[styles.metricVal, { color: colors.text }]}>{metricas.publicaciones || 0}</Text>
                     <Text style={[styles.metricLabel, { color: colors.textSub }]}>Publicaciones</Text>
                   </View>
 
                   <View style={[styles.metricCard, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]}>
-                    <Text style={styles.metricEmoji}>🎯</Text>
+                    <NavIcon name="target" size={24} color={ACCENT} />
                     <Text style={[styles.metricVal, { color: colors.text }]}>{metricas.parchesActivos || 0}</Text>
                     <Text style={[styles.metricLabel, { color: colors.textSub }]}>Parches activos</Text>
                   </View>
 
                   <View style={[styles.metricCard, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]}>
-                    <Text style={styles.metricEmoji}>💬</Text>
+                    <NavIcon name="chats" size={24} color={ACCENT} />
                     <Text style={[styles.metricVal, { color: colors.text }]}>{metricas.totalChats || 0}</Text>
                     <Text style={[styles.metricLabel, { color: colors.textSub }]}>Conversaciones</Text>
                   </View>
 
                   <View style={[styles.metricCard, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }, metricas.reportesPendientes > 0 && { borderColor: DANGER }]}>
-                    <Text style={styles.metricEmoji}>⚠️</Text>
+                    <NavIcon name="alert" size={24} color={DANGER} />
                     <Text style={[styles.metricVal, { color: colors.text }, metricas.reportesPendientes > 0 && { color: DANGER }]}>
                       {metricas.reportesPendientes || 0}
                     </Text>
@@ -218,7 +213,7 @@ export default function AdminPanelModal({ visible, onClose }: Props) {
               {activeTab === 'reportes' && (
                 <View>
                   {reportes.length === 0 ? (
-                    <Text style={[styles.emptyText, { color: colors.textSub }]}>No hay reportes registrados en la comunidad 🎉</Text>
+                    <Text style={[styles.emptyText, { color: colors.textSub }]}>No hay reportes registrados en la comunidad</Text>
                   ) : (
                     reportes.map(rep => (
                       <View key={rep.id} style={[styles.reportItem, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]}>

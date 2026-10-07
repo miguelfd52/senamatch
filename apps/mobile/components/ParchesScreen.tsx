@@ -10,20 +10,21 @@ import { useFeedParches, useCrearParche, useUnirmeAlParche } from '../hooks/useP
 import { api } from '../lib/api';
 import PublicProfileModal from './PublicProfileModal';
 import { useTheme } from '../app/context/ThemeContext';
+import NavIcon, { type NavIconName } from './NavIcon';
 
 const ACCENT = '#39A900';
 const SUCCESS = '#00E5A3';
 const DANGER = '#FF5B6E';
 
 const TIPOS_PARCHE = [
-  { key: 'desayuno', emoji: '🍳', label: 'Desayuno' },
-  { key: 'almuerzo', emoji: '🍽️', label: 'Almuerzo' },
-  { key: 'cafe', emoji: '☕', label: 'Café' },
-  { key: 'estudio', emoji: '📚', label: 'Estudio' },
-  { key: 'deporte', emoji: '⚽', label: 'Deporte' },
-  { key: 'integracion', emoji: '🎉', label: 'Integración' },
-  { key: 'cultural', emoji: '🎭', label: 'Cultural' },
-  { key: 'otro', emoji: '✨', label: 'Otro' },
+  { key: 'desayuno', icon: 'food', label: 'Desayuno' },
+  { key: 'almuerzo', icon: 'food', label: 'Almuerzo' },
+  { key: 'cafe', icon: 'coffee', label: 'Café' },
+  { key: 'estudio', icon: 'book', label: 'Estudio' },
+  { key: 'deporte', icon: 'sport', label: 'Deporte' },
+  { key: 'integracion', icon: 'users', label: 'Integración' },
+  { key: 'cultural', icon: 'theater', label: 'Cultural' },
+  { key: 'otro', icon: 'sparkles', label: 'Otro' },
 ];
 
 export default function ParchesScreen() {
@@ -172,7 +173,7 @@ export default function ParchesScreen() {
   if (isError || timedOut) {
     return (
       <View style={[styles.center, { backgroundColor: colors.bg }]}>
-        <Text style={{ fontSize: 40, marginBottom: 16 }}>😕</Text>
+        <NavIcon name="sad" size={40} color={colors.textSub} />
         <Text style={[styles.loadingText, { fontSize: 16, color: colors.text, marginBottom: 8 }]}>
           No se pudieron cargar los parches
         </Text>
@@ -181,7 +182,7 @@ export default function ParchesScreen() {
           style={[styles.createBtn, { marginTop: 20 }]}
           onPress={() => { setTimedOut(false); refetch(); }}
         >
-          <Text style={styles.createBtnText}>🔄 Reintentar</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}><NavIcon name="refresh" size={16} color="#FFFFFF" /><Text style={styles.createBtnText}>Reintentar</Text></View>
         </TouchableOpacity>
       </View>
     );
@@ -227,7 +228,7 @@ export default function ParchesScreen() {
       >
         {abiertos.length === 0 ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyEmoji}>🎯</Text>
+            <NavIcon name="target" size={42} color={colors.textSub} />
             <Text style={styles.emptyTitle}>Sin parches activos en este momento</Text>
             <Text style={styles.emptySubtitle}>
               Sé el primero en armar un parche de estudio, café o deporte para tu comunidad.
@@ -236,7 +237,7 @@ export default function ParchesScreen() {
               style={[styles.createBtn, { marginTop: 16 }]}
               onPress={() => setShowModal(true)}
             >
-              <Text style={styles.createBtnText}>✨ Crear el primer parche</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}><NavIcon name="sparkles" size={16} color="#FFFFFF" /><Text style={styles.createBtnText}>Crear el primer parche</Text></View>
             </TouchableOpacity>
           </View>
         ) : (
@@ -255,9 +256,7 @@ export default function ParchesScreen() {
                   {/* Tipo icon + title */}
                   <View style={styles.parcheHeader}>
                     <View style={styles.tipoIcon}>
-                      <Text style={styles.tipoEmoji}>
-                        {tipoInfo?.emoji || '✨'}
-                      </Text>
+                      <NavIcon name={(tipoInfo?.icon as NavIconName) || 'sparkles'} size={24} color={ACCENT} />
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.parcheTitulo, { color: colors.text }]} numberOfLines={2}>
@@ -272,11 +271,11 @@ export default function ParchesScreen() {
                   {/* Details */}
                   <View style={styles.parcheDetails}>
                     <View style={styles.detailRow}>
-                      <Text style={styles.detailIcon}>📍</Text>
+                      <NavIcon name="location" size={16} color={colors.textSub} />
                       <Text style={[styles.detailText, { color: colors.textSub }]}>{parche.lugar}</Text>
                     </View>
                     <View style={styles.detailRow}>
-                      <Text style={styles.detailIcon}>📅</Text>
+                      <NavIcon name="calendar" size={16} color={colors.textSub} />
                       <Text style={styles.detailText}>
                         {fechaInicio.toLocaleDateString('es-CO', {
                           weekday: 'short',
@@ -291,7 +290,7 @@ export default function ParchesScreen() {
                       </Text>
                     </View>
                     <View style={styles.detailRow}>
-                      <Text style={styles.detailIcon}>👥</Text>
+                      <NavIcon name="users" size={16} color={colors.textSub} />
                       <Text style={styles.detailText}>
                         {cupoOcupado} / {parche.cupo} cupos
                       </Text>
@@ -304,7 +303,7 @@ export default function ParchesScreen() {
                         onPress={() => setSelectedProfileId(parche.anfitrion)}
                         activeOpacity={0.8}
                       >
-                        <Text style={styles.detailIcon}>👤</Text>
+                        <NavIcon name="profile" size={16} color={colors.textSub} />
                         <Text style={styles.detailText}>
                           Por <Text style={styles.anfitrionLink}>{parche.anfitrionNombre}</Text>
                         </Text>
@@ -326,26 +325,26 @@ export default function ParchesScreen() {
                           style={styles.btnGestionar}
                           onPress={() => setSelectedParcheParaGestion(parche)}
                         >
-                          <Text style={styles.btnGestionarText}>⚙️ Administrar parche</Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}><NavIcon name="settings" size={15} color="#FFFFFF" /><Text style={styles.btnGestionarText}>Administrar parche</Text></View>
                         </TouchableOpacity>
 
                         <TouchableOpacity
                           style={styles.btnChatParche}
                           onPress={() => router.push('/chats')}
                         >
-                          <Text style={styles.btnChatParcheText}>💬 Chat</Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}><NavIcon name="chats" size={15} color="#FFFFFF" /><Text style={styles.btnChatParcheText}>Chat</Text></View>
                         </TouchableOpacity>
                       </View>
                     ) : yaEstoy ? (
                       <View style={styles.joinedActionBox}>
                         <View style={styles.joinedBadge}>
-                          <Text style={styles.joinedText}>✅ Ya estás dentro</Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}><NavIcon name="check" size={14} color={ACCENT} /><Text style={styles.joinedText}>Ya estás dentro</Text></View>
                         </View>
                         <TouchableOpacity
                           style={styles.btnChatParche}
                           onPress={() => router.push('/chats')}
                         >
-                          <Text style={styles.btnChatParcheText}>💬 Chat del parche</Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}><NavIcon name="chats" size={15} color="#FFFFFF" /><Text style={styles.btnChatParcheText}>Chat del parche</Text></View>
                         </TouchableOpacity>
                       </View>
                     ) : cupoOcupado >= parche.cupo ? (
@@ -360,7 +359,7 @@ export default function ParchesScreen() {
                         disabled={unirseMutation.isPending}
                       >
                         <Text style={styles.joinBtnText}>
-                          {unirseMutation.isPending ? 'Uniéndote…' : '🎯 Unirme al parche'}
+                          {unirseMutation.isPending ? 'Uniéndote…' : 'Unirme al parche'}
                         </Text>
                       </TouchableOpacity>
                     )}
@@ -388,7 +387,7 @@ export default function ParchesScreen() {
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: colors.text }]}>Crear nuevo parche</Text>
               <TouchableOpacity onPress={() => { setShowModal(false); resetForm(); }} style={{ padding: 4 }}>
-                <Text style={[styles.modalClose, { color: colors.textSub }]}>✕</Text>
+                <NavIcon name="close" size={20} color={colors.textSub} />
               </TouchableOpacity>
             </View>
 
@@ -415,7 +414,7 @@ export default function ParchesScreen() {
                     ]}
                     onPress={() => setTipo(t.key)}
                   >
-                    <Text style={styles.tipoChipEmoji}>{t.emoji}</Text>
+                    <NavIcon name={t.icon as NavIconName} size={17} color={tipo === t.key ? ACCENT : colors.textSub} />
                     <Text style={[
                       styles.tipoChipText,
                       { color: colors.textSub },
@@ -468,7 +467,7 @@ export default function ParchesScreen() {
                   onPress={handleCrear}
                   activeOpacity={0.85}
                 >
-                  <Text style={styles.submitBtnText}>Publicar parche 🎯</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}><NavIcon name="target" size={16} color="#FFFFFF" /><Text style={styles.submitBtnText}>Publicar parche</Text></View>
                 </TouchableOpacity>
               )}
             </ScrollView>
@@ -489,7 +488,7 @@ export default function ParchesScreen() {
               <View style={styles.modalHeader}>
                 <Text style={[styles.modalTitle, { color: colors.text }]}>Administrar parche</Text>
                 <TouchableOpacity onPress={() => setSelectedParcheParaGestion(null)} style={{ padding: 4 }}>
-                  <Text style={[styles.modalClose, { color: colors.textSub }]}>✕</Text>
+                <NavIcon name="close" size={20} color={colors.textSub} />
                 </TouchableOpacity>
               </View>
 
@@ -508,9 +507,10 @@ export default function ParchesScreen() {
                         onPress={() => setSelectedProfileId(part.id)}
                         style={{ flex: 1 }}
                       >
-                        <Text style={[styles.participantName, { color: colors.text }]}>
-                          {esAnf ? '👑 Anfitrión (Tú)' : `Aprendiz (ID: ${part.id.slice(0, 8)}...)`}
-                        </Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          {esAnf ? <NavIcon name="crown" size={15} color={ACCENT} /> : <NavIcon name="profile" size={15} color={colors.textSub} />}
+                          <Text style={[styles.participantName, { color: colors.text }]}>{esAnf ? 'Anfitrión (Tú)' : `Aprendiz (ID: ${part.id.slice(0, 8)}...)`}</Text>
+                        </View>
                       </TouchableOpacity>
 
                       {!esAnf && (
@@ -530,7 +530,7 @@ export default function ParchesScreen() {
                 style={styles.btnCancelarParche}
                 onPress={() => handleCancelarParche(selectedParcheParaGestion.id)}
               >
-                <Text style={styles.btnCancelarParcheText}>⚠️ Cancelar este parche</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}><NavIcon name="alert" size={15} color="#FFFFFF" /><Text style={styles.btnCancelarParcheText}>Cancelar este parche</Text></View>
               </TouchableOpacity>
             </View>
           </View>

@@ -9,6 +9,7 @@ import { useAuth } from '../app/context/AuthContext';
 import { useTheme } from '../app/context/ThemeContext';
 import { api } from '../lib/api';
 import FotoViewerModal from './FotoViewerModal';
+import NavIcon, { getAvatarIconName } from './NavIcon';
 
 const ACCENT = '#39A900';
 const DANGER = '#FF5B6E';
@@ -170,7 +171,7 @@ export default function PublicProfileModal({ userId, visible, onClose, onOpenCha
           <View style={[styles.modalHeader, { borderBottomColor: colors.cardBorder }]}>
             <Text style={[styles.modalTitle, { color: colors.textSub }]}>Perfil de la comunidad</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn} activeOpacity={0.7}>
-              <Text style={[styles.closeText, { color: colors.textSub }]}>✕</Text>
+              <NavIcon name="close" size={20} color={colors.textSub} />
             </TouchableOpacity>
           </View>
 
@@ -181,7 +182,7 @@ export default function PublicProfileModal({ userId, visible, onClose, onOpenCha
             </View>
           ) : error ? (
             <View style={styles.centerBox}>
-              <Text style={styles.errorEmoji}>⚠️</Text>
+              <NavIcon name="alert" size={42} color={colors.danger} />
               <Text style={[styles.errorTitle, { color: colors.text }]}>Perfil no disponible</Text>
               <Text style={[styles.errorMsg, { color: colors.textSub }]}>{error}</Text>
               <TouchableOpacity
@@ -189,7 +190,7 @@ export default function PublicProfileModal({ userId, visible, onClose, onOpenCha
                 onPress={() => userId && cargarPerfil(userId)}
                 activeOpacity={0.8}
               >
-                <Text style={[styles.retryBtnText, { color: colors.text }]}>🔄 Reintentar</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}><NavIcon name="refresh" size={16} color={colors.text} /><Text style={[styles.retryBtnText, { color: colors.text }]}>Reintentar</Text></View>
               </TouchableOpacity>
             </View>
           ) : perfil ? (
@@ -202,7 +203,7 @@ export default function PublicProfileModal({ userId, visible, onClose, onOpenCha
                   </TouchableOpacity>
                 ) : (
                   <View style={[styles.avatarCircle, { backgroundColor: (perfil.avatarColor || ACCENT) + '22' }]}>
-                    <Text style={styles.avatarEmoji}>{perfil.avatarEmoji || '😊'}</Text>
+                    <NavIcon name={getAvatarIconName(perfil.avatarEmoji)} size={48} color={ACCENT} />
                   </View>
                 )}
                 <Text style={[styles.nombre, { color: colors.text }]}>{perfil.nombre}</Text>
@@ -222,7 +223,7 @@ export default function PublicProfileModal({ userId, visible, onClose, onOpenCha
                 {/* Afinidad detectada */}
                 {perfil.afinidad ? (
                   <View style={styles.afinidadBanner}>
-                    <Text style={styles.afinidadText}>✨ {perfil.afinidad}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}><NavIcon name="sparkles" size={15} color={ACCENT} /><Text style={styles.afinidadText}>{perfil.afinidad}</Text></View>
                   </View>
                 ) : null}
               </View>
@@ -239,20 +240,20 @@ export default function PublicProfileModal({ userId, visible, onClose, onOpenCha
               <View style={[styles.infoCard, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]}>
                 {perfil.programa ? (
                   <View style={styles.metaRow}>
-                    <Text style={styles.metaIcon}>📚</Text>
+                    <NavIcon name="book" size={16} color={colors.textSub} />
                     <Text style={[styles.metaLabel, { color: colors.textSub }]}>Programa:</Text>
                     <Text style={[styles.metaVal, { color: colors.text }]}>{perfil.programa}</Text>
                   </View>
                 ) : null}
                 {perfil.jornada ? (
                   <View style={styles.metaRow}>
-                    <Text style={styles.metaIcon}>🕐</Text>
+                    <NavIcon name="clock" size={16} color={colors.textSub} />
                     <Text style={[styles.metaLabel, { color: colors.textSub }]}>Jornada:</Text>
                     <Text style={[styles.metaVal, { color: colors.text }]}>{perfil.jornada}</Text>
                   </View>
                 ) : null}
                 <View style={styles.metaRow}>
-                  <Text style={styles.metaIcon}>🎯</Text>
+                  <NavIcon name="target" size={16} color={ACCENT} />
                   <Text style={[styles.metaLabel, { color: colors.textSub }]}>Asistencias:</Text>
                   <Text style={[styles.metaVal, { color: colors.text }]}>{perfil.asistencias || 0} parches completados</Text>
                 </View>
@@ -283,7 +284,7 @@ export default function PublicProfileModal({ userId, visible, onClose, onOpenCha
                   {startingChat ? (
                     <ActivityIndicator color="#fff" size="small" />
                   ) : (
-                    <Text style={styles.btnChatText}>💬 Enviar mensaje directo</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}><NavIcon name="chats" size={16} color="#FFFFFF" /><Text style={styles.btnChatText}>Enviar mensaje directo</Text></View>
                   )}
                 </TouchableOpacity>
 
@@ -293,7 +294,7 @@ export default function PublicProfileModal({ userId, visible, onClose, onOpenCha
                     onPress={() => setShowReporteModal(true)}
                     activeOpacity={0.8}
                   >
-                    <Text style={[styles.btnSecundarioText, { color: colors.textSub }]}>🚩 Reportar</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}><NavIcon name="flag" size={15} color={colors.textSub} /><Text style={[styles.btnSecundarioText, { color: colors.textSub }]}>Reportar</Text></View>
                   </TouchableOpacity>
 
                   <TouchableOpacity
@@ -302,9 +303,7 @@ export default function PublicProfileModal({ userId, visible, onClose, onOpenCha
                     disabled={bloqueando}
                     activeOpacity={0.8}
                   >
-                    <Text style={[styles.btnSecundarioText, { color: colors.textSub }, bloqueado && { color: '#FFD166' }]}>
-                      {bloqueando ? '…' : (bloqueado ? '🔓 Desbloquear' : '🚫 Bloquear')}
-                    </Text>
+                    {bloqueando ? <ActivityIndicator size="small" color={colors.textSub} /> : <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}><NavIcon name={bloqueado ? 'unlock' : 'shield'} size={15} color={bloqueado ? '#FFD166' : colors.textSub} /><Text style={[styles.btnSecundarioText, { color: colors.textSub }, bloqueado && { color: '#FFD166' }]}>{bloqueado ? 'Desbloquear' : 'Bloquear'}</Text></View>}
                   </TouchableOpacity>
                 </View>
               </View>
@@ -322,7 +321,7 @@ export default function PublicProfileModal({ userId, visible, onClose, onOpenCha
 
                 {reporteEnviado ? (
                   <View style={styles.reportSuccess}>
-                    <Text style={styles.reportSuccessText}>✅ Reporte enviado a moderación</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}><NavIcon name="check" size={16} color={ACCENT} /><Text style={styles.reportSuccessText}>Reporte enviado a moderación</Text></View>
                   </View>
                 ) : (
                   <>

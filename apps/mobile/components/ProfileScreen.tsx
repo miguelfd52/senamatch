@@ -10,6 +10,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { openImagePickerAndUpload, CloudinaryError } from '../lib/cloudinary';
 import FotoViewerModal from './FotoViewerModal';
 import { useTheme } from '../app/context/ThemeContext';
+import NavIcon, { getAvatarIconName, type NavIconName } from './NavIcon';
 
 const ACCENT = '#39A900';
 const SUCCESS = '#00E5A3';
@@ -22,11 +23,11 @@ const INTERESES_OPCIONES = [
 
 const EMOJIS = ['😊', '😎', '🤓', '🦊', '🐱', '🐶', '🦄', '🌟', '🔥', '🎯', '💪', '🎓'];
 
-function InfoRow({ icon, label, value }: { icon: string; label: string; value: string }) {
+function InfoRow({ icon, label, value }: { icon: NavIconName; label: string; value: string }) {
   const { colors } = useTheme();
   return (
     <View style={styles.infoRow}>
-      <Text style={styles.infoIcon}>{icon}</Text>
+      <NavIcon name={icon} size={17} color={colors.textSub} />
       <Text style={[styles.infoLabel, { color: colors.textSub }]}>{label}</Text>
       <Text style={[styles.infoValue, { color: colors.text }]}>{value}</Text>
     </View>
@@ -193,7 +194,7 @@ export default function ProfileScreen() {
               onPress={() => setEditing(true)}
               activeOpacity={0.8}
             >
-              <Text style={styles.editBtnText}>✏️ Editar</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}><NavIcon name="edit" size={15} color={ACCENT} /><Text style={styles.editBtnText}>Editar</Text></View>
             </TouchableOpacity>
           ) : (
             <TouchableOpacity
@@ -209,7 +210,7 @@ export default function ProfileScreen() {
         {/* Success message */}
         {saved && (
           <View style={styles.savedBanner}>
-            <Text style={styles.savedText}>✅ Perfil actualizado correctamente</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}><NavIcon name="check" size={17} color={SUCCESS} /><Text style={styles.savedText}>Perfil actualizado correctamente</Text></View>
           </View>
         )}
 
@@ -228,7 +229,7 @@ export default function ProfileScreen() {
               />
               {editing && (
                 <View style={styles.photoOverlay}>
-                  <Text style={styles.photoOverlayText}>📷 Cambiar</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}><NavIcon name="camera" size={15} color="#FFFFFF" /><Text style={styles.photoOverlayText}>Cambiar</Text></View>
                 </View>
               )}
             </TouchableOpacity>
@@ -238,10 +239,10 @@ export default function ProfileScreen() {
               activeOpacity={editing ? 0.7 : 1}
               style={styles.avatarLarge}
             >
-              <Text style={styles.avatarEmojiLarge}>{selectedEmoji}</Text>
+              <NavIcon name={getAvatarIconName(selectedEmoji)} size={42} color={ACCENT} />
               {editing && (
                 <View style={styles.photoOverlaySmall}>
-                  <Text style={styles.photoOverlayTextSmall}>📷</Text>
+                  <NavIcon name="camera" size={15} color="#FFFFFF" />
                 </View>
               )}
             </TouchableOpacity>
@@ -262,16 +263,14 @@ export default function ProfileScreen() {
                       <Text style={styles.pickPhotoBtnText}>Subiendo a Cloudinary…</Text>
                     </View>
                   ) : (
-                    <Text style={styles.pickPhotoBtnText}>
-                      {Platform.OS === 'web' ? '📁 Seleccionar foto (JPG/PNG/WebP · máx 3 MB)' : '📷 Cambiar foto'}
-                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}><NavIcon name={Platform.OS === 'web' ? 'upload' : 'camera'} size={16} color={ACCENT} /><Text style={styles.pickPhotoBtnText}>{Platform.OS === 'web' ? 'Seleccionar foto (JPG/PNG/WebP · máx 3 MB)' : 'Cambiar foto'}</Text></View>
                   )}
                 </TouchableOpacity>
 
                 {/* Error de validación / upload */}
                 {fotoError ? (
                   <View style={styles.fotoErrorBanner}>
-                    <Text style={styles.fotoErrorText}>⚠️ {fotoError}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}><NavIcon name="alert" size={16} color="#D93025" /><Text style={styles.fotoErrorText}>{fotoError}</Text></View>
                   </View>
                 ) : null}
 
@@ -300,7 +299,7 @@ export default function ProfileScreen() {
                       setFotoError('');
                     }}
                   >
-                    <Text style={styles.removePhotoText}>🗑️ Quitar foto (usar avatar emoji)</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}><NavIcon name="trash" size={15} color={colors.textSub} /><Text style={styles.removePhotoText}>Quitar foto (usar avatar)</Text></View>
                   </TouchableOpacity>
                 ) : null}
               </View>
@@ -327,7 +326,7 @@ export default function ProfileScreen() {
 
         {/* Info Card */}
         <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
-          <InfoRow icon="📧" label="Correo" value={p?.correo || user?.correo || '—'} />
+          <InfoRow icon="mail" label="Correo" value={p?.correo || user?.correo || '—'} />
 
           {editing ? (
             <>
@@ -369,10 +368,10 @@ export default function ProfileScreen() {
             </>
           ) : (
             <>
-              {p?.programa && <InfoRow icon="📚" label="Programa" value={p.programa} />}
-              {p?.ficha && <InfoRow icon="🏷️" label="Ficha" value={p.ficha} />}
-              {p?.jornada && <InfoRow icon="🕐" label="Jornada" value={p.jornada} />}
-              {p?.centro && <InfoRow icon="🏫" label="Centro" value={String(p.centro)} />}
+              {p?.programa && <InfoRow icon="book" label="Programa" value={p.programa} />}
+              {p?.ficha && <InfoRow icon="tag" label="Ficha" value={p.ficha} />}
+              {p?.jornada && <InfoRow icon="clock" label="Jornada" value={p.jornada} />}
+              {p?.centro && <InfoRow icon="school" label="Centro" value={String(p.centro)} />}
             </>
           )}
         </View>
@@ -380,7 +379,7 @@ export default function ProfileScreen() {
         {/* Avatar Emoji picker (editing) */}
         {editing && (
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Elige tu avatar emoji</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Elige tu avatar</Text>
             <View style={styles.emojiGrid}>
               {EMOJIS.map(e => (
                 <TouchableOpacity
@@ -388,7 +387,7 @@ export default function ProfileScreen() {
                   style={[styles.emojiBtn, { backgroundColor: colors.chipBg, borderColor: colors.inputBorder }, selectedEmoji === e && styles.emojiBtnActive]}
                   onPress={() => setSelectedEmoji(e)}
                 >
-                  <Text style={styles.emojiBtnText}>{e}</Text>
+                  <NavIcon name={getAvatarIconName(e)} size={24} color={selectedEmoji === e ? ACCENT : colors.textSub} />
                 </TouchableOpacity>
               ))}
             </View>
@@ -428,11 +427,10 @@ export default function ProfileScreen() {
                   onPress={() => editing && toggleInterest(interest)}
                   activeOpacity={editing ? 0.7 : 1}
                 >
-                  <Text
-                    style={[styles.interestText, { color: colors.textSub }, selected && styles.interestTextActive]}
-                  >
-                    {interest}
-                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <NavIcon name={interest.includes('Gaming') || interest.includes('Programación') ? 'target' : interest.includes('Fútbol') ? 'sport' : interest.includes('Lectura') ? 'book' : interest.includes('Fotografía') ? 'camera' : interest.includes('Cocina') ? 'food' : interest.includes('Viajes') ? 'discover' : 'sparkles'} size={14} color={selected ? ACCENT : colors.textSub} />
+                    <Text style={[styles.interestText, { color: colors.textSub }, selected && styles.interestTextActive]}>{interest.replace(/^\S+\s/, '')}</Text>
+                  </View>
                 </TouchableOpacity>
               );
             })}
@@ -467,7 +465,7 @@ export default function ProfileScreen() {
               activeOpacity={0.8}
               accessibilityLabel={isDark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
             >
-              <Text style={styles.themeBtnIcon}>{isDark ? '☀️' : '🌙'}</Text>
+              <NavIcon name={isDark ? 'sun' : 'moon'} size={18} color={ACCENT} />
               <Text style={[styles.themeBtnText, { color: colors.accent }]}>
                 {isDark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
               </Text>

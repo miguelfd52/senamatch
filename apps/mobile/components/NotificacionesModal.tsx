@@ -6,6 +6,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'expo-router';
 import { api } from '../lib/api';
 import { useTheme, ThemeColors } from '../app/context/ThemeContext';
+import NavIcon, { type NavIconName } from './NavIcon';
 
 const ACCENT = '#39A900';
 
@@ -27,16 +28,16 @@ interface Props {
   onNotifCountChange?: (count: number) => void;
 }
 
-function getIconoTipo(type: string): string {
+function getIconoTipo(type: string): NavIconName {
   switch (type) {
-    case 'nuevo_match': return '🎉';
-    case 'nuevo_mensaje': return '💬';
+    case 'nuevo_match': return 'heart';
+    case 'nuevo_mensaje': return 'chats';
     case 'invitacion_parche':
-    case 'union_parche': return '🎯';
-    case 'aceptacion_parche': return '✅';
-    case 'salida_parche': return '👋';
-    case 'cancelacion_parche': return '⚠️';
-    default: return '🔔';
+    case 'union_parche': return 'target';
+    case 'aceptacion_parche': return 'check';
+    case 'salida_parche': return 'users';
+    case 'cancelacion_parche': return 'alert';
+    default: return 'bell';
   }
 }
 
@@ -158,7 +159,7 @@ export default function NotificacionesModal({ visible, onClose, onSelectChat, on
                 </TouchableOpacity>
               ) : null}
               <TouchableOpacity onPress={onClose} style={styles.closeBtn} activeOpacity={0.7}>
-                <Text style={styles.closeText}>✕</Text>
+                <NavIcon name="close" size={19} color={colors.textSub} />
               </TouchableOpacity>
             </View>
           </View>
@@ -171,19 +172,19 @@ export default function NotificacionesModal({ visible, onClose, onSelectChat, on
             </View>
           ) : error ? (
             <View style={styles.centerBox}>
-              <Text style={styles.emptyEmoji}>⚠️</Text>
+              <NavIcon name="alert" size={42} color={colors.danger} />
               <Text style={[styles.emptyTitle, { color: colors.text }]}>Error al cargar</Text>
               <Text style={[styles.emptySubtitle, { color: colors.textSub }]}>{error}</Text>
               <TouchableOpacity
                 style={[styles.retryBtn, { backgroundColor: colors.chipBg }]}
                 onPress={() => { setLoading(true); cargarNotificaciones(); }}
               >
-                <Text style={[styles.retryBtnText, { color: colors.text }]}>🔄 Reintentar</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}><NavIcon name="refresh" size={16} color={colors.text} /><Text style={[styles.retryBtnText, { color: colors.text }]}>Reintentar</Text></View>
               </TouchableOpacity>
             </View>
           ) : notificaciones.length === 0 ? (
             <View style={styles.centerBox}>
-              <Text style={styles.emptyEmoji}>🔔</Text>
+              <NavIcon name="bell" size={42} color={colors.textSub} />
               <Text style={[styles.emptyTitle, { color: colors.text }]}>No tienes notificaciones</Text>
               <Text style={[styles.emptySubtitle, { color: colors.textSub }]}>
                 Te avisaremos cuando hagas match, recibas mensajes o te unas a parches.
@@ -210,7 +211,7 @@ export default function NotificacionesModal({ visible, onClose, onSelectChat, on
                   activeOpacity={0.75}
                 >
                   <View style={styles.iconBox}>
-                    <Text style={styles.iconText}>{getIconoTipo(n.type)}</Text>
+                    <NavIcon name={getIconoTipo(n.type)} size={22} color={ACCENT} />
                   </View>
 
                   <View style={styles.textBox}>

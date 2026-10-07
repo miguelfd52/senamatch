@@ -10,6 +10,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import SenaMatchLogo from '../../components/SenaMatchLogo';
 import { openImagePickerAndUpload } from '../../lib/cloudinary';
+import NavIcon from '../../components/NavIcon';
 
 const CORREO_RE = /^[^\s@]+@(gmail\.com|misena\.edu\.co|sena\.edu\.co)$/i;
 const ACCENT = '#39A900';
@@ -124,7 +125,7 @@ export default function RegistroScreen() {
                 />
               ) : (
                 <View style={styles.photoPlaceholder}>
-                  <Text style={styles.photoPlaceholderEmoji}>📷</Text>
+                  <NavIcon name="camera" size={30} color={ACCENT} />
                   <Text style={[styles.photoPlaceholderText, { color: colors.textMuted }]}>Subir foto *</Text>
                 </View>
               )}
@@ -139,7 +140,7 @@ export default function RegistroScreen() {
             <View style={{ flex: 1 }}>
               <Text style={[styles.photoRequiredTitle, { color: colors.text }]}>Foto de perfil obligatoria</Text>
               <Text style={[styles.photoRequiredSubtitle, { color: colors.textSub }]}>
-                {fotoUrl ? '✅ Foto cargada con éxito' : 'Selecciona una foto tuya para que tus compañeros puedan reconocerte.'}
+                {fotoUrl ? 'Foto cargada con éxito' : 'Selecciona una foto tuya para que tus compañeros puedan reconocerte.'}
               </Text>
               <TouchableOpacity
                 onPress={handlePickPhoto}

@@ -14,6 +14,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { api, ApiError } from '../../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import NavIcon from '../../components/NavIcon';
 import SenaMatchLogo from '../../components/SenaMatchLogo';
 
 export default function VerifyRegistroScreen() {
@@ -116,8 +117,8 @@ export default function VerifyRegistroScreen() {
             autoFocus
           />
 
-          {error ? <Text style={styles.errorText}>⚠️ {error}</Text> : null}
-          {message ? <Text style={styles.successText}>✅ {message}</Text> : null}
+          {error ? <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 }}><NavIcon name="alert" size={16} color="#D93025" /><Text style={styles.errorText}>{error}</Text></View> : null}
+          {message ? <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 }}><NavIcon name="check" size={16} color="#39A900" /><Text style={styles.successText}>{message}</Text></View> : null}
 
           <TouchableOpacity
             style={[styles.verifyBtn, { backgroundColor: colors.accent }, loading && styles.btnDisabled]}

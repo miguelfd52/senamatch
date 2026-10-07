@@ -11,6 +11,7 @@ import { useBandeja, useConversacion, useEnviarMensaje, useMatches } from '../ho
 import { api } from '../lib/api';
 import PeopleScreen from './PeopleScreen';
 import PublicProfileModal from './PublicProfileModal';
+import NavIcon, { getAvatarIconName } from './NavIcon';
 import { pendingChat } from '../lib/pendingChat';
 import { useTheme } from '../app/context/ThemeContext';
 
@@ -122,7 +123,7 @@ function ChatsList({
           onPress={onOpenPeople}
           activeOpacity={0.85}
         >
-          <Text style={styles.newChatBtnEmoji}>➕</Text>
+          <NavIcon name="add" size={16} color="#FFFFFF" />
           <Text style={styles.newChatBtnText}>Nueva conversación</Text>
         </TouchableOpacity>
       </View>
@@ -130,7 +131,7 @@ function ChatsList({
       {/* Sección de Matches */}
       {matchesList.length > 0 ? (
         <View style={styles.matchesSection}>
-          <Text style={styles.matchesSectionTitle}>❤️ Mis Matches ({matchesList.length})</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}><NavIcon name="heart" size={18} color={ACCENT} /><Text style={styles.matchesSectionTitle}>Mis Matches ({matchesList.length})</Text></View>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -150,11 +151,11 @@ function ChatsList({
                     <Image source={{ uri: otro.fotoUrl }} style={styles.matchAvatarImg} />
                   ) : (
                     <View style={[styles.matchAvatarEmojiBg, { backgroundColor: (otro.avatarColor || ACCENT) + '30' }]}>
-                      <Text style={styles.matchAvatarEmojiText}>{otro.avatarEmoji || '😊'}</Text>
+                      <NavIcon name={getAvatarIconName(otro.avatarEmoji)} size={24} color={ACCENT} />
                     </View>
                   )}
                   <View style={styles.matchHeart}>
-                    <Text style={{ fontSize: 10 }}>❤️</Text>
+                    <NavIcon name="heart" size={11} color={ACCENT} />
                   </View>
                   <Text style={styles.matchName} numberOfLines={1}>{otro.nombre?.split(' ')[0] || '?'}</Text>
                 </TouchableOpacity>
@@ -166,7 +167,7 @@ function ChatsList({
 
       {sorted.length === 0 ? (
         <View style={styles.emptyState}>
-          <Text style={styles.emptyEmoji}>💬</Text>
+          <NavIcon name="chats" size={42} color={colors.textSub} />
           <Text style={[styles.emptyTitle, { color: colors.text }]}>Sin conversaciones activas</Text>
           <Text style={[styles.emptySubtitle, { color: colors.textSub }]}>
             Encuentra a personas registradas en SENA Match o crea un parche para comenzar a chatear.
@@ -176,7 +177,7 @@ function ChatsList({
             onPress={onOpenPeople}
             activeOpacity={0.85}
           >
-            <Text style={styles.explorePeopleBtnEmoji}>👥</Text>
+            <NavIcon name="users" size={16} color="#FFFFFF" />
             <Text style={styles.explorePeopleBtnText}>Explorar comunidad para chatear</Text>
           </TouchableOpacity>
         </View>
@@ -231,9 +232,7 @@ function ChatsList({
                         { backgroundColor: (otro?.avatarColor || ACCENT) + '25' }
                       ]}
                     >
-                      <Text style={styles.chatAvatarEmoji}>
-                        {otro?.avatarEmoji || (isParche ? '🎯' : '💬')}
-                      </Text>
+                      <NavIcon name={otro?.avatarEmoji ? getAvatarIconName(otro.avatarEmoji) : isParche ? 'target' : 'chats'} size={23} color={ACCENT} />
                     </View>
                   )}
                 </TouchableOpacity>
@@ -252,7 +251,7 @@ function ChatsList({
 
                   <View style={styles.chatMeta}>
                     <Text style={styles.chatBadge}>
-                      {isParche ? '🎯 Parche' : isDirect ? '👤 Directo' : '❤️ Match'}
+                      {isParche ? 'Parche' : isDirect ? 'Directo' : 'Match'}
                     </Text>
                     {otro?.rol ? (
                       <Text style={styles.chatRole}>
@@ -447,7 +446,7 @@ function ConversacionView({ chatId, onBack }: { chatId: string; onBack: () => vo
       {/* Banner de error de envío */}
       {errorEnvio ? (
         <View style={styles.errorEnvioBanner}>
-          <Text style={styles.errorEnvioText}>⚠️ {errorEnvio}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}><NavIcon name="alert" size={16} color="#D93025" /><Text style={styles.errorEnvioText}>{errorEnvio}</Text></View>
           <TouchableOpacity onPress={handleReintentar} style={styles.retryEnvioBtn}>
             <Text style={styles.retryEnvioBtnText}>Reintentar</Text>
           </TouchableOpacity>
@@ -458,10 +457,10 @@ function ConversacionView({ chatId, onBack }: { chatId: string; onBack: () => vo
       {mensajes.filter((m: any) => m && m.de !== null).length === 0 && (
         <TouchableOpacity
           style={styles.icebreakerBar}
-          onPress={() => setTexto('¿Qué te motivó a unirte al SENA? 😊')}
+          onPress={() => setTexto('¿Qué te motivó a unirte al SENA?')}
           activeOpacity={0.8}
         >
-          <Text style={styles.icebreakerBarIcon}>💡</Text>
+          <NavIcon name="sparkles" size={16} color={ACCENT} />
           <Text style={styles.icebreakerBarText}>
             Romper el hielo: "¿Qué te motivó a unirte al SENA?"
           </Text>
@@ -486,9 +485,7 @@ function ConversacionView({ chatId, onBack }: { chatId: string; onBack: () => vo
           disabled={!texto.trim() || enviarMutation.isPending}
           activeOpacity={0.85}
         >
-          <Text style={styles.sendBtnText}>
-            {enviarMutation.isPending ? '…' : '➤'}
-          </Text>
+          {enviarMutation.isPending ? <ActivityIndicator size="small" color="#FFFFFF" /> : <NavIcon name="send" size={18} color="#FFFFFF" />}
         </TouchableOpacity>
       </View>
 

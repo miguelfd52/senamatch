@@ -18,6 +18,7 @@ import {
 import { openImagePickerAndUpload } from '../lib/cloudinary';
 import { api } from '../lib/api';
 import SenaMatchLogo from './SenaMatchLogo';
+import NavIcon, { getAvatarIconName } from './NavIcon';
 import PublicProfileModal from './PublicProfileModal';
 import FotoViewerModal from './FotoViewerModal';
 import { pendingChat } from '../lib/pendingChat';
@@ -267,7 +268,7 @@ export default function HomeScreen({ esfera }: Props) {
           onPress={handleAbrirModal}
           activeOpacity={0.85}
         >
-          <Text style={styles.btnCrearTopText}>➕ Crear publicación</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}><NavIcon name="add" size={17} color="#FFFFFF" /><Text style={styles.btnCrearTopText}>Crear publicación</Text></View>
         </TouchableOpacity>
       </View>
 
@@ -279,7 +280,7 @@ export default function HomeScreen({ esfera }: Props) {
             onPress={() => user?.id && setSelectedUserId(user.id)}
             activeOpacity={0.8}
           >
-            <Text style={styles.myAvatarEmoji}>{user?.rol === 'aprendiz' ? '🎓' : '🏫'}</Text>
+            <NavIcon name={user?.rol === 'aprendiz' ? 'school' : 'profile'} size={22} color={ACCENT} />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.composerFakeInput}
@@ -298,7 +299,7 @@ export default function HomeScreen({ esfera }: Props) {
             onPress={handleAbrirModal}
             activeOpacity={0.8}
           >
-            <Text style={styles.composerActionIcon}>📷</Text>
+            <NavIcon name="camera" size={18} color={ACCENT} />
             <Text style={styles.composerActionText}>Foto</Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -306,7 +307,7 @@ export default function HomeScreen({ esfera }: Props) {
             onPress={() => router.push('/descubrir')}
             activeOpacity={0.8}
           >
-            <Text style={styles.composerActionIcon}>👥</Text>
+            <NavIcon name="users" size={18} color={ACCENT} />
             <Text style={styles.composerActionText}>Conectar</Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -314,7 +315,7 @@ export default function HomeScreen({ esfera }: Props) {
             onPress={() => router.push('/parches')}
             activeOpacity={0.8}
           >
-            <Text style={styles.composerActionIcon}>🎯</Text>
+            <NavIcon name="target" size={18} color={ACCENT} />
             <Text style={styles.composerActionText}>Parches</Text>
           </TouchableOpacity>
         </View>
@@ -323,7 +324,7 @@ export default function HomeScreen({ esfera }: Props) {
       {/* Feed Header */}
       <View style={styles.feedHeader}>
         <Text style={styles.feedTitle}>Novedades de la comunidad</Text>
-        <Text style={styles.feedBadge}>Feed en vivo ✨</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}><NavIcon name="sparkles" size={14} color={ACCENT} /><Text style={styles.feedBadge}>Feed en vivo</Text></View>
       </View>
 
       {/* Estados: Loading, Error, Empty, o Lista */}
@@ -334,18 +335,18 @@ export default function HomeScreen({ esfera }: Props) {
         </View>
       ) : isError ? (
         <View style={[styles.stateContainer, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
-          <Text style={styles.emptyEmoji}>⚠️</Text>
+          <NavIcon name="alert" size={42} color={colors.danger} />
           <Text style={[styles.errorTitle, { color: colors.danger }]}>No se pudieron cargar las publicaciones</Text>
           <Text style={[styles.errorSubtitle, { color: colors.textSub }]}>
             {error instanceof Error ? error.message : 'Verifica tu conexión a internet e inténtalo de nuevo.'}
           </Text>
           <TouchableOpacity style={[styles.retryBtn, { backgroundColor: colors.chipBg }]} onPress={() => refetch()} activeOpacity={0.8}>
-            <Text style={[styles.retryBtnText, { color: colors.text }]}>🔄 Reintentar</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}><NavIcon name="refresh" size={16} color={colors.text} /><Text style={[styles.retryBtnText, { color: colors.text }]}>Reintentar</Text></View>
           </TouchableOpacity>
         </View>
       ) : listaPublicaciones.length === 0 ? (
         <View style={[styles.stateContainer, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
-          <Text style={styles.emptyEmoji}>📸</Text>
+          <NavIcon name="photo" size={42} color={colors.textSub} />
           <Text style={[styles.emptyTitle, { color: colors.text }]}>Aún no hay publicaciones</Text>
           <Text style={[styles.emptySubtitle, { color: colors.textSub }]}>
             Sé el primero en compartir un proyecto, idea o saludo con todos tus compañeros y equipo SENA.
@@ -355,14 +356,14 @@ export default function HomeScreen({ esfera }: Props) {
             onPress={handleAbrirModal}
             activeOpacity={0.85}
           >
-            <Text style={styles.btnCrearEmptyText}>✨ Crear la primera publicación</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}><NavIcon name="sparkles" size={16} color="#FFFFFF" /><Text style={styles.btnCrearEmptyText}>Crear la primera publicación</Text></View>
           </TouchableOpacity>
         </View>
       ) : (
         listaPublicaciones.map((pub: Publicacion) => {
           const abiertos = comentariosAbiertos[pub.id] || false;
           const autorFoto = pub.autor?.fotoUrl;
-          const autorEmoji = pub.autor?.avatarEmoji || '😊';
+          const autorEmoji = pub.autor?.avatarEmoji;
           const esAutor = String(pub.autor?.id) === String(user?.id) || !!pub.esMio;
 
           return (
@@ -382,7 +383,7 @@ export default function HomeScreen({ esfera }: Props) {
                     />
                   ) : (
                     <View style={[styles.authorAvatarCircle, { backgroundColor: (pub.autor?.avatarColor || ACCENT) + '25' }]}>
-                      <Text style={styles.authorAvatarEmoji}>{autorEmoji}</Text>
+                      <NavIcon name={getAvatarIconName(autorEmoji)} size={24} color={ACCENT} />
                     </View>
                   )}
                   <View>
@@ -407,14 +408,14 @@ export default function HomeScreen({ esfera }: Props) {
                         style={[styles.btnPostOption, { backgroundColor: colors.chipBg }]}
                         activeOpacity={0.7}
                       >
-                        <Text style={styles.btnPostOptionText}>✏️</Text>
+                        <NavIcon name="edit" size={17} color={colors.textSub} />
                       </TouchableOpacity>
                       <TouchableOpacity
                         onPress={() => handleDelete(pub.id)}
                         style={[styles.btnPostOption, { backgroundColor: colors.chipBg }]}
                         activeOpacity={0.7}
                       >
-                        <Text style={[styles.btnPostOptionText, { color: DANGER }]}>🗑️</Text>
+                        <NavIcon name="trash" size={17} color={DANGER} />
                       </TouchableOpacity>
                     </>
                   ) : (
@@ -423,7 +424,7 @@ export default function HomeScreen({ esfera }: Props) {
                       style={[styles.btnPostOption, { backgroundColor: colors.chipBg }]}
                       activeOpacity={0.7}
                     >
-                      <Text style={styles.btnPostOptionText}>🚩</Text>
+                      <NavIcon name="flag" size={17} color={colors.textSub} />
                     </TouchableOpacity>
                   )}
                 </View>
@@ -454,7 +455,7 @@ export default function HomeScreen({ esfera }: Props) {
                   onPress={() => likeMutation.mutate(pub.id)}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.actionIcon}>{pub.likedPorMi ? '❤️' : '🤍'}</Text>
+                  <NavIcon name="heart" size={18} color={pub.likedPorMi ? ACCENT : colors.textSub} />
                   <Text style={[styles.actionText, pub.likedPorMi && styles.actionTextLiked]}>
                     {pub.likesCount} {pub.likesCount === 1 ? 'Me gusta' : 'Me gusta'}
                   </Text>
@@ -465,7 +466,7 @@ export default function HomeScreen({ esfera }: Props) {
                   onPress={() => toggleComentarios(pub.id)}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.actionIcon}>💬</Text>
+                  <NavIcon name="chats" size={18} color={colors.textSub} />
                   <Text style={styles.actionText}>
                     {pub.comentarios?.length || 0} {pub.comentarios?.length === 1 ? 'Comentario' : 'Comentarios'}
                   </Text>
@@ -492,7 +493,7 @@ export default function HomeScreen({ esfera }: Props) {
                             />
                           ) : (
                             <View style={[styles.commentAvatar, { backgroundColor: colors.chipBg }]}>
-                              <Text style={styles.commentAvatarEmoji}>{com.autorAvatarEmoji || '😊'}</Text>
+                              <NavIcon name={getAvatarIconName(com.autorAvatarEmoji)} size={18} color={colors.textSub} />
                             </View>
                           )}
                         </TouchableOpacity>
@@ -550,7 +551,7 @@ export default function HomeScreen({ esfera }: Props) {
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: colors.text }]}>Nueva publicación</Text>
               <TouchableOpacity onPress={handleCerrarModal} style={styles.modalCloseBtn}>
-                <Text style={[styles.modalCloseText, { color: colors.textSub }]}>✕</Text>
+                <NavIcon name="close" size={20} color={colors.textSub} />
               </TouchableOpacity>
             </View>
 
@@ -586,7 +587,7 @@ export default function HomeScreen({ esfera }: Props) {
                   </View>
                 ) : (
                   <Text style={styles.modalPickPhotoBtnText}>
-                    📁 Subir foto desde tu dispositivo (JPG/PNG/WebP · máx 3 MB)
+                    Subir foto desde tu dispositivo (JPG/PNG/WebP · máx 3 MB)
                   </Text>
                 )}
               </TouchableOpacity>
@@ -594,7 +595,7 @@ export default function HomeScreen({ esfera }: Props) {
 
             {fotoError ? (
               <View style={styles.formErrorBanner}>
-                <Text style={styles.formErrorText}>⚠️ {fotoError}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}><NavIcon name="alert" size={16} color={DANGER} /><Text style={styles.formErrorText}>{fotoError}</Text></View>
               </View>
             ) : null}
 
@@ -631,7 +632,7 @@ export default function HomeScreen({ esfera }: Props) {
                       setFotoError('');
                     }}
                   >
-                    <Text style={styles.btnEliminarFotoText}>✕ Quitar imagen</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}><NavIcon name="close" size={15} color={colors.textSub} /><Text style={styles.btnEliminarFotoText}>Quitar imagen</Text></View>
                   </TouchableOpacity>
                 )}
               </View>
@@ -675,7 +676,7 @@ export default function HomeScreen({ esfera }: Props) {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Editar publicación</Text>
               <TouchableOpacity onPress={() => setEditingPubId(null)} style={styles.modalCloseBtn}>
-                <Text style={styles.modalCloseText}>✕</Text>
+                <NavIcon name="close" size={20} color={colors.textSub} />
               </TouchableOpacity>
             </View>
 
@@ -726,7 +727,7 @@ export default function HomeScreen({ esfera }: Props) {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Reportar publicación</Text>
               <TouchableOpacity onPress={() => setReportingPubId(null)} style={styles.modalCloseBtn}>
-                <Text style={styles.modalCloseText}>✕</Text>
+                <NavIcon name="close" size={20} color={colors.textSub} />
               </TouchableOpacity>
             </View>
 

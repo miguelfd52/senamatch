@@ -8,7 +8,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 
 import SenaMatchLogo from './SenaMatchLogo';
-import NavIcon from './NavIcon';
+import NavIcon, { type NavIconName } from './NavIcon';
 import NotificacionesModal from './NotificacionesModal';
 import AdminPanelModal from './AdminPanelModal';
 import InitialPostModal from './InitialPostModal';
@@ -23,7 +23,7 @@ declare const Notification: any;
 
 const ACCENT = '#39A900';
 
-const TABS_META: Record<string, { title: string; icon: 'home' | 'discover' | 'parches' | 'chats' | 'profile' }> = {
+const TABS_META: Record<string, { title: string; icon: NavIconName }> = {
   index:     { title: 'Inicio',    icon: 'home'     },
   descubrir: { title: 'Descubrir', icon: 'discover'  },
   parches:   { title: 'Parches',   icon: 'parches'   },
@@ -69,7 +69,7 @@ function ResponsiveTabBar({
           >
             <SenaMatchLogo size={32} textSize={19} showText={true} />
             <View style={styles.brandBadge}>
-              <Text style={[styles.brandBadgeText, { color: colors.isDark ? '#DDF4D5' : '#1B5E20' }]}>Comunidad 🇨🇴</Text>
+              <Text style={[styles.brandBadgeText, { color: colors.isDark ? '#DDF4D5' : '#1B5E20' }]}>Comunidad SENA</Text>
             </View>
           </TouchableOpacity>
 
@@ -77,7 +77,7 @@ function ResponsiveTabBar({
           <View style={styles.desktopTabs}>
             {state.routes.map((route, index) => {
               const isFocused = state.index === index;
-              const meta = TABS_META[route.name] || { title: route.name, emoji: '✨' };
+              const meta = TABS_META[route.name] || { title: route.name, icon: 'more' };
               const isChatsTab = route.name === 'chats';
 
               const onPress = () => {
@@ -174,7 +174,7 @@ function ResponsiveTabBar({
     <View style={[styles.mobileTabBar, { backgroundColor: colors.navBg, borderTopColor: colors.navBorder }]}>
       {state.routes.map((route, index) => {
         const isFocused = state.index === index;
-        const meta = TABS_META[route.name] || { title: route.name, emoji: '✨' };
+        const meta = TABS_META[route.name] || { title: route.name, icon: 'more' };
         const isChatsTab = route.name === 'chats';
 
         const onPress = () => {
@@ -344,7 +344,7 @@ export default function TabsLayout() {
 
             playNotificationSound();
 
-            const avisoTitulo = n.title || '¡Nuevo Match! 🎉';
+            const avisoTitulo = (n.title || '¡Nuevo Match!').replace(/^🎉\s*/, '');
             setToastAviso({
               id: n.id,
               titulo: avisoTitulo,
@@ -389,7 +389,7 @@ export default function TabsLayout() {
               continue;
             }
 
-            const avisoTitulo = n.title?.startsWith('💬') ? n.title : `💬 ${n.title || 'Nuevo mensaje'}`;
+            const avisoTitulo = (n.title || 'Nuevo mensaje').replace(/^💬\s*/, '');
             setToastAviso({
               id: n.id,
               titulo: avisoTitulo,
@@ -495,7 +495,7 @@ export default function TabsLayout() {
             }}
             style={styles.toastCloseBtn}
           >
-            <Text style={[styles.toastCloseText, { color: colors.textMuted }]}>✕</Text>
+            <NavIcon name="close" size={18} color={colors.textMuted} />
           </TouchableOpacity>
         </TouchableOpacity>
       ) : null}

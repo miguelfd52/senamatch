@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { useRouter } from 'expo-router';
 import { useTheme } from './context/ThemeContext';
 import SenaMatchLogo from '../components/SenaMatchLogo';
+import NavIcon, { type NavIconName } from '../components/NavIcon';
 
 export default function WelcomeScreen() {
   const router = useRouter();
@@ -37,9 +38,9 @@ export default function WelcomeScreen() {
 
         {/* Pilares / Beneficios rápidos */}
         <View style={styles.features}>
-          <FeatureItem icon="🎯" title="Por afinidad" desc="Encuentra personas por gustos y programas" colors={colors} />
-          <FeatureItem icon="👥" title="Parches grupales" desc="Únete a grupos de estudio o deporte" colors={colors} />
-          <FeatureItem icon="💬" title="Comunidad activa" desc="Comparte tus ideas y chatea en tiempo real" colors={colors} />
+          <FeatureItem icon="target" title="Por afinidad" desc="Encuentra personas por gustos y programas" colors={colors} />
+          <FeatureItem icon="users" title="Parches grupales" desc="Únete a grupos de estudio o deporte" colors={colors} />
+          <FeatureItem icon="chats" title="Comunidad activa" desc="Comparte tus ideas y chatea en tiempo real" colors={colors} />
         </View>
 
         {/* Botones de Acción */}
@@ -70,14 +71,14 @@ export default function WelcomeScreen() {
 }
 
 function FeatureItem({ icon, title, desc, colors }: {
-  icon: string;
+  icon: NavIconName;
   title: string;
   desc: string;
   colors: import('./context/ThemeContext').ThemeColors;
 }) {
   return (
     <View style={[stylesFeature.item, { backgroundColor: colors.bgSecondary, borderColor: colors.cardBorder }]}>
-      <Text style={stylesFeature.icon}>{icon}</Text>
+      <View style={{ marginRight: 12 }}><NavIcon name={icon} size={24} color={colors.accent} /></View>
       <View style={stylesFeature.meta}>
         <Text style={[stylesFeature.title, { color: colors.text }]}>{title}</Text>
         <Text style={[stylesFeature.desc, { color: colors.textSub }]}>{desc}</Text>

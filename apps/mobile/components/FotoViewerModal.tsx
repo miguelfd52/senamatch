@@ -1,4 +1,5 @@
-import { Modal, View, Image, TouchableOpacity, StyleSheet, Text, Platform } from 'react-native';
+import { Modal, View, Image, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import NavIcon from './NavIcon';
 
 interface FotoViewerModalProps {
   visible: boolean;
@@ -22,7 +23,7 @@ export default function FotoViewerModal({ visible, fotoUrl, onClose }: FotoViewe
 
         {/* Botón cerrar */}
         <TouchableOpacity style={styles.closeBtn} onPress={onClose} activeOpacity={0.8}>
-          <Text style={styles.closeText}>✕</Text>
+          <NavIcon name="close" size={21} color="#FFFFFF" />
         </TouchableOpacity>
 
         {/* Contenedor de la foto */}

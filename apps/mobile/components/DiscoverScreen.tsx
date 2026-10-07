@@ -12,6 +12,7 @@ import { useTheme } from '../app/context/ThemeContext';
 import PeopleScreen from './PeopleScreen';
 import PublicProfileModal from './PublicProfileModal';
 import FotoViewerModal from './FotoViewerModal';
+import NavIcon, { getAvatarIconName } from './NavIcon';
 import { pendingChat } from '../lib/pendingChat';
 
 const ACCENT = '#39A900';
@@ -169,7 +170,7 @@ export default function DiscoverScreen() {
           onPress={() => setMode('people')}
           activeOpacity={0.8}
         >
-          <Text style={styles.switchModeText}>👥 Directorio</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}><NavIcon name="users" size={16} color={colors.text} /><Text style={styles.switchModeText}>Directorio</Text></View>
         </TouchableOpacity>
       </View>
 
@@ -246,7 +247,7 @@ export default function DiscoverScreen() {
         </View>
       ) : isError ? (
         <View style={[styles.center, { backgroundColor: colors.bg }]}>
-          <Text style={styles.emptyEmoji}>⚠️</Text>
+          <NavIcon name="alert" size={42} color={colors.danger} />
           <Text style={[styles.emptyTitle, { color: colors.text }]}>Error al cargar perfiles</Text>
           <Text style={[styles.emptySubtitle, { color: colors.textSub }]}>
             {error instanceof Error ? error.message : 'No se pudieron obtener los perfiles. Verifica tu conexión.'}
@@ -257,16 +258,16 @@ export default function DiscoverScreen() {
               onPress={handleRetry}
               activeOpacity={0.8}
             >
-              <Text style={[styles.retryText, { color: colors.text }]}>🔄 Reintentar</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}><NavIcon name="refresh" size={16} color={colors.text} /><Text style={[styles.retryText, { color: colors.text }]}>Reintentar</Text></View>
             </TouchableOpacity>
             <TouchableOpacity style={styles.communityBtn} onPress={() => setMode('people')} activeOpacity={0.85}>
-              <Text style={styles.communityBtnText}>👥 Directorio</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}><NavIcon name="users" size={16} color="#FFFFFF" /><Text style={styles.communityBtnText}>Directorio</Text></View>
             </TouchableOpacity>
           </View>
         </View>
       ) : !cards.length ? (
         <View style={[styles.center, { backgroundColor: colors.bg }]}>
-          <Text style={styles.emptyEmoji}>🔍</Text>
+          <NavIcon name="discover" size={42} color={colors.textSub} />
           <Text style={[styles.emptyTitle, { color: colors.text }]}>Has revisado todos los perfiles</Text>
           <Text style={[styles.emptySubtitle, { color: colors.textSub }]}>
             No hay más perfiles con los filtros actuales. Puedes reiniciar, explorar el directorio o deshacer tu último descarte.
@@ -282,10 +283,10 @@ export default function DiscoverScreen() {
               onPress={handleRetry}
               activeOpacity={0.8}
             >
-              <Text style={[styles.retryText, { color: colors.text }]}>🔄 Reiniciar mazo</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}><NavIcon name="refresh" size={16} color={colors.text} /><Text style={[styles.retryText, { color: colors.text }]}>Reiniciar mazo</Text></View>
             </TouchableOpacity>
             <TouchableOpacity style={styles.communityBtn} onPress={() => setMode('people')} activeOpacity={0.85}>
-              <Text style={styles.communityBtnText}>👥 Directorio completo</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}><NavIcon name="users" size={16} color="#FFFFFF" /><Text style={styles.communityBtnText}>Directorio completo</Text></View>
             </TouchableOpacity>
           </View>
         </View>
@@ -317,7 +318,7 @@ export default function DiscoverScreen() {
                       { backgroundColor: (currentCard.avatarColor || ACCENT) + '22' }
                     ]}
                   >
-                    <Text style={styles.avatarEmoji}>{currentCard.avatarEmoji || '😊'}</Text>
+                    <NavIcon name={getAvatarIconName(currentCard.avatarEmoji)} size={54} color={ACCENT} />
                   </View>
                 )}
 
@@ -333,7 +334,7 @@ export default function DiscoverScreen() {
                   {/* Banner de afinidad */}
                   {currentCard.afinidad ? (
                     <View style={styles.afinidadBox}>
-                      <Text style={styles.afinidadText}>✨ {currentCard.afinidad}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}><NavIcon name="sparkles" size={15} color={ACCENT} /><Text style={styles.afinidadText}>{currentCard.afinidad}</Text></View>
                     </View>
                   ) : null}
 
@@ -343,14 +344,14 @@ export default function DiscoverScreen() {
 
                   {currentCard.programa ? (
                     <View style={styles.infoRow}>
-                      <Text style={styles.infoLabel}>📚</Text>
+                      <NavIcon name="book" size={16} color={colors.textSub} />
                       <Text style={[styles.infoValue, { color: colors.textSub }]}>{currentCard.programa}</Text>
                     </View>
                   ) : null}
 
                   {currentCard.jornada ? (
                     <View style={styles.infoRow}>
-                      <Text style={styles.infoLabel}>🕐</Text>
+                      <NavIcon name="clock" size={16} color={colors.textSub} />
                       <Text style={[styles.infoValue, { color: colors.textSub }]}>Jornada {currentCard.jornada}</Text>
                     </View>
                   ) : null}
@@ -366,7 +367,7 @@ export default function DiscoverScreen() {
                     </View>
                   )}
 
-                  <Text style={[styles.hintTouch, { color: colors.textMuted }]}>Toca para ver perfil completo ℹ️</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}><Text style={[styles.hintTouch, { color: colors.textMuted }]}>Toca para ver perfil completo</Text><NavIcon name="info" size={13} color={colors.textMuted} /></View>
                 </View>
               </TouchableOpacity>
             </Animated.View>
@@ -381,7 +382,7 @@ export default function DiscoverScreen() {
                 disabled={deshaciendo}
                 activeOpacity={0.75}
               >
-                <Text style={styles.undoRoundEmoji}>↩️</Text>
+                <NavIcon name="refresh" size={18} color={colors.textSub} />
               </TouchableOpacity>
             ) : null}
 
@@ -391,7 +392,7 @@ export default function DiscoverScreen() {
               activeOpacity={0.75}
               disabled={swipeMutation.isPending}
             >
-              <Text style={styles.passBtnEmoji}>👋</Text>
+              <NavIcon name="close" size={20} color={colors.textSub} />
               <Text style={[styles.passBtnText, { color: colors.textSub }]}>Pasar</Text>
             </TouchableOpacity>
 
@@ -401,7 +402,7 @@ export default function DiscoverScreen() {
               activeOpacity={0.75}
               disabled={swipeMutation.isPending}
             >
-              <Text style={styles.likeBtnEmoji}>💚</Text>
+              <NavIcon name="heart" size={20} color="#FFFFFF" />
               <Text style={styles.likeBtnText}>Me interesa</Text>
             </TouchableOpacity>
           </View>
@@ -418,7 +419,7 @@ export default function DiscoverScreen() {
         <View style={[styles.matchOverlay, { backgroundColor: colors.modalOverlay }]}>
           <View style={[styles.matchCard, { backgroundColor: colors.card, borderColor: ACCENT }]}>
             <Text style={styles.matchBadge}>¡CONEXIÓN SENA MATCH!</Text>
-            <Text style={styles.matchEmoji}>🎉</Text>
+            <NavIcon name="sparkles" size={48} color={ACCENT} />
             <Text style={[styles.matchTitle, { color: colors.text }]}>¡Hicieron Match!</Text>
             <Text style={[styles.matchSubtitle, { color: colors.textSub }]}>
               Tú y {matchData?.otroUsuario?.nombre || 'tu compañero'} tienen afinidad mutua.
@@ -426,7 +427,7 @@ export default function DiscoverScreen() {
 
             {/* Pregunta rompehielos */}
             <Text style={styles.matchIcebreaker}>
-              💡 ¿Qué te llevó a unirte al SENA?
+              ¿Qué te llevó a unirte al SENA?
             </Text>
 
             <View style={styles.matchActions}>
@@ -441,7 +442,7 @@ export default function DiscoverScreen() {
                   router.push('/chats');
                 }}
               >
-                <Text style={styles.matchChatBtnText}>💬 Ir a la conversación</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}><NavIcon name="chats" size={16} color="#FFFFFF" /><Text style={styles.matchChatBtnText}>Ir a la conversación</Text></View>
               </TouchableOpacity>
 
               <TouchableOpacity

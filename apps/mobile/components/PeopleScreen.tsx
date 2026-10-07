@@ -7,6 +7,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { useUsuariosComunidad, useCrearChatDirecto } from '../hooks/useParches';
 import { useTheme } from '../app/context/ThemeContext';
 import PublicProfileModal from './PublicProfileModal';
+import NavIcon, { getAvatarIconName } from './NavIcon';
 
 const ACCENT = '#39A900';
 
@@ -78,7 +79,7 @@ export default function PeopleScreen({ onOpenChat, onBack }: Props) {
 
       {/* Search bar */}
       <View style={[styles.searchContainer, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]}>
-        <Text style={styles.searchIcon}>🔍</Text>
+        <NavIcon name="discover" size={18} color={colors.textSub} />
         <TextInput
           style={[styles.searchInput, { color: colors.text }]}
           placeholder="Buscar por nombre, correo o programa…"
@@ -94,7 +95,7 @@ export default function PeopleScreen({ onOpenChat, onBack }: Props) {
             style={styles.clearBtn}
             activeOpacity={0.7}
           >
-            <Text style={[styles.clearText, { color: colors.textSub }]}>✕</Text>
+            <NavIcon name="close" size={17} color={colors.textSub} />
           </TouchableOpacity>
         ) : null}
       </View>
@@ -107,7 +108,7 @@ export default function PeopleScreen({ onOpenChat, onBack }: Props) {
         </View>
       ) : isError ? (
         <View style={[styles.center, { backgroundColor: colors.bg }]}>
-          <Text style={styles.emptyEmoji}>⚠️</Text>
+          <NavIcon name="alert" size={42} color={colors.danger} />
           <Text style={[styles.emptyTitle, { color: colors.text }]}>Error al cargar la comunidad</Text>
           <Text style={[styles.emptySubtitle, { color: colors.textSub }]}>No pudimos conectar con el servidor.</Text>
           <TouchableOpacity
@@ -120,7 +121,7 @@ export default function PeopleScreen({ onOpenChat, onBack }: Props) {
         </View>
       ) : usersList.length === 0 ? (
         <View style={[styles.emptyState, { backgroundColor: colors.bg }]}>
-          <Text style={styles.emptyEmoji}>👥</Text>
+          <NavIcon name="users" size={42} color={colors.textSub} />
           <Text style={[styles.emptyTitle, { color: colors.text }]}>
             {search ? 'Sin coincidencias' : 'Aún no hay más personas registradas'}
           </Text>
@@ -182,7 +183,7 @@ export default function PeopleScreen({ onOpenChat, onBack }: Props) {
                           { backgroundColor: (usr.avatarColor || ACCENT) + '25' }
                         ]}
                       >
-                        <Text style={styles.avatarEmoji}>{usr.avatarEmoji || '😊'}</Text>
+                        <NavIcon name={getAvatarIconName(usr.avatarEmoji)} size={28} color={ACCENT} />
                       </View>
                     )}
                   </TouchableOpacity>
@@ -204,7 +205,7 @@ export default function PeopleScreen({ onOpenChat, onBack }: Props) {
 
                     {usr.programa ? (
                       <Text style={[styles.userProgram, { color: colors.textSub }]} numberOfLines={1}>
-                        📚 {usr.programa}
+                        {usr.programa}
                       </Text>
                     ) : null}
 
@@ -236,7 +237,7 @@ export default function PeopleScreen({ onOpenChat, onBack }: Props) {
                       <ActivityIndicator size="small" color="#fff" />
                     ) : (
                       <View style={styles.chatBtnContent}>
-                        <Text style={styles.chatBtnEmoji}>💬</Text>
+                        <NavIcon name="chats" size={16} color="#FFFFFF" />
                         <Text style={styles.chatBtnText}>Chatear</Text>
                       </View>
                     )}

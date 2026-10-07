@@ -9,6 +9,7 @@ import { openImagePickerAndUpload } from '../lib/cloudinary';
 import { api } from '../lib/api';
 import SenaMatchLogo from './SenaMatchLogo';
 import { useTheme, ThemeColors } from '../app/context/ThemeContext';
+import NavIcon from './NavIcon';
 
 const ACCENT = '#39A900';
 const DANGER = '#FF5B6E';
@@ -98,7 +99,7 @@ export default function InitialPostModal() {
             {/* Logo y Encabezado */}
             <View style={styles.header}>
               <SenaMatchLogo size={42} textSize={22} subtitle="" />
-              <Text style={[styles.title, { color: colors.text }]}>¡Completa tu Registro! 🎉</Text>
+              <Text style={[styles.title, { color: colors.text }]}>¡Completa tu Registro!</Text>
               <Text style={[styles.subtitle, { color: colors.textSub }]}>
                 Para activar tu perfil y conectar con la comunidad SENA, es obligatorio crear tu primera publicación con una foto y un mensaje de presentación.
               </Text>
@@ -126,7 +127,7 @@ export default function InitialPostModal() {
                     activeOpacity={0.8}
                   >
                     <Text style={styles.btnCambiarFotoText}>
-                      {subiendoFoto ? 'Cargando imagen…' : '📷 Cambiar foto'}
+                      {subiendoFoto ? 'Cargando imagen…' : 'Cambiar foto'}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -144,7 +145,7 @@ export default function InitialPostModal() {
                     </View>
                   ) : (
                     <View style={styles.uploadInner}>
-                      <Text style={styles.uploadIcon}>📸</Text>
+                      <NavIcon name="camera" size={22} color={ACCENT} />
                       <Text style={[styles.uploadTextBold, { color: colors.text }]}>Toca aquí para seleccionar tu foto</Text>
                       <Text style={[styles.uploadHint, { color: colors.textMuted }]}>JPG, PNG o WebP (máx. 3 MB)</Text>
                     </View>
@@ -174,7 +175,7 @@ export default function InitialPostModal() {
             {/* Error si existe */}
             {error ? (
               <View style={styles.errorBox}>
-                <Text style={styles.errorText}>⚠️ {error}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}><NavIcon name="alert" size={16} color={DANGER} /><Text style={styles.errorText}>{error}</Text></View>
               </View>
             ) : null}
 
@@ -196,14 +197,12 @@ export default function InitialPostModal() {
                     ? 'Sube una foto para continuar'
                     : !texto.trim()
                     ? 'Escribe tu mensaje para continuar'
-                    : '✨ Publicar y Comenzar'}
+                    : 'Publicar y Comenzar'}
                 </Text>
               )}
             </TouchableOpacity>
 
-            <Text style={styles.footerNote}>
-              🔒 Este requisito solo se solicita una única vez al registrarte.
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}><NavIcon name="lock" size={14} color={colors.textMuted} /><Text style={styles.footerNote}>Este requisito solo se solicita una única vez al registrarte.</Text></View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
