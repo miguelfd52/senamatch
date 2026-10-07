@@ -6,6 +6,7 @@ interface LogoProps {
   textSize?: number;
   subtitle?: string;
   onPress?: () => void;
+  textColor?: string;
 }
 
 /**
@@ -21,6 +22,7 @@ export default function SenaMatchLogo({
   textSize = 22,
   subtitle,
   onPress,
+  textColor,
 }: LogoProps) {
   const isWeb = Platform.OS === 'web';
 
@@ -116,7 +118,7 @@ export default function SenaMatchLogo({
       {showText && (
         <View style={styles.textWrap}>
           <View style={styles.titleRow}>
-            <Text style={[styles.brandSena, { fontSize: textSize }]}>SENA</Text>
+            <Text style={[styles.brandSena, { fontSize: textSize }, textColor ? { color: textColor } : null]}>SENA</Text>
             <Text style={[styles.brandMatch, { fontSize: textSize }]}> Match</Text>
             <View style={styles.glowDot} />
           </View>

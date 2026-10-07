@@ -1,9 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 
 // En Expo Web el navegador y el backend viven en el mismo equipo: usar
 // localhost evita que Windows bloquee la conexión hacia su propia IP Wi-Fi.
-// En Expo Go se conserva la IP de la red definida en .env.
+// En Expo Go se detecta la IP del host de desarrollo o la definida en .env.
 // Obtener la URL de la API según el entorno
 export const getApiUrl = () => {
   const envUrl = process.env.EXPO_PUBLIC_API_URL ? process.env.EXPO_PUBLIC_API_URL.trim() : '';
@@ -41,6 +42,19 @@ export const getApiUrl = () => {
     return envUrl.replace(/\/$/, '');
   }
 
+  // Si corre en Expo Go / desarrollo móvil, intentar extraer la IP del empaquetador
+  const manifest = Constants.expoConfig || (Constants as any).manifest || (Constants as any).manifest2;
+  const debuggerHost = manifest?.debuggerHost || (Constants as any).expoGoConfig?.debuggerHost;
+  const hostUri = manifest?.hostUri;
+  const hostCandidate = debuggerHost || hostUri;
+
+  if (hostCandidate) {
+    const ip = hostCandidate.split(':')[0];
+    if (ip && ip !== 'localhost' && ip !== '127.0.0.1') {
+      return `http://${ip}:3001`;
+    }
+  }
+
   // Fallback desarrollo local móvil
   return 'http://localhost:3001';
 };
@@ -51,6 +65,12 @@ export class ApiError extends Error {
     this.name = 'ApiError';
     Object.setPrototypeOf(this, ApiError.prototype);
   }
+}
+
+// Callback para que AuthContext pueda ser notificado si la sesión caducó
+let onSessionExpiredCallback: (() => void) | null = null;
+export function setOnSessionExpired(cb: (() => void) | null) {
+  onSessionExpiredCallback = cb;
 }
 
 async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
@@ -77,6 +97,20 @@ async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
   }
 
   if (!response.ok) {
+    // Si el servidor rechaza con 401 (token expirado / inválido / sin sesión)
+    if (response.status === 401 && !endpoint.includes('/auth/login')) {
+      try {
+        await AsyncStorage.removeItem('jwt_token');
+        await AsyncStorage.removeItem('user_data');
+      } catch (_) {}
+
+      if (onSessionExpiredCallback) {
+        try {
+          onSessionExpiredCallback();
+        } catch (_) {}
+      }
+    }
+
     let errorMessage = 'Error en el servidor';
     try {
       const errorData = await response.json();

@@ -63,14 +63,18 @@ export default function LoginScreen() {
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         {/* Logo / Marca 3D */}
         <View style={styles.header}>
-          <SenaMatchLogo size={52} textSize={28} subtitle="Conecta con tu comunidad SENA" />
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>SENA Match</Text>
+          </View>
+          <SenaMatchLogo size={58} textSize={28} subtitle="Ingresa a tu cuenta de la comunidad" textColor={colors.text} />
         </View>
 
         {/* Formulario */}
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+          <Text style={[styles.fieldLabel, { color: colors.textSub }]}>Correo institucional o Gmail</Text>
           <TextInput
             style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]}
-            placeholder="Correo electrónico"
+            placeholder="ejemplo@misena.edu.co"
             placeholderTextColor={colors.textMuted}
             value={email}
             onChangeText={setEmail}
@@ -78,9 +82,11 @@ export default function LoginScreen() {
             keyboardType="email-address"
             returnKeyType="next"
           />
+
+          <Text style={[styles.fieldLabel, { color: colors.textSub }]}>Contraseña</Text>
           <TextInput
             style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]}
-            placeholder="Contraseña"
+            placeholder="Tu contraseña"
             placeholderTextColor={colors.textMuted}
             value={password}
             onChangeText={setPassword}
@@ -94,7 +100,7 @@ export default function LoginScreen() {
           <TouchableOpacity
             style={[styles.btnPrimary, loading && styles.btnDisabled]}
             onPress={handleLogin}
-            activeOpacity={0.85}
+            activeOpacity={0.88}
             disabled={loading}
           >
             {loading ? (
@@ -119,9 +125,9 @@ export default function LoginScreen() {
         <TouchableOpacity
           style={[styles.btnSecondary, { backgroundColor: colors.chipBg, borderColor: colors.cardBorder }]}
           onPress={() => router.push('/(auth)/registro')}
-          activeOpacity={0.8}
+          activeOpacity={0.85}
         >
-          <Text style={[styles.btnSecondaryText, { color: colors.textSub }]}>¿No tienes cuenta? Crear cuenta</Text>
+          <Text style={[styles.btnSecondaryText, { color: colors.text }]}>¿No tienes cuenta? Crear cuenta</Text>
         </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -130,69 +136,114 @@ export default function LoginScreen() {
 
 function makeStyles(colors: import('../context/ThemeContext').ThemeColors) {
   return StyleSheet.create({
-  flex: { flex: 1 },
-  container: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    padding: 24,
-    paddingTop: 60,
-    maxWidth: 460,
-    width: '100%',
-    alignSelf: 'center',
-  },
-  header: { alignItems: 'center', marginBottom: 36 },
-  logo: {
-    fontSize: 38, fontWeight: '800',
-    color: '#FF6B4A', letterSpacing: -0.5,
-  },
-  tagline: { fontSize: 15, marginTop: 6 },
-  card: {
-    borderRadius: 16, padding: 24,
-    borderWidth: 1,
-    shadowColor: '#000', shadowOpacity: 0.3,
-    shadowRadius: 12, elevation: 4,
-  },
-  input: {
-    backgroundColor: colors.inputBg,
-    color: colors.text, fontSize: 16,
-    borderWidth: 1, borderColor: colors.inputBorder,
-    padding: 14, borderRadius: 10,
-    marginBottom: 14,
-  },
-  error: {
-    color: colors.danger, fontSize: 14,
-    marginBottom: 12, textAlign: 'center',
-  },
-  loader: { marginVertical: 8 },
-  btnPrimary: {
-    backgroundColor: colors.accent,
-    padding: 15, borderRadius: 10,
-    alignItems: 'center', marginTop: 4,
-  },
-  btnDisabled: {
-    opacity: 0.75,
-  },
-  loadingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  btnPrimaryText: {
-    color: '#fff', fontSize: 16, fontWeight: '700',
-  },
-  divider: {
-    flexDirection: 'row', alignItems: 'center',
-    marginVertical: 24,
-  },
-  dividerLine: { flex: 1, height: 1, backgroundColor: colors.cardBorder },
-  dividerText: { color: colors.textMuted, marginHorizontal: 12, fontSize: 14 },
-  btnSecondary: {
-    backgroundColor: colors.inputBg,
-    padding: 15, borderRadius: 10,
-    alignItems: 'center', borderWidth: 1, borderColor: colors.inputBorder,
-  },
-  btnSecondaryText: {
-    color: colors.textSub, fontSize: 15, fontWeight: '600',
-  },
+    flex: { flex: 1 },
+    container: {
+      flexGrow: 1,
+      justifyContent: 'center',
+      padding: 24,
+      paddingTop: 48,
+      maxWidth: 440,
+      width: '100%',
+      alignSelf: 'center',
+    },
+    header: {
+      alignItems: 'center',
+      marginBottom: 24,
+    },
+    badge: {
+      backgroundColor: 'rgba(57, 169, 0, 0.12)',
+      borderColor: 'rgba(57, 169, 0, 0.28)',
+      borderWidth: 1,
+      paddingHorizontal: 12,
+      paddingVertical: 4,
+      borderRadius: 20,
+      marginBottom: 14,
+    },
+    badgeText: {
+      color: colors.accent,
+      fontSize: 12,
+      fontWeight: '700',
+      letterSpacing: 0.3,
+    },
+    card: {
+      borderRadius: 20,
+      padding: 24,
+      borderWidth: 1,
+      shadowColor: '#000',
+      shadowOpacity: colors.isDark ? 0.3 : 0.08,
+      shadowRadius: 16,
+      elevation: 4,
+    },
+    fieldLabel: {
+      fontSize: 12,
+      fontWeight: '600',
+      marginBottom: 6,
+    },
+    input: {
+      backgroundColor: colors.inputBg,
+      color: colors.text,
+      fontSize: 15,
+      borderWidth: 1,
+      borderColor: colors.inputBorder,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      borderRadius: 12,
+      marginBottom: 14,
+    },
+    error: {
+      color: colors.danger,
+      fontSize: 13,
+      marginBottom: 12,
+      textAlign: 'center',
+    },
+    btnPrimary: {
+      backgroundColor: colors.accent,
+      paddingVertical: 14,
+      borderRadius: 12,
+      alignItems: 'center',
+      marginTop: 6,
+      shadowColor: colors.accent,
+      shadowOpacity: 0.25,
+      shadowRadius: 8,
+      elevation: 3,
+    },
+    btnDisabled: {
+      opacity: 0.75,
+    },
+    loadingRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    btnPrimaryText: {
+      color: '#fff',
+      fontSize: 15,
+      fontWeight: '700',
+    },
+    divider: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginVertical: 20,
+    },
+    dividerLine: {
+      flex: 1,
+      height: 1,
+      backgroundColor: colors.cardBorder,
+    },
+    dividerText: {
+      color: colors.textMuted,
+      marginHorizontal: 12,
+      fontSize: 13,
+    },
+    btnSecondary: {
+      paddingVertical: 13,
+      borderRadius: 12,
+      alignItems: 'center',
+      borderWidth: 1,
+    },
+    btnSecondaryText: {
+      fontSize: 14,
+      fontWeight: '600',
+    },
   });
 }

@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getApiUrl, setOnSessionExpired } from '../../lib/api';
 
 export type Role = 'aprendiz' | 'instructor' | 'bienestar' | 'admin' | 'egresado' | 'moderador' | null;
 
@@ -27,6 +28,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Escuchar expiración global de sesión disparada desde api.ts
+    setOnSessionExpired(() => {
+      setUser(null);
+    });
+
     // Restaurar sesión al inicio
     const loadSession = async () => {
       try {
@@ -37,13 +43,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const parsed = JSON.parse(storedUser);
           setUser(parsed);
 
-          // Sincronizar estado real con la BD
+          // Sincronizar estado real con la BD usando la URL canónica
           try {
-            const baseUrl = typeof window !== 'undefined' && window.location ? window.location.origin : 'http://localhost:3001';
+            const baseUrl = getApiUrl();
             const res = await fetch(`${baseUrl}/perfiles/${parsed.id}`, {
               headers: { Authorization: `Bearer ${token}` }
             });
-            if (res.ok) {
+            if (res.status === 401) {
+              // Token vencido o rechazado: limpiar sesión almacenada
+              await AsyncStorage.removeItem('jwt_token');
+              await AsyncStorage.removeItem('user_data');
+              setUser(null);
+            } else if (res.ok) {
               const fresh = await res.json();
               if (fresh && typeof fresh.primeraPublicacionCompletada === 'boolean') {
                 const merged = { ...parsed, primeraPublicacionCompletada: fresh.primeraPublicacionCompletada };
@@ -61,6 +72,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
     
     loadSession();
+
+    return () => {
+      setOnSessionExpired(null);
+    };
   }, []);
 
   const signIn = async (token: string, userData: UserInfo) => {
