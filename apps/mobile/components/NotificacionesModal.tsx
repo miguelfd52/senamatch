@@ -2,13 +2,12 @@ import {
   View, Text, StyleSheet, TouchableOpacity,
   Modal, ActivityIndicator, ScrollView, RefreshControl
 } from 'react-native';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'expo-router';
 import { api } from '../lib/api';
+import { useTheme, ThemeColors } from '../app/context/ThemeContext';
 
 const ACCENT = '#39A900';
-const CARD = '#1E1A2B';
-const CARD_BORDER = '#2D2640';
 
 interface NotificacionItem {
   id: string;
@@ -54,6 +53,8 @@ function formatearFecha(ts: number): string {
 
 export default function NotificacionesModal({ visible, onClose, onSelectChat, onNotifCountChange }: Props) {
   const router = useRouter();
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [notificaciones, setNotificaciones] = useState<NotificacionItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -138,11 +139,11 @@ export default function NotificacionesModal({ visible, onClose, onSelectChat, on
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
-        <View style={styles.container}>
+        <View style={[styles.container, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           {/* Cabecera */}
-          <View style={styles.header}>
+          <View style={[styles.header, { borderBottomColor: colors.cardBorder }]}>
             <View style={styles.headerTitleWrap}>
-              <Text style={styles.headerTitle}>Notificaciones</Text>
+              <Text style={[styles.headerTitle, { color: colors.text }]}>Notificaciones</Text>
               {unreadCount > 0 ? (
                 <View style={styles.unreadBadge}>
                   <Text style={styles.unreadBadgeText}>{unreadCount} nuevas</Text>
@@ -166,25 +167,25 @@ export default function NotificacionesModal({ visible, onClose, onSelectChat, on
           {loading ? (
             <View style={styles.centerBox}>
               <ActivityIndicator size="large" color={ACCENT} />
-              <Text style={styles.loadingText}>Cargando notificaciones…</Text>
+              <Text style={[styles.loadingText, { color: colors.textSub }]}>Cargando notificaciones…</Text>
             </View>
           ) : error ? (
             <View style={styles.centerBox}>
               <Text style={styles.emptyEmoji}>⚠️</Text>
-              <Text style={styles.emptyTitle}>Error al cargar</Text>
-              <Text style={styles.emptySubtitle}>{error}</Text>
+              <Text style={[styles.emptyTitle, { color: colors.text }]}>Error al cargar</Text>
+              <Text style={[styles.emptySubtitle, { color: colors.textSub }]}>{error}</Text>
               <TouchableOpacity
-                style={styles.retryBtn}
+                style={[styles.retryBtn, { backgroundColor: colors.chipBg }]}
                 onPress={() => { setLoading(true); cargarNotificaciones(); }}
               >
-                <Text style={styles.retryBtnText}>🔄 Reintentar</Text>
+                <Text style={[styles.retryBtnText, { color: colors.text }]}>🔄 Reintentar</Text>
               </TouchableOpacity>
             </View>
           ) : notificaciones.length === 0 ? (
             <View style={styles.centerBox}>
               <Text style={styles.emptyEmoji}>🔔</Text>
-              <Text style={styles.emptyTitle}>No tienes notificaciones</Text>
-              <Text style={styles.emptySubtitle}>
+              <Text style={[styles.emptyTitle, { color: colors.text }]}>No tienes notificaciones</Text>
+              <Text style={[styles.emptySubtitle, { color: colors.textSub }]}>
                 Te avisaremos cuando hagas match, recibas mensajes o te unas a parches.
               </Text>
             </View>
@@ -204,7 +205,7 @@ export default function NotificacionesModal({ visible, onClose, onSelectChat, on
               {notificaciones.map((n) => (
                 <TouchableOpacity
                   key={n.id}
-                  style={[styles.notifCard, !n.read && styles.notifCardUnread]}
+                  style={[styles.notifCard, { backgroundColor: colors.inputBg }, !n.read && styles.notifCardUnread]}
                   onPress={() => handleClickNotif(n)}
                   activeOpacity={0.75}
                 >
@@ -214,12 +215,12 @@ export default function NotificacionesModal({ visible, onClose, onSelectChat, on
 
                   <View style={styles.textBox}>
                     <View style={styles.topRow}>
-                      <Text style={[styles.notifTitle, !n.read && styles.notifTitleUnread]} numberOfLines={1}>
+                      <Text style={[styles.notifTitle, { color: colors.textSub }, !n.read && styles.notifTitleUnread]} numberOfLines={1}>
                         {n.title}
                       </Text>
-                      <Text style={styles.notifTime}>{formatearFecha(n.createdAt)}</Text>
+                      <Text style={[styles.notifTime, { color: colors.textMuted }]}>{formatearFecha(n.createdAt)}</Text>
                     </View>
-                    <Text style={styles.notifMsg} numberOfLines={2}>
+                    <Text style={[styles.notifMsg, { color: colors.textSub }]} numberOfLines={2}>
                       {n.message}
                     </Text>
                   </View>
@@ -235,19 +236,17 @@ export default function NotificacionesModal({ visible, onClose, onSelectChat, on
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors) => StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.78)',
+    backgroundColor: colors.modalOverlay,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 16,
   },
   container: {
-    backgroundColor: CARD,
     borderRadius: 22,
     borderWidth: 1,
-    borderColor: CARD_BORDER,
     maxWidth: 480,
     width: '100%',
     maxHeight: '85%',
@@ -264,7 +263,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#282136',
   },
   headerTitleWrap: {
     flexDirection: 'row',
@@ -274,7 +272,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#F0ECF6',
+    color: colors.text,
   },
   unreadBadge: {
     backgroundColor: 'rgba(57, 169, 0, 0.15)',
@@ -308,7 +306,7 @@ const styles = StyleSheet.create({
   },
   closeText: {
     fontSize: 18,
-    color: '#8D83A0',
+    color: colors.textMuted,
     fontWeight: '700',
   },
   centerBox: {
@@ -317,9 +315,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   loadingText: {
-    color: '#8D83A0',
     marginTop: 12,
     fontSize: 14,
+    color: colors.textSub,
   },
   emptyEmoji: {
     fontSize: 48,
@@ -328,27 +326,27 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#F0ECF6',
     marginBottom: 6,
+    color: colors.text,
   },
   emptySubtitle: {
-    color: '#8D83A0',
     fontSize: 13,
     textAlign: 'center',
     lineHeight: 18,
     maxWidth: 320,
+    color: colors.textSub,
   },
   retryBtn: {
     marginTop: 16,
-    backgroundColor: '#282234',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 10,
+    backgroundColor: colors.chipBg,
   },
   retryBtnText: {
-    color: '#F0ECF6',
     fontWeight: '700',
     fontSize: 13,
+    color: colors.text,
   },
   scrollList: {
     padding: 12,
@@ -358,20 +356,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 14,
     borderRadius: 14,
-    backgroundColor: '#191523',
     marginBottom: 8,
     borderWidth: 1,
     borderColor: 'transparent',
   },
   notifCardUnread: {
-    backgroundColor: '#231B32',
     borderColor: 'rgba(57, 169, 0, 0.25)',
   },
   iconBox: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: colors.isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -391,22 +387,22 @@ const styles = StyleSheet.create({
   notifTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#B9B1C9',
     flex: 1,
     marginRight: 6,
+    color: colors.textSub,
   },
   notifTitleUnread: {
     fontWeight: '800',
-    color: '#F0ECF6',
+    color: colors.text,
   },
   notifTime: {
     fontSize: 11,
-    color: '#8D83A0',
+    color: colors.textMuted,
   },
   notifMsg: {
     fontSize: 13,
-    color: '#8D83A0',
     lineHeight: 18,
+    color: colors.textSub,
   },
   unreadDot: {
     width: 8,

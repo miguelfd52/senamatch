@@ -3,7 +3,7 @@ import {
   ScrollView, ActivityIndicator, RefreshControl,
   TextInput, Image, Platform, Modal, Alert
 } from 'react-native';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../app/context/AuthContext';
 import {
@@ -21,12 +21,9 @@ import SenaMatchLogo from './SenaMatchLogo';
 import PublicProfileModal from './PublicProfileModal';
 import FotoViewerModal from './FotoViewerModal';
 import { pendingChat } from '../lib/pendingChat';
+import { useTheme } from '../app/context/ThemeContext';
 
 const ACCENT = '#39A900';
-const ACCENT_DARK = '#1F6B00';
-const BG = '#0F0C18';
-const CARD = '#161B22';
-const CARD_BORDER = '#263238';
 const DANGER = '#FF5B6E';
 
 interface Props {
@@ -48,6 +45,8 @@ function formatearTiempo(timestamp: number) {
 export default function HomeScreen({ esfera }: Props) {
   const { user } = useAuth();
   const router = useRouter();
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
 
   const {
     data: publicaciones,
@@ -249,14 +248,14 @@ export default function HomeScreen({ esfera }: Props) {
 
   return (
     <ScrollView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: colors.bg }]}
       contentContainerStyle={styles.content}
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
           onRefresh={onRefresh}
-          tintColor={ACCENT}
-          colors={[ACCENT]}
+          tintColor={colors.accent}
+          colors={[colors.accent]}
         />
       }
     >
@@ -329,26 +328,26 @@ export default function HomeScreen({ esfera }: Props) {
 
       {/* Estados: Loading, Error, Empty, o Lista */}
       {isLoading ? (
-        <View style={styles.stateContainer}>
-          <ActivityIndicator size="large" color={ACCENT} />
-          <Text style={styles.loadingText}>Cargando publicaciones de la comunidad…</Text>
+        <View style={[styles.stateContainer, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+          <ActivityIndicator size="large" color={colors.accent} />
+          <Text style={[styles.loadingText, { color: colors.textSub }]}>Cargando publicaciones de la comunidad…</Text>
         </View>
       ) : isError ? (
-        <View style={styles.stateContainer}>
+        <View style={[styles.stateContainer, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           <Text style={styles.emptyEmoji}>⚠️</Text>
-          <Text style={styles.errorTitle}>No se pudieron cargar las publicaciones</Text>
-          <Text style={styles.errorSubtitle}>
+          <Text style={[styles.errorTitle, { color: colors.danger }]}>No se pudieron cargar las publicaciones</Text>
+          <Text style={[styles.errorSubtitle, { color: colors.textSub }]}>
             {error instanceof Error ? error.message : 'Verifica tu conexión a internet e inténtalo de nuevo.'}
           </Text>
-          <TouchableOpacity style={styles.retryBtn} onPress={() => refetch()} activeOpacity={0.8}>
-            <Text style={styles.retryBtnText}>🔄 Reintentar</Text>
+          <TouchableOpacity style={[styles.retryBtn, { backgroundColor: colors.chipBg }]} onPress={() => refetch()} activeOpacity={0.8}>
+            <Text style={[styles.retryBtnText, { color: colors.text }]}>🔄 Reintentar</Text>
           </TouchableOpacity>
         </View>
       ) : listaPublicaciones.length === 0 ? (
-        <View style={styles.stateContainer}>
+        <View style={[styles.stateContainer, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           <Text style={styles.emptyEmoji}>📸</Text>
-          <Text style={styles.emptyTitle}>Aún no hay publicaciones</Text>
-          <Text style={styles.emptySubtitle}>
+          <Text style={[styles.emptyTitle, { color: colors.text }]}>Aún no hay publicaciones</Text>
+          <Text style={[styles.emptySubtitle, { color: colors.textSub }]}>
             Sé el primero en compartir un proyecto, idea o saludo con todos tus compañeros y equipo SENA.
           </Text>
           <TouchableOpacity
@@ -367,7 +366,7 @@ export default function HomeScreen({ esfera }: Props) {
           const esAutor = String(pub.autor?.id) === String(user?.id) || !!pub.esMio;
 
           return (
-            <View key={pub.id} style={styles.postCard}>
+            <View key={pub.id} style={[styles.postCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
               {/* Cabecera del post */}
               <View style={styles.postHeader}>
                 <TouchableOpacity
@@ -387,14 +386,14 @@ export default function HomeScreen({ esfera }: Props) {
                     </View>
                   )}
                   <View>
-                    <Text style={styles.authorName}>{pub.autor?.nombre || 'Usuario SENA'}</Text>
+                    <Text style={[styles.authorName, { color: colors.text }]}>{pub.autor?.nombre || 'Usuario SENA'}</Text>
                     <View style={styles.authorSubRow}>
                       <View style={styles.authorBadge}>
                         <Text style={styles.authorBadgeText}>
                           {pub.autor?.rol?.toUpperCase() || 'APRENDIZ'}
                         </Text>
                       </View>
-                      <Text style={styles.postTime}>· {formatearTiempo(pub.creado)}</Text>
+                      <Text style={[styles.postTime, { color: colors.textSub }]}>· {formatearTiempo(pub.creado)}</Text>
                     </View>
                   </View>
                 </TouchableOpacity>
@@ -405,14 +404,14 @@ export default function HomeScreen({ esfera }: Props) {
                     <>
                       <TouchableOpacity
                         onPress={() => handleStartEdit(pub)}
-                        style={styles.btnPostOption}
+                        style={[styles.btnPostOption, { backgroundColor: colors.chipBg }]}
                         activeOpacity={0.7}
                       >
                         <Text style={styles.btnPostOptionText}>✏️</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         onPress={() => handleDelete(pub.id)}
-                        style={styles.btnPostOption}
+                        style={[styles.btnPostOption, { backgroundColor: colors.chipBg }]}
                         activeOpacity={0.7}
                       >
                         <Text style={[styles.btnPostOptionText, { color: DANGER }]}>🗑️</Text>
@@ -421,7 +420,7 @@ export default function HomeScreen({ esfera }: Props) {
                   ) : (
                     <TouchableOpacity
                       onPress={() => setReportingPubId(pub.id)}
-                      style={styles.btnPostOption}
+                      style={[styles.btnPostOption, { backgroundColor: colors.chipBg }]}
                       activeOpacity={0.7}
                     >
                       <Text style={styles.btnPostOptionText}>🚩</Text>
@@ -431,7 +430,7 @@ export default function HomeScreen({ esfera }: Props) {
               </View>
 
               {/* Contenido de texto */}
-              <Text style={styles.postText}>{pub.texto}</Text>
+              <Text style={[styles.postText, { color: colors.text }]}>{pub.texto}</Text>
 
               {/* Foto opcional del post con visor en pantalla completa */}
               {pub.fotoUrl ? (
@@ -476,7 +475,7 @@ export default function HomeScreen({ esfera }: Props) {
               {/* Comentarios */}
               {abiertos && (
                 <View style={styles.commentsSection}>
-                  <View style={styles.commentsDivider} />
+                  <View style={[styles.commentsDivider, { backgroundColor: colors.cardBorder }]} />
 
                   {pub.comentarios && pub.comentarios.length > 0 ? (
                     pub.comentarios.map(com => (
@@ -492,32 +491,32 @@ export default function HomeScreen({ esfera }: Props) {
                               resizeMode="cover"
                             />
                           ) : (
-                            <View style={styles.commentAvatar}>
+                            <View style={[styles.commentAvatar, { backgroundColor: colors.chipBg }]}>
                               <Text style={styles.commentAvatarEmoji}>{com.autorAvatarEmoji || '😊'}</Text>
                             </View>
                           )}
                         </TouchableOpacity>
-                        <View style={styles.commentBubble}>
+                        <View style={[styles.commentBubble, { backgroundColor: colors.inputBg }]}>
                           <View style={styles.commentTop}>
                             <TouchableOpacity onPress={() => setSelectedUserId(com.autorId)}>
-                              <Text style={styles.commentAuthor}>{com.autorNombre}</Text>
+                              <Text style={[styles.commentAuthor, { color: colors.text }]}>{com.autorNombre}</Text>
                             </TouchableOpacity>
-                            <Text style={styles.commentTime}>{formatearTiempo(com.creado)}</Text>
+                            <Text style={[styles.commentTime, { color: colors.textMuted }]}>{formatearTiempo(com.creado)}</Text>
                           </View>
-                          <Text style={styles.commentText}>{com.texto}</Text>
+                          <Text style={[styles.commentText, { color: colors.textSub }]}>{com.texto}</Text>
                         </View>
                       </View>
                     ))
                   ) : (
-                    <Text style={styles.noCommentsText}>Aún no hay comentarios. ¡Sé el primero en opinar!</Text>
+                    <Text style={[styles.noCommentsText, { color: colors.textMuted }]}>Aún no hay comentarios. ¡Sé el primero en opinar!</Text>
                   )}
 
                   {/* Formulario comentario */}
                   <View style={styles.newCommentRow}>
                     <TextInput
-                      style={styles.newCommentInput}
+                      style={[styles.newCommentInput, { backgroundColor: colors.inputBg, color: colors.text, borderColor: colors.inputBorder }]}
                       placeholder="Escribe un comentario respetuoso…"
-                      placeholderTextColor="#786E8A"
+                      placeholderTextColor={colors.textMuted}
                       value={textoComentario[pub.id] || ''}
                       onChangeText={(val) => setTextoComentario(prev => ({ ...prev, [pub.id]: val }))}
                       onSubmitEditing={() => handleEnviarComentario(pub.id)}
@@ -547,11 +546,11 @@ export default function HomeScreen({ esfera }: Props) {
         onRequestClose={handleCerrarModal}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Nueva publicación</Text>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Nueva publicación</Text>
               <TouchableOpacity onPress={handleCerrarModal} style={styles.modalCloseBtn}>
-                <Text style={styles.modalCloseText}>✕</Text>
+                <Text style={[styles.modalCloseText, { color: colors.textSub }]}>✕</Text>
               </TouchableOpacity>
             </View>
 
@@ -561,18 +560,18 @@ export default function HomeScreen({ esfera }: Props) {
               </View>
             ) : null}
 
-            <Text style={styles.modalFieldLabel}>¿Qué quieres compartir?</Text>
+            <Text style={[styles.modalFieldLabel, { color: colors.textSub }]}>¿Qué quieres compartir?</Text>
             <TextInput
-              style={styles.modalTextInput}
+              style={[styles.modalTextInput, { backgroundColor: colors.inputBg, color: colors.text, borderColor: colors.inputBorder }]}
               multiline
               maxLength={1000}
               placeholder="Escribe tu mensaje, pregunta o comparte una experiencia con la comunidad…"
-              placeholderTextColor="#786E8A"
+              placeholderTextColor={colors.textMuted}
               value={nuevoTexto}
               onChangeText={setNuevoTexto}
             />
 
-            <Text style={styles.modalFieldLabel}>Foto de la publicación (opcional)</Text>
+            <Text style={[styles.modalFieldLabel, { color: colors.textSub }]}>Foto de la publicación (opcional)</Text>
             
             {Platform.OS === 'web' && (
               <TouchableOpacity
@@ -582,7 +581,7 @@ export default function HomeScreen({ esfera }: Props) {
               >
                 {fotoUploading ? (
                   <View style={styles.modalUploadingRow}>
-                    <ActivityIndicator size="small" color={ACCENT} style={{ marginRight: 8 }} />
+                    <ActivityIndicator size="small" color={colors.accent} style={{ marginRight: 8 }} />
                     <Text style={styles.modalPickPhotoBtnText}>Subiendo foto a Cloudinary…</Text>
                   </View>
                 ) : (
@@ -750,7 +749,7 @@ export default function HomeScreen({ esfera }: Props) {
                 <Text style={styles.modalCancelBtnText}>Cancelar</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.modalSubmitBtn, { backgroundColor: DANGER }]}
+                style={[styles.modalSubmitBtn, { backgroundColor: colors.danger }]}
                 onPress={handleEnviarReportePost}
               >
                 <Text style={styles.modalSubmitBtnText}>Enviar reporte</Text>
@@ -786,10 +785,10 @@ export default function HomeScreen({ esfera }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(colors: import('../app/context/ThemeContext').ThemeColors) {
+  return StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: BG,
   },
   content: {
     padding: 16,
@@ -805,14 +804,14 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     paddingBottom: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#263238',
+    borderBottomColor: colors.cardBorder,
   },
   btnCrearTop: {
-    backgroundColor: ACCENT,
+    backgroundColor: colors.accent,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 12,
-    shadowColor: ACCENT,
+    shadowColor: colors.accent,
     shadowOpacity: 0.35,
     shadowRadius: 8,
     elevation: 3,
@@ -825,11 +824,11 @@ const styles = StyleSheet.create({
 
   // Composer Box
   composerCard: {
-    backgroundColor: CARD,
+    backgroundColor: colors.card,
     borderRadius: 18,
     padding: 16,
     borderWidth: 1,
-    borderColor: CARD_BORDER,
+    borderColor: colors.cardBorder,
     marginBottom: 22,
   },
   composerHeader: {
@@ -845,22 +844,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: ACCENT,
+    borderColor: colors.accent,
   },
   myAvatarEmoji: {
     fontSize: 22,
   },
   composerFakeInput: {
     flex: 1,
-    backgroundColor: '#1E252F',
+    backgroundColor: colors.inputBg,
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: '#2D3748',
+    borderColor: colors.inputBorder,
   },
   composerPlaceholder: {
-    color: '#8D83A0',
+    color: colors.textSub,
     fontSize: 14,
   },
   composerFooter: {
@@ -869,7 +868,7 @@ const styles = StyleSheet.create({
     marginTop: 14,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#263238',
+    borderTopColor: colors.cardBorder,
   },
   composerActionBtn: {
     flexDirection: 'row',
@@ -883,7 +882,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
   },
   composerActionText: {
-    color: '#B9B1C9',
+    color: colors.textSub,
     fontSize: 13,
     fontWeight: '600',
   },
@@ -898,12 +897,12 @@ const styles = StyleSheet.create({
   feedTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#F0ECF6',
+    color: colors.text,
   },
   feedBadge: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#00E5A3',
+    color: colors.success,
     backgroundColor: 'rgba(0, 229, 163, 0.1)',
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -912,17 +911,17 @@ const styles = StyleSheet.create({
 
   // States
   stateContainer: {
-    backgroundColor: CARD,
+    backgroundColor: colors.card,
     borderRadius: 18,
     padding: 32,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: CARD_BORDER,
+    borderColor: colors.cardBorder,
     marginVertical: 20,
   },
   loadingText: {
-    color: '#8D83A0',
+    color: colors.textSub,
     marginTop: 14,
     fontSize: 14,
   },
@@ -933,20 +932,20 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#F0ECF6',
+    color: colors.text,
     marginBottom: 8,
     textAlign: 'center',
   },
   emptySubtitle: {
     fontSize: 14,
-    color: '#8D83A0',
+    color: colors.textSub,
     textAlign: 'center',
     lineHeight: 20,
     maxWidth: 400,
     marginBottom: 20,
   },
   btnCrearEmpty: {
-    backgroundColor: ACCENT,
+    backgroundColor: colors.accent,
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 12,
@@ -959,33 +958,33 @@ const styles = StyleSheet.create({
   errorTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: DANGER,
+    color: colors.danger,
     marginBottom: 6,
   },
   errorSubtitle: {
     fontSize: 13,
-    color: '#8D83A0',
+    color: colors.textSub,
     textAlign: 'center',
     marginBottom: 16,
   },
   retryBtn: {
-    backgroundColor: '#282234',
+    backgroundColor: colors.chipBg,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 10,
   },
   retryBtnText: {
-    color: '#F0ECF6',
+    color: colors.text,
     fontWeight: '600',
   },
 
   // Post Card
   postCard: {
-    backgroundColor: CARD,
+    backgroundColor: colors.card,
     borderRadius: 18,
     padding: 16,
     borderWidth: 1,
-    borderColor: CARD_BORDER,
+    borderColor: colors.cardBorder,
     marginBottom: 18,
     shadowColor: '#000',
     shadowOpacity: 0.25,
@@ -1024,7 +1023,7 @@ const styles = StyleSheet.create({
   authorName: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#F0ECF6',
+    color: colors.text,
   },
   authorSubRow: {
     flexDirection: 'row',
@@ -1041,11 +1040,11 @@ const styles = StyleSheet.create({
   authorBadgeText: {
     fontSize: 10,
     fontWeight: '800',
-    color: ACCENT,
+    color: colors.accent,
   },
   postTime: {
     fontSize: 12,
-    color: '#8D83A0',
+    color: colors.textSub,
   },
   postOptionsRow: {
     flexDirection: 'row',
@@ -1054,7 +1053,7 @@ const styles = StyleSheet.create({
   btnPostOption: {
     padding: 6,
     borderRadius: 6,
-    backgroundColor: '#1E252F',
+    backgroundColor: colors.chipBg,
   },
   btnPostOptionText: {
     fontSize: 14,
@@ -1062,7 +1061,7 @@ const styles = StyleSheet.create({
   postText: {
     fontSize: 15,
     lineHeight: 22,
-    color: '#F0ECF6',
+    color: colors.text,
     marginBottom: 12,
   },
   postImageWrap: {
@@ -1070,10 +1069,10 @@ const styles = StyleSheet.create({
     height: 280,
     borderRadius: 12,
     overflow: 'hidden',
-    backgroundColor: '#120F1A',
+    backgroundColor: colors.bg,
     marginBottom: 14,
     borderWidth: 1,
-    borderColor: CARD_BORDER,
+    borderColor: colors.cardBorder,
   },
   postImage: {
     width: '100%',
@@ -1087,7 +1086,7 @@ const styles = StyleSheet.create({
     gap: 14,
     paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: '#263238',
+    borderTopColor: colors.cardBorder,
   },
   actionButton: {
     flexDirection: 'row',
@@ -1107,10 +1106,10 @@ const styles = StyleSheet.create({
   actionText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#B9B1C9',
+    color: colors.textSub,
   },
   actionTextLiked: {
-    color: ACCENT,
+    color: colors.accent,
     fontWeight: '700',
   },
 
@@ -1120,7 +1119,7 @@ const styles = StyleSheet.create({
   },
   commentsDivider: {
     height: 1,
-    backgroundColor: '#263238',
+    backgroundColor: colors.cardBorder,
     marginBottom: 12,
   },
   commentItem: {
@@ -1137,7 +1136,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#1E252F',
+    backgroundColor: colors.chipBg,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1146,7 +1145,7 @@ const styles = StyleSheet.create({
   },
   commentBubble: {
     flex: 1,
-    backgroundColor: '#1E252F',
+    backgroundColor: colors.inputBg,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 12,
@@ -1160,19 +1159,19 @@ const styles = StyleSheet.create({
   commentAuthor: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#F0ECF6',
+    color: colors.text,
   },
   commentTime: {
     fontSize: 11,
-    color: '#8D83A0',
+    color: colors.textMuted,
   },
   commentText: {
     fontSize: 13,
-    color: '#B9B1C9',
+    color: colors.textSub,
     lineHeight: 18,
   },
   noCommentsText: {
-    color: '#786E8A',
+    color: colors.textMuted,
     fontSize: 12,
     fontStyle: 'italic',
     marginBottom: 12,
@@ -1185,17 +1184,17 @@ const styles = StyleSheet.create({
   },
   newCommentInput: {
     flex: 1,
-    backgroundColor: '#1E252F',
-    color: '#F0ECF6',
+    backgroundColor: colors.inputBg,
+    color: colors.text,
     fontSize: 13,
     paddingHorizontal: 14,
     paddingVertical: 9,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#2D3748',
+    borderColor: colors.inputBorder,
   },
   btnSendComment: {
-    backgroundColor: ACCENT,
+    backgroundColor: colors.accent,
     paddingHorizontal: 14,
     paddingVertical: 9,
     borderRadius: 20,
@@ -1215,13 +1214,13 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   modalContent: {
-    backgroundColor: CARD,
+    backgroundColor: colors.card,
     borderRadius: 20,
     padding: 22,
     maxWidth: 540,
     width: '100%',
     borderWidth: 1,
-    borderColor: CARD_BORDER,
+    borderColor: colors.cardBorder,
     shadowColor: '#000',
     shadowOpacity: 0.4,
     shadowRadius: 20,
@@ -1236,14 +1235,14 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#F0ECF6',
+    color: colors.text,
   },
   modalCloseBtn: {
     padding: 6,
   },
   modalCloseText: {
     fontSize: 18,
-    color: '#8D83A0',
+    color: colors.textSub,
     fontWeight: '700',
   },
   formErrorBanner: {
@@ -1255,36 +1254,36 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 91, 110, 0.3)',
   },
   formErrorText: {
-    color: DANGER,
+    color: colors.danger,
     fontSize: 13,
     fontWeight: '600',
   },
   modalFieldLabel: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#B9B1C9',
+    color: colors.textSub,
     marginBottom: 6,
   },
   modalTextInput: {
-    backgroundColor: '#1E252F',
-    color: '#F0ECF6',
+    backgroundColor: colors.inputBg,
+    color: colors.text,
     borderRadius: 12,
     padding: 14,
     fontSize: 14,
     borderWidth: 1,
-    borderColor: '#2D3748',
+    borderColor: colors.inputBorder,
     height: 100,
     textAlignVertical: 'top',
     marginBottom: 14,
   },
   modalUrlInput: {
-    backgroundColor: '#1E252F',
-    color: '#F0ECF6',
+    backgroundColor: colors.inputBg,
+    color: colors.text,
     borderRadius: 12,
     padding: 12,
     fontSize: 14,
     borderWidth: 1,
-    borderColor: '#2D3748',
+    borderColor: colors.inputBorder,
     marginBottom: 14,
   },
   modalPickPhotoBtn: {
@@ -1301,7 +1300,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   modalPickPhotoBtnText: {
-    color: ACCENT,
+    color: colors.accent,
     fontWeight: '700',
     fontSize: 13,
   },
@@ -1312,7 +1311,7 @@ const styles = StyleSheet.create({
   },
   modalFieldHint: {
     fontSize: 12,
-    color: '#8D83A0',
+    color: colors.textSub,
     marginBottom: 6,
   },
   previewContainer: {
@@ -1321,7 +1320,7 @@ const styles = StyleSheet.create({
   },
   previewLabel: {
     fontSize: 12,
-    color: '#8D83A0',
+    color: colors.textSub,
     alignSelf: 'flex-start',
     marginBottom: 6,
   },
@@ -1330,14 +1329,14 @@ const styles = StyleSheet.create({
     height: 160,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: ACCENT,
+    borderColor: colors.accent,
   },
   btnEliminarFoto: {
     marginTop: 6,
     paddingVertical: 4,
   },
   btnEliminarFotoText: {
-    color: DANGER,
+    color: colors.danger,
     fontSize: 12,
     fontWeight: '600',
   },
@@ -1348,18 +1347,18 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   modalCancelBtn: {
-    backgroundColor: '#1E252F',
+    backgroundColor: colors.chipBg,
     paddingVertical: 12,
     paddingHorizontal: 18,
     borderRadius: 10,
   },
   modalCancelBtnText: {
-    color: '#8D83A0',
+    color: colors.textSub,
     fontWeight: '600',
     fontSize: 14,
   },
   modalSubmitBtn: {
-    backgroundColor: ACCENT,
+    backgroundColor: colors.accent,
     paddingVertical: 12,
     paddingHorizontal: 22,
     borderRadius: 10,
@@ -1375,25 +1374,26 @@ const styles = StyleSheet.create({
     opacity: 0.65,
   },
   reportOptionBtn: {
-    backgroundColor: '#1E252F',
+    backgroundColor: colors.chipBg,
     paddingVertical: 10,
     paddingHorizontal: 14,
     borderRadius: 8,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: '#2D3748',
+    borderColor: colors.inputBorder,
   },
   reportOptionBtnActive: {
-    borderColor: ACCENT,
+    borderColor: colors.accent,
     backgroundColor: 'rgba(57, 169, 0, 0.15)',
   },
   reportOptionText: {
-    color: '#B9B1C9',
+    color: colors.textSub,
     fontSize: 13,
     fontWeight: '600',
   },
   reportOptionTextActive: {
-    color: ACCENT,
+    color: colors.accent,
     fontWeight: '800',
   },
-});
+  });
+}

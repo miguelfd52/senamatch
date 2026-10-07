@@ -12,9 +12,6 @@ import FotoViewerModal from './FotoViewerModal';
 import { useTheme } from '../app/context/ThemeContext';
 
 const ACCENT = '#39A900';
-const BG = '#0F0C18';
-const CARD = '#161B22';
-const CARD_BORDER = '#263238';
 const SUCCESS = '#00E5A3';
 
 const INTERESES_OPCIONES = [
@@ -26,11 +23,12 @@ const INTERESES_OPCIONES = [
 const EMOJIS = ['😊', '😎', '🤓', '🦊', '🐱', '🐶', '🦄', '🌟', '🔥', '🎯', '💪', '🎓'];
 
 function InfoRow({ icon, label, value }: { icon: string; label: string; value: string }) {
+  const { colors } = useTheme();
   return (
     <View style={styles.infoRow}>
       <Text style={styles.infoIcon}>{icon}</Text>
-      <Text style={styles.infoLabel}>{label}</Text>
-      <Text style={styles.infoValue}>{value}</Text>
+      <Text style={[styles.infoLabel, { color: colors.textSub }]}>{label}</Text>
+      <Text style={[styles.infoValue, { color: colors.text }]}>{value}</Text>
     </View>
   );
 }
@@ -39,7 +37,7 @@ export default function ProfileScreen() {
   const { user, signOut, signIn } = useAuth();
   const { data: perfil, isLoading } = usePerfil(user?.id || '');
   const editMutation = useEditarPerfil(user?.id || '');
-  const { isDark, toggleTheme } = useTheme();
+  const { isDark, toggleTheme, colors } = useTheme();
 
   const [editing, setEditing] = useState(false);
   const [nombre, setNombre] = useState(user?.nombre || '');
@@ -166,9 +164,9 @@ export default function ProfileScreen() {
 
   if (isLoading && !timedOut) {
     return (
-      <View style={styles.center}>
+      <View style={[styles.center, { backgroundColor: colors.bg }]}>
         <ActivityIndicator size="large" color={ACCENT} />
-        <Text style={styles.loadingText}>Cargando perfil…</Text>
+        <Text style={[styles.loadingText, { color: colors.textMuted }]}>Cargando perfil…</Text>
       </View>
     );
   }
@@ -182,16 +180,16 @@ export default function ProfileScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: colors.bg }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView contentContainerStyle={styles.content}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Mi Perfil</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Mi Perfil</Text>
           {!editing ? (
             <TouchableOpacity
-              style={styles.editBtn}
+              style={[styles.editBtn, { backgroundColor: 'rgba(57,169,0,0.12)', borderColor: 'rgba(57,169,0,0.3)' }]}
               onPress={() => setEditing(true)}
               activeOpacity={0.8}
             >
@@ -199,11 +197,11 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           ) : (
             <TouchableOpacity
-              style={styles.cancelBtn}
+              style={[styles.cancelBtn, { backgroundColor: colors.chipBg }]}
               onPress={() => setEditing(false)}
               activeOpacity={0.8}
             >
-              <Text style={styles.cancelBtnText}>Cancelar</Text>
+              <Text style={[styles.cancelBtnText, { color: colors.textSub }]}>Cancelar</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -216,7 +214,7 @@ export default function ProfileScreen() {
         )}
 
         {/* Avatar + Photo + Name */}
-        <View style={styles.profileCard}>
+        <View style={[styles.profileCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           {displayFoto ? (
             <TouchableOpacity
               onPress={editing ? handlePickImage : () => setViewingPhotoUrl(displayFoto)}
@@ -277,9 +275,9 @@ export default function ProfileScreen() {
                   </View>
                 ) : null}
 
-                <Text style={styles.photoUrlHint}>O pega una URL pública (https://…):</Text>
+                <Text style={[styles.photoUrlHint, { color: colors.textMuted }]}>O pega una URL pública (https://…):</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { backgroundColor: colors.inputBg, color: colors.text, borderColor: colors.inputBorder }]}
                   value={fotoUrl.startsWith('data:') ? '' : fotoUrl}
                   onChangeText={(text) => {
                     setFotoUrl(text);
@@ -287,7 +285,7 @@ export default function ProfileScreen() {
                     setFotoError('');
                   }}
                   placeholder="https://ejemplo.com/foto.jpg"
-                  placeholderTextColor="#786E8A"
+                  placeholderTextColor={colors.textMuted}
                   autoCapitalize="none"
                   autoCorrect={false}
                   editable={!fotoUploading}
@@ -307,19 +305,19 @@ export default function ProfileScreen() {
                 ) : null}
               </View>
 
-              <Text style={styles.fieldLabel}>Nombre</Text>
+              <Text style={[styles.fieldLabel, { color: colors.textSub }]}>Nombre</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: colors.inputBg, color: colors.text, borderColor: colors.inputBorder }]}
                 value={nombre}
                 onChangeText={setNombre}
                 maxLength={80}
                 placeholder="Tu nombre"
-                placeholderTextColor="#786E8A"
+                placeholderTextColor={colors.textMuted}
               />
             </>
           ) : (
             <>
-              <Text style={styles.profileName}>{p?.nombre || user?.nombre}</Text>
+              <Text style={[styles.profileName, { color: colors.text }]}>{p?.nombre || user?.nombre}</Text>
               <View style={styles.rolBadge}>
                 <Text style={styles.rolText}>{rolLabel}</Text>
               </View>
@@ -328,45 +326,45 @@ export default function ProfileScreen() {
         </View>
 
         {/* Info Card */}
-        <View style={styles.infoCard}>
+        <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           <InfoRow icon="📧" label="Correo" value={p?.correo || user?.correo || '—'} />
 
           {editing ? (
             <>
-              <Text style={[styles.fieldLabel, { marginTop: 0 }]}>Centro (Requerido para parches)</Text>
+              <Text style={[styles.fieldLabel, { color: colors.textSub, marginTop: 0 }]}>Centro (Requerido para parches)</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: colors.inputBg, color: colors.text, borderColor: colors.inputBorder }]}
                 value={centro}
                 onChangeText={setCentro}
                 keyboardType="numeric"
                 placeholder="Ej: 11303"
-                placeholderTextColor="#786E8A"
+                placeholderTextColor={colors.textMuted}
               />
-              <Text style={styles.fieldLabel}>Programa</Text>
+              <Text style={[styles.fieldLabel, { color: colors.textSub }]}>Programa</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: colors.inputBg, color: colors.text, borderColor: colors.inputBorder }]}
                 value={programa}
                 onChangeText={setPrograma}
                 placeholder="Ej: ADSO"
-                placeholderTextColor="#786E8A"
+                placeholderTextColor={colors.textMuted}
               />
-              <Text style={styles.fieldLabel}>Ficha</Text>
+              <Text style={[styles.fieldLabel, { color: colors.textSub }]}>Ficha</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: colors.inputBg, color: colors.text, borderColor: colors.inputBorder }]}
                 value={ficha}
                 onChangeText={setFicha}
                 keyboardType="numeric"
                 maxLength={8}
                 placeholder="Ej: 2654321"
-                placeholderTextColor="#786E8A"
+                placeholderTextColor={colors.textMuted}
               />
-              <Text style={styles.fieldLabel}>Jornada</Text>
+              <Text style={[styles.fieldLabel, { color: colors.textSub }]}>Jornada</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: colors.inputBg, color: colors.text, borderColor: colors.inputBorder }]}
                 value={jornada}
                 onChangeText={setJornada}
                 placeholder="manana, tarde, noche, virtual"
-                placeholderTextColor="#786E8A"
+                placeholderTextColor={colors.textMuted}
               />
             </>
           ) : (
@@ -382,12 +380,12 @@ export default function ProfileScreen() {
         {/* Avatar Emoji picker (editing) */}
         {editing && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Elige tu avatar emoji</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Elige tu avatar emoji</Text>
             <View style={styles.emojiGrid}>
               {EMOJIS.map(e => (
                 <TouchableOpacity
                   key={e}
-                  style={[styles.emojiBtn, selectedEmoji === e && styles.emojiBtnActive]}
+                  style={[styles.emojiBtn, { backgroundColor: colors.chipBg, borderColor: colors.inputBorder }, selectedEmoji === e && styles.emojiBtnActive]}
                   onPress={() => setSelectedEmoji(e)}
                 >
                   <Text style={styles.emojiBtnText}>{e}</Text>
@@ -399,19 +397,19 @@ export default function ProfileScreen() {
 
         {/* Bio */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Bio</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Bio</Text>
           {editing ? (
             <TextInput
-              style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
+              style={[styles.input, { backgroundColor: colors.inputBg, color: colors.text, borderColor: colors.inputBorder, height: 80, textAlignVertical: 'top' }]}
               value={bio}
               onChangeText={setBio}
               maxLength={400}
               multiline
               placeholder="Cuéntales algo sobre ti…"
-              placeholderTextColor="#786E8A"
+              placeholderTextColor={colors.textMuted}
             />
           ) : (
-            <Text style={styles.bioText}>
+            <Text style={[styles.bioText, { backgroundColor: colors.card, borderColor: colors.cardBorder, color: colors.textSub }]}>
               {p?.bio || 'Aún no has agregado una bio. ¡Edita tu perfil para contarles sobre ti!'}
             </Text>
           )}
@@ -419,19 +417,19 @@ export default function ProfileScreen() {
 
         {/* Intereses */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Intereses</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Intereses</Text>
           <View style={styles.interestsGrid}>
             {INTERESES_OPCIONES.map(interest => {
               const selected = selectedInterests.includes(interest);
               return (
                 <TouchableOpacity
                   key={interest}
-                  style={[styles.interestChip, selected && styles.interestChipActive]}
+                  style={[styles.interestChip, { backgroundColor: colors.chipBg, borderColor: colors.inputBorder }, selected && styles.interestChipActive]}
                   onPress={() => editing && toggleInterest(interest)}
                   activeOpacity={editing ? 0.7 : 1}
                 >
                   <Text
-                    style={[styles.interestText, selected && styles.interestTextActive]}
+                    style={[styles.interestText, { color: colors.textSub }, selected && styles.interestTextActive]}
                   >
                     {interest}
                   </Text>
@@ -470,7 +468,7 @@ export default function ProfileScreen() {
               accessibilityLabel={isDark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
             >
               <Text style={styles.themeBtnIcon}>{isDark ? '☀️' : '🌙'}</Text>
-              <Text style={styles.themeBtnText}>
+              <Text style={[styles.themeBtnText, { color: colors.accent }]}>
                 {isDark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
               </Text>
             </TouchableOpacity>
@@ -486,7 +484,7 @@ export default function ProfileScreen() {
         )}
 
         {/* Crédito del creador */}
-        <Text style={styles.credit}>Creado por Miguel Toncel Herrera</Text>
+        <Text style={[styles.credit, { color: colors.textMuted }]}>Creado por Miguel Toncel Herrera</Text>
 
         <View style={{ height: 40 }} />
       </ScrollView>
@@ -502,7 +500,7 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: BG },
+  container: { flex: 1 },
   content: {
     padding: 24,
     paddingTop: Platform.OS === 'web' ? 95 : 32,
@@ -511,28 +509,26 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   center: {
-    flex: 1, backgroundColor: BG,
+    flex: 1,
     justifyContent: 'center', alignItems: 'center',
   },
-  loadingText: { color: '#786E8A', marginTop: 16, fontSize: 15 },
+  loadingText: { fontSize: 15, marginTop: 16 },
 
   // Header
   header: {
     flexDirection: 'row', justifyContent: 'space-between',
     alignItems: 'center', marginBottom: 24,
   },
-  headerTitle: { fontSize: 24, fontWeight: '800', color: '#F0ECF6' },
+  headerTitle: { fontSize: 24, fontWeight: '800' },
   editBtn: {
-    backgroundColor: 'rgba(255,107,74,0.12)',
     paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10,
-    borderWidth: 1, borderColor: 'rgba(255,107,74,0.25)',
+    borderWidth: 1,
   },
   editBtnText: { color: ACCENT, fontWeight: '600', fontSize: 14 },
   cancelBtn: {
-    backgroundColor: '#282234',
     paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10,
   },
-  cancelBtnText: { color: '#786E8A', fontWeight: '600', fontSize: 14 },
+  cancelBtnText: { fontWeight: '600', fontSize: 14 },
 
   // Saved
   savedBanner: {
@@ -544,8 +540,8 @@ const styles = StyleSheet.create({
 
   // Profile card
   profileCard: {
-    backgroundColor: CARD, borderRadius: 20, padding: 24,
-    alignItems: 'center', borderWidth: 1, borderColor: '#2D2640',
+    borderRadius: 20, padding: 24,
+    alignItems: 'center', borderWidth: 1,
     marginBottom: 16,
   },
 
@@ -568,7 +564,7 @@ const styles = StyleSheet.create({
     position: 'absolute', bottom: -2, right: -2,
     backgroundColor: ACCENT, width: 28, height: 28,
     borderRadius: 14, justifyContent: 'center', alignItems: 'center',
-    borderWidth: 2, borderColor: CARD,
+    borderWidth: 2, borderColor: 'transparent',
   },
   photoOverlayTextSmall: { fontSize: 13 },
   photoUrlSection: {
@@ -611,7 +607,7 @@ const styles = StyleSheet.create({
     borderWidth: 3, borderColor: ACCENT, marginBottom: 16,
   },
   avatarEmojiLarge: { fontSize: 42 },
-  profileName: { fontSize: 22, fontWeight: '800', color: '#F0ECF6' },
+  profileName: { fontSize: 22, fontWeight: '800' },
   rolBadge: {
     backgroundColor: 'rgba(255,107,74,0.12)',
     paddingHorizontal: 12, paddingVertical: 4, borderRadius: 8, marginTop: 8,
@@ -620,8 +616,8 @@ const styles = StyleSheet.create({
 
   // Info card
   infoCard: {
-    backgroundColor: CARD, borderRadius: 14, padding: 16,
-    borderWidth: 1, borderColor: '#2D2640', marginBottom: 16, gap: 12,
+    borderRadius: 14, padding: 16,
+    borderWidth: 1, marginBottom: 16, gap: 12,
   },
   infoRow: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
@@ -633,17 +629,17 @@ const styles = StyleSheet.create({
   // Section
   section: { marginBottom: 16 },
   sectionTitle: {
-    fontSize: 16, fontWeight: '700', color: '#F0ECF6', marginBottom: 12,
+    fontSize: 16, fontWeight: '700', marginBottom: 12,
   },
 
   // Form
   fieldLabel: {
-    color: '#B9B1C9', fontSize: 13, fontWeight: '600',
+    fontSize: 13, fontWeight: '600',
     marginBottom: 6, marginTop: 12, alignSelf: 'flex-start',
   },
   input: {
-    backgroundColor: '#282234', color: '#F0ECF6', fontSize: 15,
-    borderWidth: 1, borderColor: '#3A3247',
+    fontSize: 15,
+    borderWidth: 1,
     padding: 13, borderRadius: 10, width: '100%',
   },
 
@@ -653,17 +649,17 @@ const styles = StyleSheet.create({
   },
   emojiBtn: {
     width: 48, height: 48, borderRadius: 14,
-    backgroundColor: '#282234', justifyContent: 'center', alignItems: 'center',
-    borderWidth: 1, borderColor: '#3A3247',
+    justifyContent: 'center', alignItems: 'center',
+    borderWidth: 1,
   },
-  emojiBtnActive: { borderColor: ACCENT, backgroundColor: 'rgba(255,107,74,0.15)' },
+  emojiBtnActive: { borderColor: ACCENT, backgroundColor: 'rgba(57,169,0,0.15)' },
   emojiBtnText: { fontSize: 24 },
 
   // Bio
   bioText: {
-    fontSize: 14, color: '#786E8A', lineHeight: 21,
-    backgroundColor: CARD, padding: 16, borderRadius: 14,
-    borderWidth: 1, borderColor: '#2D2640', overflow: 'hidden',
+    fontSize: 14, lineHeight: 21,
+    padding: 16, borderRadius: 14,
+    borderWidth: 1, overflow: 'hidden',
   },
 
   // Interests
@@ -671,13 +667,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row', flexWrap: 'wrap', gap: 8,
   },
   interestChip: {
-    backgroundColor: '#282234', paddingHorizontal: 14, paddingVertical: 8,
-    borderRadius: 16, borderWidth: 1, borderColor: '#3A3247',
+    paddingHorizontal: 14, paddingVertical: 8,
+    borderRadius: 16, borderWidth: 1,
   },
   interestChipActive: {
-    borderColor: ACCENT, backgroundColor: 'rgba(255,107,74,0.12)',
+    borderColor: ACCENT, backgroundColor: 'rgba(57,169,0,0.12)',
   },
-  interestText: { color: '#786E8A', fontSize: 13, fontWeight: '500' },
+  interestText: { fontSize: 13, fontWeight: '500' },
   interestTextActive: { color: ACCENT },
 
   // Buttons

@@ -4,7 +4,7 @@ import {
   KeyboardAvoidingView, Platform, RefreshControl,
   Image
 } from 'react-native';
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useAuth } from '../app/context/AuthContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { useBandeja, useConversacion, useEnviarMensaje, useMatches } from '../hooks/useParches';
@@ -12,16 +12,16 @@ import { api } from '../lib/api';
 import PeopleScreen from './PeopleScreen';
 import PublicProfileModal from './PublicProfileModal';
 import { pendingChat } from '../lib/pendingChat';
+import { useTheme } from '../app/context/ThemeContext';
 
 const ACCENT = '#39A900';
-const BG = '#0F0C18';
-const CARD = '#161B22';
-const CARD_BORDER = '#263238';
 const DANGER = '#FF5B6E';
 
 export default function ChatsScreen() {
   const [selectedChat, setSelectedChat] = useState<string | null>(null);
   const [showPeople, setShowPeople] = useState(false);
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
 
   // Suscribirse al singleton para abrir chats desde notificaciones
   useEffect(() => {
@@ -53,7 +53,7 @@ export default function ChatsScreen() {
 
   if (showPeople) {
     return (
-      <View style={{ flex: 1, backgroundColor: BG }}>
+      <View style={{ flex: 1, backgroundColor: colors.bg }}>
         <PeopleScreen
           onOpenChat={(id) => {
             setShowPeople(false);
@@ -88,6 +88,8 @@ function ChatsList({
   const { data: matches, refetch: refetchMatches } = useMatches();
   const [refreshing, setRefreshing] = useState(false);
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -101,19 +103,19 @@ function ChatsList({
 
   if (isLoading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={ACCENT} />
-        <Text style={styles.loadingText}>Cargando conversaciones…</Text>
+      <View style={[styles.center, { backgroundColor: colors.bg }]}>
+        <ActivityIndicator size="large" color={colors.accent} />
+        <Text style={[styles.loadingText, { color: colors.textSub }]}>Cargando conversaciones…</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.bg }]}>
       <View style={styles.header}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>Chats</Text>
-          <Text style={styles.headerSubtitle}>Tus conversaciones directas y de parches</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Chats</Text>
+          <Text style={[styles.headerSubtitle, { color: colors.textSub }]}>Tus conversaciones directas y de parches</Text>
         </View>
         <TouchableOpacity
           style={styles.newChatBtn}
@@ -165,8 +167,8 @@ function ChatsList({
       {sorted.length === 0 ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyEmoji}>💬</Text>
-          <Text style={styles.emptyTitle}>Sin conversaciones activas</Text>
-          <Text style={styles.emptySubtitle}>
+          <Text style={[styles.emptyTitle, { color: colors.text }]}>Sin conversaciones activas</Text>
+          <Text style={[styles.emptySubtitle, { color: colors.textSub }]}>
             Encuentra a personas registradas en SENA Match o crea un parche para comenzar a chatear.
           </Text>
           <TouchableOpacity
@@ -210,7 +212,7 @@ function ChatsList({
             return (
               <TouchableOpacity
                 key={chat.id}
-                style={[styles.chatCard, unread > 0 && styles.chatCardUnread]}
+                style={[styles.chatCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }, unread > 0 && styles.chatCardUnread]}
                 onPress={() => onSelect(chat.id)}
                 activeOpacity={0.7}
               >
@@ -238,13 +240,13 @@ function ChatsList({
 
                 <View style={styles.chatInfo}>
                   <View style={styles.chatTopRow}>
-                    <Text style={[styles.chatName, unread > 0 && styles.chatNameUnread]} numberOfLines={1}>
+                    <Text style={[styles.chatName, { color: colors.text }, unread > 0 && styles.chatNameUnread]} numberOfLines={1}>
                       {chatTitle}
                     </Text>
-                    <Text style={styles.chatTime}>{lastTime}</Text>
+                    <Text style={[styles.chatTime, { color: colors.textMuted }]}>{lastTime}</Text>
                   </View>
 
-                  <Text style={[styles.chatPreview, unread > 0 && styles.chatPreviewUnread]} numberOfLines={1}>
+                  <Text style={[styles.chatPreview, { color: colors.textSub }, unread > 0 && styles.chatPreviewUnread]} numberOfLines={1}>
                     {lastText}
                   </Text>
 
@@ -298,6 +300,8 @@ function ConversacionView({ chatId, onBack }: { chatId: string; onBack: () => vo
   const qc = useQueryClient();
   const { data: chatData, isLoading } = useConversacion(chatId);
   const enviarMutation = useEnviarMensaje(chatId);
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [texto, setTexto] = useState('');
   const [errorEnvio, setErrorEnvio] = useState<string | null>(null);
   const [mensajeFallido, setMensajeFallido] = useState<string | null>(null);
@@ -360,7 +364,7 @@ function ConversacionView({ chatId, onBack }: { chatId: string; onBack: () => vo
 
   if (isLoading) {
     return (
-      <View style={styles.center}>
+      <View style={[styles.center, { backgroundColor: colors.bg }]}>
         <ActivityIndicator size="large" color={ACCENT} />
       </View>
     );
@@ -372,12 +376,12 @@ function ConversacionView({ chatId, onBack }: { chatId: string; onBack: () => vo
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: colors.bg }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
       {/* Top bar */}
-      <View style={styles.convHeader}>
+      <View style={[styles.convHeader, { backgroundColor: colors.card, borderBottomColor: colors.cardBorder }]}>
         <TouchableOpacity onPress={onBack} style={styles.backBtn} activeOpacity={0.7}>
           <Text style={styles.backText}>‹ Volver</Text>
         </TouchableOpacity>
@@ -387,8 +391,8 @@ function ConversacionView({ chatId, onBack }: { chatId: string; onBack: () => vo
           onPress={() => otro?.id && setSelectedParticipantId(otro.id)}
           activeOpacity={otro?.id ? 0.8 : 1}
         >
-          <Text style={styles.convTitle} numberOfLines={1}>{chatTitle}</Text>
-          <Text style={styles.convSubtitle}>
+          <Text style={[styles.convTitle, { color: colors.text }]} numberOfLines={1}>{chatTitle}</Text>
+          <Text style={[styles.convSubtitle, { color: colors.textSub }]}>
             {isParche ? 'Parche grupal' : (otro?.rol ? `${otro.rol} • SENA` : 'En línea')}
           </Text>
         </TouchableOpacity>
@@ -419,7 +423,7 @@ function ConversacionView({ chatId, onBack }: { chatId: string; onBack: () => vo
           return (
             <View
               key={i}
-              style={[styles.msgBubble, isMine ? styles.msgMine : styles.msgOther]}
+              style={[styles.msgBubble, isMine ? styles.msgMine : [styles.msgOther, { backgroundColor: colors.inputBg }]]}
             >
               {isParche && !isMine && remitenteNombre ? (
                 <Text style={styles.msgSenderName} numberOfLines={1}>
@@ -465,11 +469,11 @@ function ConversacionView({ chatId, onBack }: { chatId: string; onBack: () => vo
       )}
 
       {/* Input */}
-      <View style={styles.inputBar}>
+      <View style={[styles.inputBar, { backgroundColor: colors.card, borderTopColor: colors.cardBorder }]}>
         <TextInput
-          style={styles.msgInput}
+          style={[styles.msgInput, { backgroundColor: colors.inputBg, color: colors.text, borderColor: colors.inputBorder }]}
           placeholder="Escribe un mensaje respetuoso…"
-          placeholderTextColor="#786E8A"
+          placeholderTextColor={colors.textMuted}
           value={texto}
           onChangeText={setTexto}
           maxLength={500}
@@ -498,26 +502,27 @@ function ConversacionView({ chatId, onBack }: { chatId: string; onBack: () => vo
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: BG },
+function makeStyles(colors: import('../app/context/ThemeContext').ThemeColors) {
+  return StyleSheet.create({
+  container: { flex: 1 },
   center: {
-    flex: 1, backgroundColor: BG,
+    flex: 1,
     justifyContent: 'center', alignItems: 'center',
   },
-  loadingText: { color: '#8D83A0', marginTop: 16, fontSize: 15 },
+  loadingText: { marginTop: 16, fontSize: 15 },
 
   // Matches section
   matchesSection: {
     paddingTop: 12,
     paddingBottom: 4,
     borderBottomWidth: 1,
-    borderBottomColor: '#1E252F',
+    borderBottomColor: colors.inputBg,
     marginBottom: 8,
   },
   matchesSectionTitle: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#B9B1C9',
+    color: colors.textSub,
     paddingHorizontal: 24,
     marginBottom: 12,
     letterSpacing: 0.3,
@@ -556,13 +561,13 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 18,
     right: 2,
-    backgroundColor: '#161B22',
+    backgroundColor: colors.card,
     borderRadius: 8,
     padding: 2,
   },
   matchName: {
     fontSize: 11,
-    color: '#B9B1C9',
+    color: colors.textSub,
     fontWeight: '600',
     marginTop: 4,
     textAlign: 'center',
@@ -581,17 +586,17 @@ const styles = StyleSheet.create({
     width: '100%',
     alignSelf: 'center',
   },
-  headerTitle: { fontSize: 28, fontWeight: '800', color: '#F0ECF6' },
-  headerSubtitle: { fontSize: 14, color: '#8D83A0', marginTop: 2 },
+  headerTitle: { fontSize: 28, fontWeight: '800' },
+  headerSubtitle: { fontSize: 14, marginTop: 2 },
   newChatBtn: {
-    backgroundColor: ACCENT,
+    backgroundColor: colors.accent,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 12,
-    shadowColor: ACCENT,
+    shadowColor: colors.accent,
     shadowOpacity: 0.35,
     shadowRadius: 10,
     elevation: 3,
@@ -610,10 +615,10 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   emptyEmoji: { fontSize: 56, marginBottom: 16 },
-  emptyTitle: { fontSize: 22, fontWeight: '700', color: '#F0ECF6', marginBottom: 8 },
-  emptySubtitle: { fontSize: 14, color: '#8D83A0', textAlign: 'center', lineHeight: 22, maxWidth: 400 },
+  emptyTitle: { fontSize: 22, fontWeight: '700', marginBottom: 8 },
+  emptySubtitle: { fontSize: 14, textAlign: 'center', lineHeight: 22, maxWidth: 400 },
   explorePeopleBtn: {
-    backgroundColor: ACCENT,
+    backgroundColor: colors.accent,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
@@ -621,7 +626,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 12,
     marginTop: 20,
-    shadowColor: ACCENT,
+    shadowColor: colors.accent,
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 3,
@@ -638,21 +643,19 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   chatCard: {
-    backgroundColor: CARD,
     borderRadius: 16,
     padding: 18,
     marginBottom: 12,
     flexDirection: 'row',
     gap: 16,
     borderWidth: 1,
-    borderColor: CARD_BORDER,
     shadowColor: '#000',
     shadowOpacity: 0.2,
     shadowRadius: 10,
   },
   chatCardUnread: {
     borderColor: 'rgba(57, 169, 0, 0.4)',
-    backgroundColor: '#1B2420',
+    backgroundColor: colors.bgSecondary,
   },
   chatAvatar: {
     width: 50, height: 50, borderRadius: 25,
@@ -666,10 +669,10 @@ const styles = StyleSheet.create({
   chatAvatarEmoji: { fontSize: 24 },
   chatInfo: { flex: 1 },
   chatTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  chatName: { fontSize: 15, fontWeight: '700', color: '#F0ECF6', flex: 1, marginRight: 8 },
+  chatName: { fontSize: 15, fontWeight: '700', flex: 1, marginRight: 8 },
   chatNameUnread: { fontWeight: '900', color: '#FFFFFF' },
-  chatTime: { fontSize: 12, color: '#786E8A' },
-  chatPreview: { fontSize: 13, color: '#786E8A', marginTop: 4 },
+  chatTime: { fontSize: 12 },
+  chatPreview: { fontSize: 13, marginTop: 4 },
   chatPreviewUnread: { color: '#DDF4D5', fontWeight: '600' },
   chatMeta: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 8 },
   chatBadge: { fontSize: 11, color: '#786E8A' },
@@ -694,16 +697,16 @@ const styles = StyleSheet.create({
   convHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 24, paddingTop: Platform.OS === 'web' ? 95 : 52, paddingBottom: 16,
-    backgroundColor: CARD, borderBottomWidth: 1, borderBottomColor: CARD_BORDER,
+    backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.cardBorder,
   },
   backBtn: { padding: 4 },
-  backText: { color: ACCENT, fontSize: 16, fontWeight: '700' },
+  backText: { color: colors.accent, fontSize: 16, fontWeight: '700' },
   convTitleWrap: { flex: 1, alignItems: 'center', marginHorizontal: 8 },
   convTitle: {
-    fontSize: 16, fontWeight: '700', color: '#F0ECF6',
+    fontSize: 16, fontWeight: '700', color: colors.text,
     textAlign: 'center',
   },
-  convSubtitle: { fontSize: 11, color: '#786E8A', marginTop: 1 },
+  convSubtitle: { fontSize: 11, color: colors.textMuted, marginTop: 1 },
 
   // Messages
   messagesArea: { flex: 1 },
@@ -711,8 +714,8 @@ const styles = StyleSheet.create({
 
   systemMsg: { alignSelf: 'center', marginVertical: 8 },
   systemMsgText: {
-    fontSize: 12, color: '#8D83A0', fontStyle: 'italic',
-    backgroundColor: '#1E252F', paddingHorizontal: 14, paddingVertical: 6,
+    fontSize: 12, color: colors.textSub, fontStyle: 'italic',
+    backgroundColor: colors.inputBg, paddingHorizontal: 14, paddingVertical: 6,
     borderRadius: 12, overflow: 'hidden',
   },
 
@@ -722,21 +725,20 @@ const styles = StyleSheet.create({
   },
   msgMine: {
     alignSelf: 'flex-end',
-    backgroundColor: ACCENT,
+    backgroundColor: colors.accent,
     borderBottomRightRadius: 4,
   },
   msgOther: {
     alignSelf: 'flex-start',
-    backgroundColor: '#1E252F',
     borderBottomLeftRadius: 4,
   },
   msgSenderName: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#39A900',
+    color: colors.accent,
     marginBottom: 3,
   },
-  msgText: { fontSize: 14, color: '#F0ECF6', lineHeight: 20 },
+  msgText: { fontSize: 14, color: colors.text, lineHeight: 20 },
   msgTextMine: { color: '#fff' },
   msgTime: {
     fontSize: 10, color: 'rgba(255,255,255,0.6)',
@@ -760,7 +762,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   retryEnvioBtn: {
-    backgroundColor: DANGER,
+    backgroundColor: colors.danger,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 6,
@@ -775,21 +777,20 @@ const styles = StyleSheet.create({
   // Input bar
   inputBar: {
     flexDirection: 'row', gap: 10, padding: 12,
-    backgroundColor: CARD, borderTopWidth: 1, borderTopColor: CARD_BORDER,
+    borderTopWidth: 1,
     alignItems: 'center',
   },
   msgInput: {
-    flex: 1, backgroundColor: '#1E252F',
-    color: '#F0ECF6', fontSize: 15,
-    borderWidth: 1, borderColor: '#2D3748',
+    flex: 1, fontSize: 15,
+    borderWidth: 1,
     paddingHorizontal: 14, paddingVertical: 10,
     borderRadius: 20,
   },
   sendBtn: {
     width: 44, height: 44, borderRadius: 22,
-    backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center',
+    backgroundColor: colors.accent, justifyContent: 'center', alignItems: 'center',
   },
-  sendBtnDisabled: { backgroundColor: '#2D3748' },
+  sendBtnDisabled: { backgroundColor: colors.chipBg },
   sendBtnText: { fontSize: 18, color: '#fff' },
   icebreakerBar: {
     flexDirection: 'row',
@@ -805,9 +806,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   icebreakerBarText: {
-    color: '#5FE0B4',
+    color: colors.success,
     fontSize: 13,
     fontWeight: '600',
     flex: 1,
   },
-});
+  });
+}

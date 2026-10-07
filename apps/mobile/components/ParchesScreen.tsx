@@ -3,17 +3,15 @@ import {
   ScrollView, ActivityIndicator, Modal, TextInput,
   RefreshControl, Platform, KeyboardAvoidingView, Alert
 } from 'react-native';
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../app/context/AuthContext';
 import { useFeedParches, useCrearParche, useUnirmeAlParche } from '../hooks/useParches';
 import { api } from '../lib/api';
 import PublicProfileModal from './PublicProfileModal';
+import { useTheme } from '../app/context/ThemeContext';
 
 const ACCENT = '#39A900';
-const BG = '#0F0C18';
-const CARD = '#161B22';
-const CARD_BORDER = '#263238';
 const SUCCESS = '#00E5A3';
 const DANGER = '#FF5B6E';
 
@@ -34,6 +32,8 @@ export default function ParchesScreen() {
   const { data: parches, isLoading, isError, refetch } = useFeedParches();
   const crearMutation = useCrearParche();
   const unirseMutation = useUnirmeAlParche();
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
 
   const [showModal, setShowModal] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -171,12 +171,12 @@ export default function ParchesScreen() {
 
   if (isError || timedOut) {
     return (
-      <View style={styles.center}>
+      <View style={[styles.center, { backgroundColor: colors.bg }]}>
         <Text style={{ fontSize: 40, marginBottom: 16 }}>😕</Text>
-        <Text style={[styles.loadingText, { fontSize: 16, color: '#F0ECF6', marginBottom: 8 }]}>
+        <Text style={[styles.loadingText, { fontSize: 16, color: colors.text, marginBottom: 8 }]}>
           No se pudieron cargar los parches
         </Text>
-        <Text style={styles.loadingText}>Verifica que el servidor esté activo</Text>
+        <Text style={[styles.loadingText, { color: colors.textSub }]}>Verifica que el servidor esté activo</Text>
         <TouchableOpacity
           style={[styles.createBtn, { marginTop: 20 }]}
           onPress={() => { setTimedOut(false); refetch(); }}
@@ -189,20 +189,20 @@ export default function ParchesScreen() {
 
   if (isLoading) {
     return (
-      <View style={styles.center}>
+      <View style={[styles.center, { backgroundColor: colors.bg }]}>
         <ActivityIndicator size="large" color={ACCENT} />
-        <Text style={styles.loadingText}>Cargando parches de la comunidad…</Text>
+        <Text style={[styles.loadingText, { color: colors.textSub }]}>Cargando parches de la comunidad…</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.bg }]}>
       {/* Header */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerTitle}>Parches</Text>
-          <Text style={styles.headerSubtitle}>Actividades grupales para la comunidad SENA</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Parches</Text>
+          <Text style={[styles.headerSubtitle, { color: colors.textSub }]}>Actividades grupales para la comunidad SENA</Text>
         </View>
         <TouchableOpacity
           style={styles.createBtn}
@@ -251,7 +251,7 @@ export default function ParchesScreen() {
               const esAnfitrion = String(parche.anfitrion) === String(user?.id);
 
               return (
-                <View key={parche.id} style={styles.parcheCard}>
+                <View key={parche.id} style={[styles.parcheCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
                   {/* Tipo icon + title */}
                   <View style={styles.parcheHeader}>
                     <View style={styles.tipoIcon}>
@@ -260,10 +260,10 @@ export default function ParchesScreen() {
                       </Text>
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.parcheTitulo} numberOfLines={2}>
+                      <Text style={[styles.parcheTitulo, { color: colors.text }]} numberOfLines={2}>
                         {parche.titulo}
                       </Text>
-                      <Text style={styles.parcheTipo}>
+                      <Text style={[styles.parcheTipo, { color: colors.textSub }]}>
                         {tipoInfo?.label || parche.tipo}
                       </Text>
                     </View>
@@ -273,7 +273,7 @@ export default function ParchesScreen() {
                   <View style={styles.parcheDetails}>
                     <View style={styles.detailRow}>
                       <Text style={styles.detailIcon}>📍</Text>
-                      <Text style={styles.detailText}>{parche.lugar}</Text>
+                      <Text style={[styles.detailText, { color: colors.textSub }]}>{parche.lugar}</Text>
                     </View>
                     <View style={styles.detailRow}>
                       <Text style={styles.detailIcon}>📅</Text>
@@ -381,69 +381,77 @@ export default function ParchesScreen() {
         onRequestClose={() => setShowModal(false)}
       >
         <KeyboardAvoidingView
-          style={styles.modalOverlay}
+          style={[styles.modalOverlay, { backgroundColor: colors.modalOverlay }]}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Crear nuevo parche</Text>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Crear nuevo parche</Text>
               <TouchableOpacity onPress={() => { setShowModal(false); resetForm(); }} style={{ padding: 4 }}>
-                <Text style={styles.modalClose}>✕</Text>
+                <Text style={[styles.modalClose, { color: colors.textSub }]}>✕</Text>
               </TouchableOpacity>
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
-              <Text style={styles.fieldLabel}>Título del parche</Text>
+              <Text style={[styles.fieldLabel, { color: colors.textSub }]}>Título del parche</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]}
                 placeholder="Ej: Repaso de algoritmos o café en la biblioteca"
-                placeholderTextColor="#786E8A"
+                placeholderTextColor={colors.textMuted}
                 value={titulo}
                 onChangeText={setTitulo}
                 maxLength={80}
               />
 
-              <Text style={styles.fieldLabel}>Tipo de actividad</Text>
+              <Text style={[styles.fieldLabel, { color: colors.textSub }]}>Tipo de actividad</Text>
               <View style={styles.tiposGrid}>
                 {TIPOS_PARCHE.map(t => (
                   <TouchableOpacity
                     key={t.key}
-                    style={[styles.tipoChip, tipo === t.key && styles.tipoChipActive]}
+                    style={[
+                      styles.tipoChip,
+                      { backgroundColor: colors.chipBg, borderColor: colors.cardBorder },
+                      tipo === t.key && styles.tipoChipActive
+                    ]}
                     onPress={() => setTipo(t.key)}
                   >
                     <Text style={styles.tipoChipEmoji}>{t.emoji}</Text>
-                    <Text style={[styles.tipoChipText, tipo === t.key && styles.tipoChipTextActive]}>
+                    <Text style={[
+                      styles.tipoChipText,
+                      { color: colors.textSub },
+                      tipo === t.key && styles.tipoChipTextActive
+                    ]}>
                       {t.label}
                     </Text>
                   </TouchableOpacity>
                 ))}
               </View>
 
-              <Text style={styles.fieldLabel}>Lugar de encuentro</Text>
+              <Text style={[styles.fieldLabel, { color: colors.textSub }]}>Lugar de encuentro</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]}
                 placeholder="Ej: Cafetería Bloque A o Cancha de fútbol"
-                placeholderTextColor="#786E8A"
+                placeholderTextColor={colors.textMuted}
                 value={lugar}
                 onChangeText={setLugar}
                 maxLength={80}
               />
 
-              <Text style={styles.fieldLabel}>Cupo máximo de asistentes</Text>
+              <Text style={[styles.fieldLabel, { color: colors.textSub }]}>Cupo máximo de asistentes</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]}
                 placeholder="10"
-                placeholderTextColor="#786E8A"
+                placeholderTextColor={colors.textMuted}
                 value={cupo}
                 onChangeText={setCupo}
                 keyboardType="numeric"
               />
 
-              <Text style={styles.fieldLabel}>Descripción / Detalles adicionales</Text>
+              <Text style={[styles.fieldLabel, { color: colors.textSub }]}>Descripción / Detalles adicionales</Text>
               <TextInput
-                style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
+                style={[styles.input, { height: 80, textAlignVertical: 'top', backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]}
                 placeholder="Indica qué llevar, cómo reconocerse o de qué se hablará…"
-                placeholderTextColor="#786E8A"
+                placeholderTextColor={colors.textMuted}
                 value={descripcion}
                 onChangeText={setDescripcion}
                 multiline
@@ -476,12 +484,12 @@ export default function ParchesScreen() {
           transparent
           onRequestClose={() => setSelectedParcheParaGestion(null)}
         >
-          <View style={styles.modalOverlayCenter}>
-            <View style={styles.gestionModalContent}>
+          <View style={[styles.modalOverlayCenter, { backgroundColor: colors.modalOverlay }]}>
+            <View style={[styles.gestionModalContent, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
               <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Administrar parche</Text>
+                <Text style={[styles.modalTitle, { color: colors.text }]}>Administrar parche</Text>
                 <TouchableOpacity onPress={() => setSelectedParcheParaGestion(null)} style={{ padding: 4 }}>
-                  <Text style={styles.modalClose}>✕</Text>
+                  <Text style={[styles.modalClose, { color: colors.textSub }]}>✕</Text>
                 </TouchableOpacity>
               </View>
 
@@ -489,18 +497,18 @@ export default function ParchesScreen() {
                 {selectedParcheParaGestion.titulo}
               </Text>
 
-              <Text style={styles.fieldLabel}>Participantes actuales ({selectedParcheParaGestion.participantes?.length || 0}):</Text>
+              <Text style={[styles.fieldLabel, { color: colors.textSub }]}>Participantes actuales ({selectedParcheParaGestion.participantes?.length || 0}):</Text>
 
               <ScrollView style={{ maxHeight: 200, marginVertical: 10 }}>
                 {(selectedParcheParaGestion.participantes || []).map((part: any) => {
                   const esAnf = part.id === selectedParcheParaGestion.anfitrion;
                   return (
-                    <View key={part.id} style={styles.participantRow}>
+                    <View key={part.id} style={[styles.participantRow, { backgroundColor: colors.inputBg }]}>
                       <TouchableOpacity
                         onPress={() => setSelectedProfileId(part.id)}
                         style={{ flex: 1 }}
                       >
-                        <Text style={styles.participantName}>
+                        <Text style={[styles.participantName, { color: colors.text }]}>
                           {esAnf ? '👑 Anfitrión (Tú)' : `Aprendiz (ID: ${part.id.slice(0, 8)}...)`}
                         </Text>
                       </TouchableOpacity>
@@ -543,13 +551,14 @@ export default function ParchesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: BG },
+function makeStyles(colors: import('../app/context/ThemeContext').ThemeColors) {
+  return StyleSheet.create({
+  container: { flex: 1 },
   center: {
-    flex: 1, backgroundColor: BG,
+    flex: 1,
     justifyContent: 'center', alignItems: 'center',
   },
-  loadingText: { color: '#8D83A0', marginTop: 16, fontSize: 15 },
+  loadingText: { marginTop: 16, fontSize: 15 },
 
   // Header
   header: {
@@ -563,14 +572,14 @@ const styles = StyleSheet.create({
     width: '100%',
     alignSelf: 'center',
   },
-  headerTitle: { fontSize: 28, fontWeight: '800', color: '#F0ECF6' },
-  headerSubtitle: { fontSize: 13, color: '#8D83A0', marginTop: 2 },
+  headerTitle: { fontSize: 28, fontWeight: '800', color: colors.text },
+  headerSubtitle: { fontSize: 13, color: colors.textSub, marginTop: 2 },
   createBtn: {
-    backgroundColor: ACCENT,
+    backgroundColor: colors.accent,
     paddingHorizontal: 18,
     paddingVertical: 10,
     borderRadius: 12,
-    shadowColor: ACCENT,
+    shadowColor: colors.accent,
     shadowOpacity: 0.35,
     shadowRadius: 8,
     elevation: 3,
@@ -595,17 +604,15 @@ const styles = StyleSheet.create({
   // Empty
   emptyState: { alignItems: 'center', paddingVertical: 60, width: '100%' },
   emptyEmoji: { fontSize: 56, marginBottom: 16 },
-  emptyTitle: { fontSize: 20, fontWeight: '700', color: '#F0ECF6', marginBottom: 8 },
-  emptySubtitle: { fontSize: 14, color: '#8D83A0', textAlign: 'center', maxWidth: 400 },
+  emptyTitle: { fontSize: 20, fontWeight: '700', color: colors.text, marginBottom: 8 },
+  emptySubtitle: { fontSize: 14, color: colors.textSub, textAlign: 'center', maxWidth: 400 },
 
   // Parche card
   parcheCard: {
-    backgroundColor: CARD,
     borderRadius: 18,
     padding: 20,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: CARD_BORDER,
     flex: 1,
     minWidth: 320,
     shadowColor: '#000',
@@ -619,17 +626,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center',
   },
   tipoEmoji: { fontSize: 24 },
-  parcheTitulo: { fontSize: 16, fontWeight: '700', color: '#F0ECF6' },
-  parcheTipo: { fontSize: 12, color: '#8D83A0', marginTop: 2 },
+  parcheTitulo: { fontSize: 16, fontWeight: '700' },
+  parcheTipo: { fontSize: 12, marginTop: 2 },
 
   parcheDetails: { marginTop: 14, gap: 8 },
   detailRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   detailIcon: { fontSize: 14 },
-  detailText: { fontSize: 13, color: '#B9B1C9' },
+  detailText: { fontSize: 13, color: colors.textSub },
   anfitrionLink: { color: ACCENT, fontWeight: '700' },
 
   parcheDesc: {
-    fontSize: 13, color: '#8D83A0', marginTop: 12,
+    fontSize: 13, color: colors.textSub, marginTop: 12,
     lineHeight: 19, fontStyle: 'italic',
   },
 
@@ -642,15 +649,15 @@ const styles = StyleSheet.create({
   },
   btnGestionar: {
     flex: 1,
-    backgroundColor: '#1E252F',
+    backgroundColor: colors.chipBg,
     borderWidth: 1,
-    borderColor: '#2D3748',
+    borderColor: colors.inputBorder,
     paddingVertical: 10,
     borderRadius: 10,
     alignItems: 'center',
   },
   btnGestionarText: {
-    color: '#F0ECF6',
+    color: colors.text,
     fontWeight: '700',
     fontSize: 13,
   },
@@ -687,19 +694,19 @@ const styles = StyleSheet.create({
   },
   statusBadge: {
     alignSelf: 'flex-start',
-    backgroundColor: '#1E252F',
+    backgroundColor: colors.chipBg,
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 10,
   },
-  statusText: { fontSize: 13, color: '#8D83A0', fontWeight: '600' },
+  statusText: { fontSize: 13, color: colors.textSub, fontWeight: '600' },
 
   joinBtn: {
-    backgroundColor: ACCENT,
+    backgroundColor: colors.accent,
     paddingVertical: 12,
     borderRadius: 10,
     alignItems: 'center',
-    shadowColor: ACCENT,
+    shadowColor: colors.accent,
     shadowOpacity: 0.35,
     shadowRadius: 8,
     elevation: 3,
@@ -716,31 +723,31 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center', padding: 16,
   },
   modalContent: {
-    backgroundColor: CARD, borderTopLeftRadius: 24,
+    borderTopLeftRadius: 24,
     borderTopRightRadius: 24, padding: 24,
     maxHeight: '90%',
-    borderTopWidth: 1, borderColor: CARD_BORDER,
+    borderTopWidth: 1,
     maxWidth: 600, width: '100%', alignSelf: 'center',
   },
   gestionModalContent: {
-    backgroundColor: CARD, borderRadius: 20, padding: 22,
+    borderRadius: 20, padding: 22,
     maxWidth: 440, width: '100%',
-    borderWidth: 1, borderColor: CARD_BORDER,
+    borderWidth: 1,
   },
   modalHeader: {
     flexDirection: 'row', justifyContent: 'space-between',
     alignItems: 'center', marginBottom: 18,
   },
-  modalTitle: { fontSize: 20, fontWeight: '800', color: '#F0ECF6' },
-  modalClose: { fontSize: 20, color: '#8D83A0', fontWeight: '700' },
+  modalTitle: { fontSize: 20, fontWeight: '800', color: colors.text },
+  modalClose: { fontSize: 20, color: colors.textMuted, fontWeight: '700' },
 
   fieldLabel: {
-    color: '#B9B1C9', fontSize: 13,
+    color: colors.textSub, fontSize: 13,
     fontWeight: '600', marginBottom: 6, marginTop: 12,
   },
   input: {
-    backgroundColor: '#1E252F', color: '#F0ECF6', fontSize: 14,
-    borderWidth: 1, borderColor: '#2D3748',
+    fontSize: 14,
+    borderWidth: 1,
     padding: 12, borderRadius: 10,
   },
   tiposGrid: {
@@ -748,44 +755,44 @@ const styles = StyleSheet.create({
   },
   tipoChip: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: '#1E252F', paddingHorizontal: 12, paddingVertical: 8,
-    borderRadius: 10, borderWidth: 1, borderColor: '#2D3748',
+    backgroundColor: colors.chipBg, paddingHorizontal: 12, paddingVertical: 8,
+    borderRadius: 10, borderWidth: 1, borderColor: colors.inputBorder,
   },
   tipoChipActive: {
-    borderColor: ACCENT, backgroundColor: 'rgba(57,169,0,0.15)',
+    borderColor: colors.accent, backgroundColor: 'rgba(57,169,0,0.15)',
   },
   tipoChipEmoji: { fontSize: 16 },
-  tipoChipText: { fontSize: 13, color: '#8D83A0', fontWeight: '500' },
-  tipoChipTextActive: { color: ACCENT, fontWeight: '700' },
+  tipoChipText: { fontSize: 13, color: colors.textSub, fontWeight: '500' },
+  tipoChipTextActive: { color: colors.accent, fontWeight: '700' },
 
   formError: {
-    color: DANGER, fontSize: 13, textAlign: 'center',
+    color: colors.danger, fontSize: 13, textAlign: 'center',
     marginTop: 12,
   },
   submitBtn: {
-    backgroundColor: ACCENT, padding: 15, borderRadius: 12,
+    backgroundColor: colors.accent, padding: 15, borderRadius: 12,
     alignItems: 'center', marginTop: 20,
-    shadowColor: ACCENT, shadowOpacity: 0.4, shadowRadius: 8, elevation: 3,
+    shadowColor: colors.accent, shadowOpacity: 0.4, shadowRadius: 8, elevation: 3,
   },
   submitBtnText: { color: '#fff', fontSize: 15, fontWeight: '800' },
 
   gestionParcheTitulo: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#00E5A3',
+    color: colors.success,
     marginBottom: 8,
   },
   participantRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#1E252F',
+    backgroundColor: colors.inputBg,
     padding: 10,
     borderRadius: 8,
     marginBottom: 6,
   },
   participantName: {
-    color: '#F0ECF6',
+    color: colors.text,
     fontSize: 13,
     fontWeight: '600',
   },
@@ -803,15 +810,16 @@ const styles = StyleSheet.create({
   btnCancelarParche: {
     backgroundColor: 'rgba(255, 91, 110, 0.15)',
     borderWidth: 1,
-    borderColor: DANGER,
+    borderColor: colors.danger,
     paddingVertical: 12,
     borderRadius: 10,
     alignItems: 'center',
     marginTop: 12,
   },
   btnCancelarParcheText: {
-    color: DANGER,
+    color: colors.danger,
     fontWeight: '700',
     fontSize: 13,
   },
-});
+  });
+}

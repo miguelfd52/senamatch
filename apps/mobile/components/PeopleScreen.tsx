@@ -5,12 +5,10 @@ import {
 } from 'react-native';
 import { useState, useCallback, useEffect } from 'react';
 import { useUsuariosComunidad, useCrearChatDirecto } from '../hooks/useParches';
+import { useTheme } from '../app/context/ThemeContext';
 import PublicProfileModal from './PublicProfileModal';
 
 const ACCENT = '#39A900';
-const BG = '#0F0C18';
-const CARD = '#161B22';
-const CARD_BORDER = '#263238';
 
 interface Props {
   onOpenChat: (chatId: string) => void;
@@ -18,6 +16,7 @@ interface Props {
 }
 
 export default function PeopleScreen({ onOpenChat, onBack }: Props) {
+  const { colors } = useTheme();
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [startingChatWith, setStartingChatWith] = useState<string | null>(null);
@@ -61,7 +60,7 @@ export default function PeopleScreen({ onOpenChat, onBack }: Props) {
   const usersList = Array.isArray(usuarios) ? usuarios : [];
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.bg }]}>
       {/* Header */}
       <View style={styles.header}>
         {onBack ? (
@@ -70,20 +69,20 @@ export default function PeopleScreen({ onOpenChat, onBack }: Props) {
           </TouchableOpacity>
         ) : null}
         <View style={styles.headerTitleWrap}>
-          <Text style={styles.headerTitle}>Comunidad SENA</Text>
-          <Text style={styles.headerSubtitle}>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Comunidad SENA</Text>
+          <Text style={[styles.headerSubtitle, { color: colors.textSub }]}>
             Encuentra personas registradas y chatea con ellas
           </Text>
         </View>
       </View>
 
       {/* Search bar */}
-      <View style={styles.searchContainer}>
+      <View style={[styles.searchContainer, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]}>
         <Text style={styles.searchIcon}>🔍</Text>
         <TextInput
-          style={styles.searchInput}
+          style={[styles.searchInput, { color: colors.text }]}
           placeholder="Buscar por nombre, correo o programa…"
-          placeholderTextColor="#786E8A"
+          placeholderTextColor={colors.textMuted}
           value={search}
           onChangeText={setSearch}
           autoCapitalize="none"
@@ -95,48 +94,52 @@ export default function PeopleScreen({ onOpenChat, onBack }: Props) {
             style={styles.clearBtn}
             activeOpacity={0.7}
           >
-            <Text style={styles.clearText}>✕</Text>
+            <Text style={[styles.clearText, { color: colors.textSub }]}>✕</Text>
           </TouchableOpacity>
         ) : null}
       </View>
 
       {/* Lista de usuarios */}
       {isLoading ? (
-        <View style={styles.center}>
+        <View style={[styles.center, { backgroundColor: colors.bg }]}>
           <ActivityIndicator size="large" color={ACCENT} />
-          <Text style={styles.loadingText}>Buscando miembros de la comunidad…</Text>
+          <Text style={[styles.loadingText, { color: colors.textSub }]}>Buscando miembros de la comunidad…</Text>
         </View>
       ) : isError ? (
-        <View style={styles.center}>
+        <View style={[styles.center, { backgroundColor: colors.bg }]}>
           <Text style={styles.emptyEmoji}>⚠️</Text>
-          <Text style={styles.emptyTitle}>Error al cargar la comunidad</Text>
-          <Text style={styles.emptySubtitle}>No pudimos conectar con el servidor.</Text>
-          <TouchableOpacity style={styles.retryBtn} onPress={() => refetch()} activeOpacity={0.8}>
-            <Text style={styles.retryText}>Reintentar</Text>
+          <Text style={[styles.emptyTitle, { color: colors.text }]}>Error al cargar la comunidad</Text>
+          <Text style={[styles.emptySubtitle, { color: colors.textSub }]}>No pudimos conectar con el servidor.</Text>
+          <TouchableOpacity
+            style={[styles.retryBtn, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
+            onPress={() => refetch()}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.retryText, { color: colors.text }]}>Reintentar</Text>
           </TouchableOpacity>
         </View>
       ) : usersList.length === 0 ? (
-        <View style={styles.emptyState}>
+        <View style={[styles.emptyState, { backgroundColor: colors.bg }]}>
           <Text style={styles.emptyEmoji}>👥</Text>
-          <Text style={styles.emptyTitle}>
+          <Text style={[styles.emptyTitle, { color: colors.text }]}>
             {search ? 'Sin coincidencias' : 'Aún no hay más personas registradas'}
           </Text>
-          <Text style={styles.emptySubtitle}>
+          <Text style={[styles.emptySubtitle, { color: colors.textSub }]}>
             {search
               ? 'Intenta con otro nombre, correo o programa.'
               : 'Cuando tus compañeros creen cuenta en la página, aparecerán aquí automáticamente.'}
           </Text>
           <TouchableOpacity
-            style={styles.retryBtn}
+            style={[styles.retryBtn, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
             onPress={() => { setSearch(''); refetch(); }}
             activeOpacity={0.8}
           >
-            <Text style={styles.retryText}>Actualizar lista</Text>
+            <Text style={[styles.retryText, { color: colors.text }]}>Actualizar lista</Text>
           </TouchableOpacity>
         </View>
       ) : (
         <ScrollView
-          style={styles.scrollView}
+          style={[styles.scrollView, { backgroundColor: colors.bg }]}
           contentContainerStyle={styles.listContent}
           keyboardShouldPersistTaps="handled"
           refreshControl={
@@ -148,7 +151,7 @@ export default function PeopleScreen({ onOpenChat, onBack }: Props) {
             />
           }
         >
-          <Text style={styles.resultsCount}>
+          <Text style={[styles.resultsCount, { color: colors.textSub }]}>
             {usersList.length} persona{usersList.length !== 1 ? 's' : ''} disponible{usersList.length !== 1 ? 's' : ''}
           </Text>
 
@@ -160,7 +163,7 @@ export default function PeopleScreen({ onOpenChat, onBack }: Props) {
                 : 'Aprendiz';
 
               return (
-                <View key={usr.id} style={styles.userCard}>
+                <View key={usr.id} style={[styles.userCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
                   {/* Avatar / Foto */}
                   <TouchableOpacity
                     onPress={() => setSelectedProfileId(usr.id)}
@@ -191,7 +194,7 @@ export default function PeopleScreen({ onOpenChat, onBack }: Props) {
                     activeOpacity={0.8}
                   >
                     <View style={styles.userTopRow}>
-                      <Text style={styles.userName} numberOfLines={1}>
+                      <Text style={[styles.userName, { color: colors.text }]} numberOfLines={1}>
                         {usr.nombre}
                       </Text>
                       <View style={styles.rolBadge}>
@@ -200,13 +203,13 @@ export default function PeopleScreen({ onOpenChat, onBack }: Props) {
                     </View>
 
                     {usr.programa ? (
-                      <Text style={styles.userProgram} numberOfLines={1}>
+                      <Text style={[styles.userProgram, { color: colors.textSub }]} numberOfLines={1}>
                         📚 {usr.programa}
                       </Text>
                     ) : null}
 
                     {usr.bio ? (
-                      <Text style={styles.userBio} numberOfLines={2}>
+                      <Text style={[styles.userBio, { color: colors.textSub }]} numberOfLines={2}>
                         {`"${usr.bio}"`}
                       </Text>
                     ) : null}
@@ -214,8 +217,8 @@ export default function PeopleScreen({ onOpenChat, onBack }: Props) {
                     {usr.intereses && usr.intereses.length > 0 ? (
                       <View style={styles.tagsWrap}>
                         {usr.intereses.slice(0, 3).map((tag: string, i: number) => (
-                          <View key={i} style={styles.tag}>
-                            <Text style={styles.tagText}>{tag}</Text>
+                          <View key={i} style={[styles.tag, { backgroundColor: colors.chipBg, borderColor: colors.cardBorder }]}>
+                            <Text style={[styles.tagText, { color: colors.textSub }]}>{tag}</Text>
                           </View>
                         ))}
                       </View>
@@ -263,7 +266,6 @@ export default function PeopleScreen({ onOpenChat, onBack }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: BG,
     width: '100%',
   },
   scrollView: {
@@ -276,7 +278,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 32,
   },
-  loadingText: { color: '#8D83A0', marginTop: 16, fontSize: 15 },
+  loadingText: { marginTop: 16, fontSize: 15 },
 
   // Header
   header: {
@@ -301,11 +303,9 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#F0ECF6',
   },
   headerSubtitle: {
     fontSize: 14,
-    color: '#8D83A0',
     marginTop: 4,
   },
 
@@ -313,13 +313,11 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: CARD,
     borderRadius: 16,
     marginHorizontal: 24,
     marginBottom: 20,
     paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: CARD_BORDER,
     maxWidth: 1200,
     width: '100%',
     alignSelf: 'center',
@@ -328,11 +326,10 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     paddingVertical: 14,
-    color: '#F0ECF6',
     fontSize: 15,
   },
   clearBtn: { padding: 6 },
-  clearText: { color: '#8D83A0', fontSize: 14, fontWeight: '700' },
+  clearText: { fontSize: 14, fontWeight: '700' },
 
   // List
   listContent: {
@@ -344,7 +341,6 @@ const styles = StyleSheet.create({
   },
   resultsCount: {
     fontSize: 14,
-    color: '#8D83A0',
     fontWeight: '600',
     marginBottom: 16,
     marginLeft: 4,
@@ -357,7 +353,6 @@ const styles = StyleSheet.create({
   },
 
   userCard: {
-    backgroundColor: CARD,
     borderRadius: 18,
     padding: 18,
     marginBottom: 16,
@@ -365,7 +360,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 16,
     borderWidth: 1,
-    borderColor: CARD_BORDER,
     flex: 1,
     minWidth: 340,
     shadowColor: '#000',

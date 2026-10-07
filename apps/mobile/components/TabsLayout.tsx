@@ -17,9 +17,10 @@ import { pendingChat } from '../lib/pendingChat';
 import { playNotificationSound } from '../lib/sound';
 import { useTheme } from '../app/context/ThemeContext';
 
+declare const window: any;
+declare const Notification: any;
+
 const ACCENT = '#39A900';
-const INACTIVE = '#8D83A0';
-const NAVBAR_BG = '#161B22';
 
 const TABS_META: Record<string, { title: string; emoji: string }> = {
   index: { title: 'Inicio', emoji: '🏠' },
@@ -67,7 +68,7 @@ function ResponsiveTabBar({
           >
             <SenaMatchLogo size={32} textSize={19} showText={true} />
             <View style={styles.brandBadge}>
-              <Text style={styles.brandBadgeText}>Comunidad 🇨🇴</Text>
+              <Text style={[styles.brandBadgeText, { color: colors.isDark ? '#DDF4D5' : '#1B5E20' }]}>Comunidad 🇨🇴</Text>
             </View>
           </TouchableOpacity>
 
@@ -113,6 +114,7 @@ function ResponsiveTabBar({
                   <Text
                     style={[
                       styles.desktopTabText,
+                      { color: colors.textSub },
                       isFocused && styles.desktopTabTextActive,
                     ]}
                   >
@@ -143,7 +145,7 @@ function ResponsiveTabBar({
             {esStaffUser ? (
               <TouchableOpacity
                 onPress={onOpenAdmin}
-                style={styles.desktopAdminBtn}
+                style={[styles.desktopAdminBtn, { backgroundColor: colors.isDark ? '#1E281E' : 'rgba(57, 169, 0, 0.1)' }]}
                 activeOpacity={0.85}
               >
                 <Text style={styles.desktopAdminText}>🛡️ Panel Admin</Text>
@@ -200,6 +202,7 @@ function ResponsiveTabBar({
             <Text
               style={[
                 styles.mobileTabLabel,
+                { color: colors.textSub },
                 isFocused && styles.mobileTabLabelActive,
               ]}
             >
@@ -225,7 +228,7 @@ function ResponsiveTabBar({
             </View>
           ) : null}
         </View>
-        <Text style={styles.mobileTabLabel}>Avisos</Text>
+        <Text style={[styles.mobileTabLabel, { color: colors.textSub }]}>Avisos</Text>
       </TouchableOpacity>
     </View>
   );
@@ -408,6 +411,8 @@ export default function TabsLayout() {
     };
   }, [qc, user?.id, router]);
 
+  const { colors } = useTheme();
+
   return (
     <>
       <Tabs
@@ -423,7 +428,7 @@ export default function TabsLayout() {
         )}
         sceneContainerStyle={{
           paddingTop: isDesktop ? 72 : 0,
-          backgroundColor: '#0F0C18',
+          backgroundColor: colors.bg,
         }}
         screenOptions={{
           headerShown: false,
@@ -448,16 +453,16 @@ export default function TabsLayout() {
             }
             setToastAviso(null);
           }}
-          style={styles.toastBanner}
+          style={[styles.toastBanner, { backgroundColor: colors.card, borderColor: ACCENT }]}
         >
           <View style={styles.toastIconWrap}>
             <Text style={{ fontSize: 20 }}>💬</Text>
           </View>
           <View style={styles.toastBody}>
-            <Text style={styles.toastTitle} numberOfLines={1}>
+            <Text style={[styles.toastTitle, { color: colors.text }]} numberOfLines={1}>
               {toastAviso.titulo}
             </Text>
-            <Text style={styles.toastSnippet} numberOfLines={1}>
+            <Text style={[styles.toastSnippet, { color: colors.textSub }]} numberOfLines={1}>
               {toastAviso.mensaje}
             </Text>
           </View>
@@ -468,7 +473,7 @@ export default function TabsLayout() {
             }}
             style={styles.toastCloseBtn}
           >
-            <Text style={styles.toastCloseText}>✕</Text>
+            <Text style={[styles.toastCloseText, { color: colors.textMuted }]}>✕</Text>
           </TouchableOpacity>
         </TouchableOpacity>
       ) : null}
@@ -503,9 +508,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 70,
-    backgroundColor: NAVBAR_BG,
     borderBottomWidth: 1,
-    borderBottomColor: '#2D2640',
     zIndex: 1000,
     justifyContent: 'center',
     shadowColor: '#000',
@@ -555,7 +558,7 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   desktopTabItemActive: {
-    backgroundColor: '#261F36',
+    backgroundColor: 'rgba(57, 169, 0, 0.12)',
   },
   desktopTabEmoji: {
     fontSize: 18,
@@ -563,10 +566,10 @@ const styles = StyleSheet.create({
   desktopTabText: {
     fontSize: 14,
     fontWeight: '600',
-    color: INACTIVE,
+    color: '#8D83A0',
   },
   desktopTabTextActive: {
-    color: '#FFFFFF',
+    color: ACCENT,
     fontWeight: '700',
   },
   activePillGlow: {
@@ -583,7 +586,9 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
     borderRadius: 12,
     position: 'relative',
-    backgroundColor: '#221B30',
+    backgroundColor: 'rgba(57, 169, 0, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(57, 169, 0, 0.2)',
   },
   desktopNotifBadge: {
     position: 'absolute',
@@ -619,9 +624,7 @@ const styles = StyleSheet.create({
 
   // Mobile Tab bar (Bottom)
   mobileTabBar: {
-    backgroundColor: NAVBAR_BG,
     borderTopWidth: 1,
-    borderTopColor: '#2D2640',
     height: 74,
     paddingBottom: 14,
     paddingTop: 8,
@@ -655,7 +658,7 @@ const styles = StyleSheet.create({
   mobileTabLabel: {
     fontSize: 11,
     fontWeight: '600',
-    color: INACTIVE,
+    color: '#8D83A0',
     marginTop: 2,
   },
   mobileTabLabelActive: {
@@ -704,8 +707,6 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     width: 380,
     maxWidth: '92%',
-    backgroundColor: '#1E1A2B',
-    borderColor: ACCENT,
     borderWidth: 1.5,
     borderRadius: 14,
     paddingHorizontal: 14,

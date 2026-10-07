@@ -3,16 +3,14 @@ import {
   Modal, ActivityIndicator, Image, ScrollView,
   Alert, Platform
 } from 'react-native';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../app/context/AuthContext';
+import { useTheme } from '../app/context/ThemeContext';
 import { api } from '../lib/api';
 import FotoViewerModal from './FotoViewerModal';
 
 const ACCENT = '#39A900';
-const ACCENT_DARK = '#1F6B00';
-const CARD = '#1E1A2B';
-const CARD_BORDER = '#2D2640';
 const DANGER = '#FF5B6E';
 
 interface Props {
@@ -23,8 +21,10 @@ interface Props {
 }
 
 export default function PublicProfileModal({ userId, visible, onClose, onOpenChat }: Props) {
+  const { colors } = useTheme();
   const { user } = useAuth();
   const router = useRouter();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
 
   const [perfil, setPerfil] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -164,32 +164,32 @@ export default function PublicProfileModal({ userId, visible, onClose, onOpenCha
       transparent={true}
       onRequestClose={onClose}
     >
-      <View style={styles.overlay}>
-        <View style={styles.container}>
+      <View style={[styles.overlay, { backgroundColor: colors.modalOverlay }]}>
+        <View style={[styles.container, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           {/* Cabecera modal */}
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Perfil de la comunidad</Text>
+          <View style={[styles.modalHeader, { borderBottomColor: colors.cardBorder }]}>
+            <Text style={[styles.modalTitle, { color: colors.textSub }]}>Perfil de la comunidad</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn} activeOpacity={0.7}>
-              <Text style={styles.closeText}>✕</Text>
+              <Text style={[styles.closeText, { color: colors.textSub }]}>✕</Text>
             </TouchableOpacity>
           </View>
 
           {loading ? (
             <View style={styles.centerBox}>
               <ActivityIndicator size="large" color={ACCENT} />
-              <Text style={styles.loadingText}>Cargando información del aprendiz…</Text>
+              <Text style={[styles.loadingText, { color: colors.textSub }]}>Cargando información del aprendiz…</Text>
             </View>
           ) : error ? (
             <View style={styles.centerBox}>
               <Text style={styles.errorEmoji}>⚠️</Text>
-              <Text style={styles.errorTitle}>Perfil no disponible</Text>
-              <Text style={styles.errorMsg}>{error}</Text>
+              <Text style={[styles.errorTitle, { color: colors.text }]}>Perfil no disponible</Text>
+              <Text style={[styles.errorMsg, { color: colors.textSub }]}>{error}</Text>
               <TouchableOpacity
-                style={styles.retryBtn}
+                style={[styles.retryBtn, { backgroundColor: colors.inputBg, borderColor: colors.cardBorder }]}
                 onPress={() => userId && cargarPerfil(userId)}
                 activeOpacity={0.8}
               >
-                <Text style={styles.retryBtnText}>🔄 Reintentar</Text>
+                <Text style={[styles.retryBtnText, { color: colors.text }]}>🔄 Reintentar</Text>
               </TouchableOpacity>
             </View>
           ) : perfil ? (
@@ -205,7 +205,7 @@ export default function PublicProfileModal({ userId, visible, onClose, onOpenCha
                     <Text style={styles.avatarEmoji}>{perfil.avatarEmoji || '😊'}</Text>
                   </View>
                 )}
-                <Text style={styles.nombre}>{perfil.nombre}</Text>
+                <Text style={[styles.nombre, { color: colors.text }]}>{perfil.nombre}</Text>
                 <View style={styles.badgeRow}>
                   <View style={styles.rolBadge}>
                     <Text style={styles.rolBadgeText}>
@@ -213,8 +213,8 @@ export default function PublicProfileModal({ userId, visible, onClose, onOpenCha
                     </Text>
                   </View>
                   {perfil.centro ? (
-                    <View style={styles.centroBadge}>
-                      <Text style={styles.centroBadgeText}>Centro #{perfil.centro}</Text>
+                    <View style={[styles.centroBadge, { backgroundColor: colors.chipBg }]}>
+                      <Text style={[styles.centroBadgeText, { color: colors.textSub }]}>Centro #{perfil.centro}</Text>
                     </View>
                   ) : null}
                 </View>
@@ -229,43 +229,43 @@ export default function PublicProfileModal({ userId, visible, onClose, onOpenCha
 
               {/* Bio */}
               {perfil.bio ? (
-                <View style={styles.infoCard}>
-                  <Text style={styles.infoLabel}>Acerca de mí</Text>
-                  <Text style={styles.bioText}>{perfil.bio}</Text>
+                <View style={[styles.infoCard, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]}>
+                  <Text style={[styles.infoLabel, { color: colors.textSub }]}>Acerca de mí</Text>
+                  <Text style={[styles.bioText, { color: colors.text }]}>{perfil.bio}</Text>
                 </View>
               ) : null}
 
               {/* Datos formativos públicos */}
-              <View style={styles.infoCard}>
+              <View style={[styles.infoCard, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]}>
                 {perfil.programa ? (
                   <View style={styles.metaRow}>
                     <Text style={styles.metaIcon}>📚</Text>
-                    <Text style={styles.metaLabel}>Programa:</Text>
-                    <Text style={styles.metaVal}>{perfil.programa}</Text>
+                    <Text style={[styles.metaLabel, { color: colors.textSub }]}>Programa:</Text>
+                    <Text style={[styles.metaVal, { color: colors.text }]}>{perfil.programa}</Text>
                   </View>
                 ) : null}
                 {perfil.jornada ? (
                   <View style={styles.metaRow}>
                     <Text style={styles.metaIcon}>🕐</Text>
-                    <Text style={styles.metaLabel}>Jornada:</Text>
-                    <Text style={styles.metaVal}>{perfil.jornada}</Text>
+                    <Text style={[styles.metaLabel, { color: colors.textSub }]}>Jornada:</Text>
+                    <Text style={[styles.metaVal, { color: colors.text }]}>{perfil.jornada}</Text>
                   </View>
                 ) : null}
                 <View style={styles.metaRow}>
                   <Text style={styles.metaIcon}>🎯</Text>
-                  <Text style={styles.metaLabel}>Asistencias:</Text>
-                  <Text style={styles.metaVal}>{perfil.asistencias || 0} parches completados</Text>
+                  <Text style={[styles.metaLabel, { color: colors.textSub }]}>Asistencias:</Text>
+                  <Text style={[styles.metaVal, { color: colors.text }]}>{perfil.asistencias || 0} parches completados</Text>
                 </View>
               </View>
 
               {/* Intereses */}
               {Array.isArray(perfil.intereses) && perfil.intereses.length > 0 ? (
-                <View style={styles.infoCard}>
-                  <Text style={styles.infoLabel}>Intereses</Text>
+                <View style={[styles.infoCard, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]}>
+                  <Text style={[styles.infoLabel, { color: colors.textSub }]}>Intereses</Text>
                   <View style={styles.tagsGrid}>
                     {perfil.intereses.map((tag: string, i: number) => (
-                      <View key={i} style={styles.tag}>
-                        <Text style={styles.tagText}>{tag}</Text>
+                      <View key={i} style={[styles.tag, { backgroundColor: colors.chipBg, borderColor: colors.cardBorder }]}>
+                        <Text style={[styles.tagText, { color: colors.textSub }]}>{tag}</Text>
                       </View>
                     ))}
                   </View>
@@ -289,20 +289,20 @@ export default function PublicProfileModal({ userId, visible, onClose, onOpenCha
 
                 <View style={styles.secondaryActions}>
                   <TouchableOpacity
-                    style={styles.btnSecundario}
+                    style={[styles.btnSecundario, { backgroundColor: colors.chipBg, borderColor: colors.cardBorder }]}
                     onPress={() => setShowReporteModal(true)}
                     activeOpacity={0.8}
                   >
-                    <Text style={styles.btnSecundarioText}>🚩 Reportar</Text>
+                    <Text style={[styles.btnSecundarioText, { color: colors.textSub }]}>🚩 Reportar</Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    style={[styles.btnSecundario, bloqueado && styles.btnBloqueado]}
+                    style={[styles.btnSecundario, { backgroundColor: colors.chipBg, borderColor: colors.cardBorder }, bloqueado && styles.btnBloqueado]}
                     onPress={handleToggleBloqueo}
                     disabled={bloqueando}
                     activeOpacity={0.8}
                   >
-                    <Text style={[styles.btnSecundarioText, bloqueado && { color: '#FFD166' }]}>
+                    <Text style={[styles.btnSecundarioText, { color: colors.textSub }, bloqueado && { color: '#FFD166' }]}>
                       {bloqueando ? '…' : (bloqueado ? '🔓 Desbloquear' : '🚫 Bloquear')}
                     </Text>
                   </TouchableOpacity>
@@ -313,10 +313,10 @@ export default function PublicProfileModal({ userId, visible, onClose, onOpenCha
 
           {/* Submodal de reporte */}
           {showReporteModal ? (
-            <View style={styles.reportOverlay}>
-              <View style={styles.reportModal}>
-                <Text style={styles.reportTitle}>Reportar usuario</Text>
-                <Text style={styles.reportDesc}>
+            <View style={[styles.reportOverlay, { backgroundColor: colors.modalOverlay }]}>
+              <View style={[styles.reportModal, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+                <Text style={[styles.reportTitle, { color: colors.text }]}>Reportar usuario</Text>
+                <Text style={[styles.reportDesc, { color: colors.textSub }]}>
                   Ayúdanos a mantener la comunidad segura y respetuosa en SENA Match.
                 </Text>
 
@@ -326,15 +326,19 @@ export default function PublicProfileModal({ userId, visible, onClose, onOpenCha
                   </View>
                 ) : (
                   <>
-                    <Text style={styles.reportLabel}>Motivo:</Text>
+                    <Text style={[styles.reportLabel, { color: colors.textSub }]}>Motivo:</Text>
                     {['Comportamiento inapropiado', 'Spam o publicidad', 'Contenido ofensivo', 'Suplantación'].map((m) => (
                       <TouchableOpacity
                         key={m}
-                        style={[styles.motivoOption, reportMotivo === m && styles.motivoOptionActive]}
+                        style={[
+                          styles.motivoOption,
+                          { backgroundColor: colors.inputBg, borderColor: colors.cardBorder },
+                          reportMotivo === m && styles.motivoOptionActive
+                        ]}
                         onPress={() => setReportMotivo(m)}
                         activeOpacity={0.8}
                       >
-                        <Text style={[styles.motivoText, reportMotivo === m && styles.motivoTextActive]}>
+                        <Text style={[styles.motivoText, { color: colors.textSub }, reportMotivo === m && styles.motivoTextActive]}>
                           {m}
                         </Text>
                       </TouchableOpacity>
@@ -346,7 +350,7 @@ export default function PublicProfileModal({ userId, visible, onClose, onOpenCha
                         onPress={() => setShowReporteModal(false)}
                         disabled={enviandoReporte}
                       >
-                        <Text style={styles.btnCancelReportText}>Cancelar</Text>
+                        <Text style={[styles.btnCancelReportText, { color: colors.textSub }]}>Cancelar</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={styles.btnSendReport}
@@ -376,7 +380,8 @@ export default function PublicProfileModal({ userId, visible, onClose, onOpenCha
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(colors: import('../app/context/ThemeContext').ThemeColors) {
+  return StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.78)',
@@ -385,10 +390,8 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   container: {
-    backgroundColor: CARD,
     borderRadius: 22,
     borderWidth: 1,
-    borderColor: CARD_BORDER,
     maxWidth: 500,
     width: '100%',
     maxHeight: '90%',
@@ -405,19 +408,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#282136',
+    borderBottomColor: colors.cardBorder,
   },
   modalTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#B9B1C9',
+    color: colors.textSub,
   },
   closeBtn: {
     padding: 4,
   },
   closeText: {
     fontSize: 18,
-    color: '#8D83A0',
+    color: colors.textSub,
     fontWeight: '700',
   },
   centerBox: {
@@ -426,7 +429,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   loadingText: {
-    color: '#8D83A0',
+    color: colors.textSub,
     marginTop: 12,
     fontSize: 14,
   },
@@ -437,25 +440,25 @@ const styles = StyleSheet.create({
   errorTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#F0ECF6',
+    color: colors.text,
     marginBottom: 6,
   },
   errorMsg: {
-    color: '#8D83A0',
+    color: colors.textSub,
     fontSize: 13,
     textAlign: 'center',
     marginBottom: 16,
   },
   retryBtn: {
-    backgroundColor: '#282234',
+    backgroundColor: colors.chipBg,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#3A3247',
+    borderColor: colors.inputBorder,
   },
   retryBtnText: {
-    color: '#F0ECF6',
+    color: colors.text,
     fontWeight: '700',
     fontSize: 13,
   },
@@ -471,7 +474,7 @@ const styles = StyleSheet.create({
     height: 100,
     borderRadius: 50,
     borderWidth: 3,
-    borderColor: ACCENT,
+    borderColor: colors.accent,
     marginBottom: 12,
   },
   avatarCircle: {
@@ -481,7 +484,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: ACCENT,
+    borderColor: colors.accent,
     marginBottom: 12,
   },
   avatarEmoji: {
@@ -490,7 +493,7 @@ const styles = StyleSheet.create({
   nombre: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#F0ECF6',
+    color: colors.text,
     textAlign: 'center',
   },
   badgeRow: {
@@ -507,18 +510,18 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(57, 169, 0, 0.3)',
   },
   rolBadgeText: {
-    color: ACCENT,
+    color: colors.accent,
     fontWeight: '700',
     fontSize: 12,
   },
   centroBadge: {
-    backgroundColor: '#282234',
+    backgroundColor: colors.chipBg,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
   },
   centroBadgeText: {
-    color: '#8D83A0',
+    color: colors.textSub,
     fontSize: 12,
     fontWeight: '600',
   },
@@ -532,28 +535,28 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(0, 229, 163, 0.25)',
   },
   afinidadText: {
-    color: '#00E5A3',
+    color: colors.success,
     fontWeight: '700',
     fontSize: 13,
   },
   infoCard: {
-    backgroundColor: '#241D30',
+    backgroundColor: colors.inputBg,
     borderRadius: 14,
     padding: 14,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#342B45',
+    borderColor: colors.inputBorder,
   },
   infoLabel: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#8D83A0',
+    color: colors.textSub,
     marginBottom: 6,
     textTransform: 'uppercase',
   },
   bioText: {
     fontSize: 14,
-    color: '#F0ECF6',
+    color: colors.text,
     lineHeight: 20,
   },
   metaRow: {
@@ -567,12 +570,12 @@ const styles = StyleSheet.create({
   },
   metaLabel: {
     fontSize: 13,
-    color: '#8D83A0',
+    color: colors.textSub,
     fontWeight: '600',
   },
   metaVal: {
     fontSize: 13,
-    color: '#F0ECF6',
+    color: colors.text,
     flex: 1,
   },
   tagsGrid: {
@@ -582,15 +585,15 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   tag: {
-    backgroundColor: '#1E1A2B',
+    backgroundColor: colors.inputBg,
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#3A3247',
+    borderColor: colors.inputBorder,
   },
   tagText: {
-    color: '#B9B1C9',
+    color: colors.textSub,
     fontSize: 12,
   },
   actionsBox: {
@@ -598,11 +601,11 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   btnChat: {
-    backgroundColor: ACCENT,
+    backgroundColor: colors.accent,
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',
-    shadowColor: ACCENT,
+    shadowColor: colors.accent,
     shadowOpacity: 0.35,
     shadowRadius: 10,
     elevation: 3,
@@ -621,19 +624,19 @@ const styles = StyleSheet.create({
   },
   btnSecundario: {
     flex: 1,
-    backgroundColor: '#282234',
+    backgroundColor: colors.chipBg,
     paddingVertical: 10,
     borderRadius: 10,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#3A3247',
+    borderColor: colors.inputBorder,
   },
   btnBloqueado: {
     borderColor: 'rgba(255, 209, 102, 0.4)',
     backgroundColor: 'rgba(255, 209, 102, 0.1)',
   },
   btnSecundarioText: {
-    color: '#B9B1C9',
+    color: colors.textSub,
     fontSize: 13,
     fontWeight: '600',
   },
@@ -649,52 +652,52 @@ const styles = StyleSheet.create({
     zIndex: 100,
   },
   reportModal: {
-    backgroundColor: '#1E1A2B',
+    backgroundColor: colors.inputBg,
     borderRadius: 16,
     padding: 20,
     width: '100%',
     maxWidth: 380,
     borderWidth: 1,
-    borderColor: '#3A3247',
+    borderColor: colors.inputBorder,
   },
   reportTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#F0ECF6',
+    color: colors.text,
     marginBottom: 6,
   },
   reportDesc: {
     fontSize: 13,
-    color: '#8D83A0',
+    color: colors.textSub,
     marginBottom: 14,
     lineHeight: 18,
   },
   reportLabel: {
     fontSize: 12,
-    color: '#B9B1C9',
+    color: colors.textSub,
     fontWeight: '700',
     marginBottom: 8,
   },
   motivoOption: {
-    backgroundColor: '#282234',
+    backgroundColor: colors.chipBg,
     paddingVertical: 10,
     paddingHorizontal: 14,
     borderRadius: 8,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: '#3A3247',
+    borderColor: colors.inputBorder,
   },
   motivoOptionActive: {
-    borderColor: ACCENT,
+    borderColor: colors.accent,
     backgroundColor: 'rgba(57, 169, 0, 0.15)',
   },
   motivoText: {
-    color: '#B9B1C9',
+    color: colors.textSub,
     fontSize: 13,
     fontWeight: '600',
   },
   motivoTextActive: {
-    color: ACCENT,
+    color: colors.accent,
     fontWeight: '700',
   },
   reportActions: {
@@ -708,11 +711,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
   },
   btnCancelReportText: {
-    color: '#8D83A0',
+    color: colors.textSub,
     fontWeight: '600',
   },
   btnSendReport: {
-    backgroundColor: DANGER,
+    backgroundColor: colors.danger,
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 8,
@@ -730,7 +733,8 @@ const styles = StyleSheet.create({
     marginVertical: 12,
   },
   reportSuccessText: {
-    color: '#5FE0B4',
+    color: colors.success,
     fontWeight: '700',
   },
-});
+  });
+}

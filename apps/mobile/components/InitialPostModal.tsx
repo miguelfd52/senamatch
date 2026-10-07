@@ -3,20 +3,20 @@ import {
   Modal, ActivityIndicator, TextInput, Image,
   Platform, KeyboardAvoidingView, ScrollView
 } from 'react-native';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useAuth } from '../app/context/AuthContext';
 import { openImagePickerAndUpload } from '../lib/cloudinary';
 import { api } from '../lib/api';
 import SenaMatchLogo from './SenaMatchLogo';
+import { useTheme, ThemeColors } from '../app/context/ThemeContext';
 
 const ACCENT = '#39A900';
-const BG = '#0F0C18';
-const CARD = '#161B22';
-const CARD_BORDER = '#263238';
 const DANGER = '#FF5B6E';
 
 export default function InitialPostModal() {
   const { user, completeInitialPost } = useAuth();
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [texto, setTexto] = useState('');
   const [fotoPreview, setFotoPreview] = useState('');
   const [fotoUrl, setFotoUrl] = useState('');
@@ -94,19 +94,19 @@ export default function InitialPostModal() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
-          <View style={styles.card}>
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
             {/* Logo y Encabezado */}
             <View style={styles.header}>
               <SenaMatchLogo size={42} textSize={22} subtitle="" />
-              <Text style={styles.title}>¡Completa tu Registro! 🎉</Text>
-              <Text style={styles.subtitle}>
+              <Text style={[styles.title, { color: colors.text }]}>¡Completa tu Registro! 🎉</Text>
+              <Text style={[styles.subtitle, { color: colors.textSub }]}>
                 Para activar tu perfil y conectar con la comunidad SENA, es obligatorio crear tu primera publicación con una foto y un mensaje de presentación.
               </Text>
             </View>
 
             {/* Subida de Foto Obligatoria */}
             <View style={styles.section}>
-              <Text style={styles.label}>
+              <Text style={[styles.label, { color: colors.text }]}>
                 1. Foto de presentación <Text style={styles.required}>* Obligatoria</Text>
               </Text>
 
@@ -132,7 +132,7 @@ export default function InitialPostModal() {
                 </View>
               ) : (
                 <TouchableOpacity
-                  style={[styles.uploadBox, subiendoFoto && styles.uploadBoxDisabled]}
+                  style={[styles.uploadBox, { borderColor: colors.inputBorder, backgroundColor: colors.bgSecondary }, subiendoFoto && styles.uploadBoxDisabled]}
                   onPress={handleSubirFoto}
                   disabled={subiendoFoto}
                   activeOpacity={0.8}
@@ -145,8 +145,8 @@ export default function InitialPostModal() {
                   ) : (
                     <View style={styles.uploadInner}>
                       <Text style={styles.uploadIcon}>📸</Text>
-                      <Text style={styles.uploadTextBold}>Toca aquí para seleccionar tu foto</Text>
-                      <Text style={styles.uploadHint}>JPG, PNG o WebP (máx. 3 MB)</Text>
+                      <Text style={[styles.uploadTextBold, { color: colors.text }]}>Toca aquí para seleccionar tu foto</Text>
+                      <Text style={[styles.uploadHint, { color: colors.textMuted }]}>JPG, PNG o WebP (máx. 3 MB)</Text>
                     </View>
                   )}
                 </TouchableOpacity>
@@ -155,20 +155,20 @@ export default function InitialPostModal() {
 
             {/* Texto Obligatorio */}
             <View style={styles.section}>
-              <Text style={styles.label}>
+              <Text style={[styles.label, { color: colors.text }]}>
                 2. Mensaje o presentación <Text style={styles.required}>* Obligatorio</Text>
               </Text>
               <TextInput
-                style={styles.textArea}
+                style={[styles.textArea, { backgroundColor: colors.inputBg, color: colors.text, borderColor: colors.inputBorder }]}
                 placeholder="Cuéntanos quién eres, tu programa de formación, proyectos o qué te apasiona en el SENA…"
-                placeholderTextColor="#786E8A"
+                placeholderTextColor={colors.textMuted}
                 value={texto}
                 onChangeText={setTexto}
                 multiline
                 numberOfLines={4}
                 maxLength={800}
               />
-              <Text style={styles.charCount}>{texto.length}/800</Text>
+              <Text style={[styles.charCount, { color: colors.textMuted }]}>{texto.length}/800</Text>
             </View>
 
             {/* Error si existe */}
@@ -211,10 +211,10 @@ export default function InitialPostModal() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors) => StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(5, 3, 10, 0.96)',
+    backgroundColor: colors.modalOverlay,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -227,10 +227,8 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   card: {
-    backgroundColor: CARD,
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: CARD_BORDER,
     padding: 24,
     width: '100%',
     maxWidth: 520,
@@ -246,13 +244,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#F0ECF6',
     marginTop: 12,
     textAlign: 'center',
   },
   subtitle: {
     fontSize: 13,
-    color: '#8D83A0',
     textAlign: 'center',
     lineHeight: 19,
     marginTop: 6,
@@ -263,7 +259,6 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#F0ECF6',
     marginBottom: 8,
   },
   required: {
@@ -272,11 +267,9 @@ const styles = StyleSheet.create({
   },
   uploadBox: {
     borderWidth: 2,
-    borderColor: '#2D2640',
     borderStyle: 'dashed',
     borderRadius: 16,
     padding: 20,
-    backgroundColor: '#120F1D',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -293,25 +286,23 @@ const styles = StyleSheet.create({
   uploadTextBold: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#F0ECF6',
     textAlign: 'center',
   },
   uploadHint: {
     fontSize: 11,
-    color: '#786E8A',
     marginTop: 4,
   },
   uploadText: {
     fontSize: 13,
-    color: '#8D83A0',
+    color: colors.textSub,
     marginTop: 8,
   },
   previewWrap: {
     borderRadius: 16,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: CARD_BORDER,
-    backgroundColor: '#120F1D',
+    borderColor: colors.cardBorder,
+    backgroundColor: colors.inputBg,
     position: 'relative',
   },
   previewImage: {
@@ -338,27 +329,23 @@ const styles = StyleSheet.create({
   btnCambiarFoto: {
     paddingVertical: 10,
     alignItems: 'center',
-    backgroundColor: '#1E1A2B',
+    backgroundColor: colors.inputBg,
   },
   btnCambiarFotoText: {
-    color: '#8D83A0',
+    color: colors.textSub,
     fontSize: 12,
     fontWeight: '600',
   },
   textArea: {
-    backgroundColor: '#120F1D',
     borderWidth: 1,
-    borderColor: '#2D2640',
     borderRadius: 14,
     padding: 14,
-    color: '#F0ECF6',
     fontSize: 14,
     minHeight: 95,
     textAlignVertical: 'top',
   },
   charCount: {
     fontSize: 11,
-    color: '#786E8A',
     textAlign: 'right',
     marginTop: 4,
   },
@@ -388,7 +375,7 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   btnSubmitDisabled: {
-    backgroundColor: '#263238',
+    backgroundColor: colors.isDark ? '#263238' : '#D0C8DE',
     shadowOpacity: 0,
     elevation: 0,
   },
@@ -404,7 +391,7 @@ const styles = StyleSheet.create({
   },
   footerNote: {
     fontSize: 11,
-    color: '#786E8A',
+    color: colors.textMuted,
     textAlign: 'center',
     marginTop: 14,
   },

@@ -8,24 +8,24 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '../app/context/AuthContext';
 import { usePerfiles, useSwipe } from '../hooks/useParches';
 import { api } from '../lib/api';
+import { useTheme } from '../app/context/ThemeContext';
 import PeopleScreen from './PeopleScreen';
 import PublicProfileModal from './PublicProfileModal';
 import FotoViewerModal from './FotoViewerModal';
 import { pendingChat } from '../lib/pendingChat';
 
 const ACCENT = '#39A900';
-const BG = '#0F0C18';
-const CARD = '#161B22';
-const CARD_BORDER = '#263238';
 const { width: SCREEN_W } = Dimensions.get('window');
 const CARD_W = Math.min(SCREEN_W - 48, 460);
 
 const INTENCIONES = ['amistad', 'estudio', 'deporte'] as const;
 
 export default function DiscoverScreen() {
+  const { colors } = useTheme();
   const router = useRouter();
   const { user } = useAuth();
   const { data: perfiles, isLoading, isError, error, refetch } = usePerfiles();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
 
   const [swipedSessionIds, setSwipedSessionIds] = useState<string[]>([]);
   const [mode, setMode] = useState<'cards' | 'people'>('cards');
@@ -138,7 +138,7 @@ export default function DiscoverScreen() {
 
   if (mode === 'people') {
     return (
-      <View style={{ flex: 1, backgroundColor: BG }}>
+      <View style={{ flex: 1, backgroundColor: colors.bg }}>
         <PeopleScreen
           onOpenChat={() => {
             router.push('/chats');
@@ -150,17 +150,17 @@ export default function DiscoverScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.bg }]}>
       {/* Header */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerTitle}>Descubrir</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Descubrir</Text>
           {cards.length > 0 ? (
-            <Text style={styles.headerCount}>
+            <Text style={[styles.headerCount, { color: colors.textSub }]}>
               {cards.length} disponible{cards.length === 1 ? '' : 's'}
             </Text>
           ) : (
-            <Text style={styles.headerCount}>SENA Match</Text>
+            <Text style={[styles.headerCount, { color: colors.textSub }]}>SENA Match</Text>
           )}
         </View>
 
@@ -177,51 +177,87 @@ export default function DiscoverScreen() {
       <View style={styles.filtersScrollWrap}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filtersBar}>
           <TouchableOpacity
-            style={[styles.filterChip, filtroJornada === 'todos' && styles.filterChipActive]}
+            style={[
+              styles.filterChip,
+              { backgroundColor: colors.chipBg, borderColor: colors.cardBorder },
+              filtroJornada === 'todos' && styles.filterChipActive
+            ]}
             onPress={() => setFiltroJornada('todos')}
           >
-            <Text style={[styles.filterText, filtroJornada === 'todos' && styles.filterTextActive]}>Todas jornadas</Text>
+            <Text style={[
+              styles.filterText,
+              { color: colors.textSub },
+              filtroJornada === 'todos' && styles.filterTextActive
+            ]}>Todas jornadas</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.filterChip, filtroJornada === 'manana' && styles.filterChipActive]}
+            style={[
+              styles.filterChip,
+              { backgroundColor: colors.chipBg, borderColor: colors.cardBorder },
+              filtroJornada === 'manana' && styles.filterChipActive
+            ]}
             onPress={() => setFiltroJornada('manana')}
           >
-            <Text style={[styles.filterText, filtroJornada === 'manana' && styles.filterTextActive]}>Mañana</Text>
+            <Text style={[
+              styles.filterText,
+              { color: colors.textSub },
+              filtroJornada === 'manana' && styles.filterTextActive
+            ]}>Mañana</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.filterChip, filtroJornada === 'tarde' && styles.filterChipActive]}
+            style={[
+              styles.filterChip,
+              { backgroundColor: colors.chipBg, borderColor: colors.cardBorder },
+              filtroJornada === 'tarde' && styles.filterChipActive
+            ]}
             onPress={() => setFiltroJornada('tarde')}
           >
-            <Text style={[styles.filterText, filtroJornada === 'tarde' && styles.filterTextActive]}>Tarde</Text>
+            <Text style={[
+              styles.filterText,
+              { color: colors.textSub },
+              filtroJornada === 'tarde' && styles.filterTextActive
+            ]}>Tarde</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.filterChip, filtroJornada === 'noche' && styles.filterChipActive]}
+            style={[
+              styles.filterChip,
+              { backgroundColor: colors.chipBg, borderColor: colors.cardBorder },
+              filtroJornada === 'noche' && styles.filterChipActive
+            ]}
             onPress={() => setFiltroJornada('noche')}
           >
-            <Text style={[styles.filterText, filtroJornada === 'noche' && styles.filterTextActive]}>Noche</Text>
+            <Text style={[
+              styles.filterText,
+              { color: colors.textSub },
+              filtroJornada === 'noche' && styles.filterTextActive
+            ]}>Noche</Text>
           </TouchableOpacity>
         </ScrollView>
       </View>
 
       {/* Contenido según estado */}
       {isLoading ? (
-        <View style={styles.center}>
+        <View style={[styles.center, { backgroundColor: colors.bg }]}>
           <ActivityIndicator size="large" color={ACCENT} />
-          <Text style={styles.loadingText}>Buscando aprendices con afinidad…</Text>
+          <Text style={[styles.loadingText, { color: colors.textSub }]}>Buscando aprendices con afinidad…</Text>
         </View>
       ) : isError ? (
-        <View style={styles.center}>
+        <View style={[styles.center, { backgroundColor: colors.bg }]}>
           <Text style={styles.emptyEmoji}>⚠️</Text>
-          <Text style={styles.emptyTitle}>Error al cargar perfiles</Text>
-          <Text style={styles.emptySubtitle}>
+          <Text style={[styles.emptyTitle, { color: colors.text }]}>Error al cargar perfiles</Text>
+          <Text style={[styles.emptySubtitle, { color: colors.textSub }]}>
             {error instanceof Error ? error.message : 'No se pudieron obtener los perfiles. Verifica tu conexión.'}
           </Text>
           <View style={styles.emptyActions}>
-            <TouchableOpacity style={styles.retryBtn} onPress={handleRetry} activeOpacity={0.8}>
-              <Text style={styles.retryText}>🔄 Reintentar</Text>
+            <TouchableOpacity
+              style={[styles.retryBtn, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
+              onPress={handleRetry}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.retryText, { color: colors.text }]}>🔄 Reintentar</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.communityBtn} onPress={() => setMode('people')} activeOpacity={0.85}>
               <Text style={styles.communityBtnText}>👥 Directorio</Text>
@@ -229,10 +265,10 @@ export default function DiscoverScreen() {
           </View>
         </View>
       ) : !cards.length ? (
-        <View style={styles.center}>
+        <View style={[styles.center, { backgroundColor: colors.bg }]}>
           <Text style={styles.emptyEmoji}>🔍</Text>
-          <Text style={styles.emptyTitle}>Has revisado todos los perfiles</Text>
-          <Text style={styles.emptySubtitle}>
+          <Text style={[styles.emptyTitle, { color: colors.text }]}>Has revisado todos los perfiles</Text>
+          <Text style={[styles.emptySubtitle, { color: colors.textSub }]}>
             No hay más perfiles con los filtros actuales. Puedes reiniciar, explorar el directorio o deshacer tu último descarte.
           </Text>
           <View style={styles.emptyActions}>
@@ -241,8 +277,12 @@ export default function DiscoverScreen() {
                 <Text style={styles.undoBtnText}>↩️ Deshacer último descarte</Text>
               </TouchableOpacity>
             ) : null}
-            <TouchableOpacity style={styles.retryBtn} onPress={handleRetry} activeOpacity={0.8}>
-              <Text style={styles.retryText}>🔄 Reiniciar mazo</Text>
+            <TouchableOpacity
+              style={[styles.retryBtn, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
+              onPress={handleRetry}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.retryText, { color: colors.text }]}>🔄 Reiniciar mazo</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.communityBtn} onPress={() => setMode('people')} activeOpacity={0.85}>
               <Text style={styles.communityBtnText}>👥 Directorio completo</Text>
@@ -253,7 +293,7 @@ export default function DiscoverScreen() {
         <>
           {/* Tarjeta interactiva */}
           <View style={styles.cardContainer}>
-            <Animated.View style={[styles.card, { transform: [{ scale: scaleAnim }] }]}>
+            <Animated.View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder, transform: [{ scale: scaleAnim }] }]}>
               <TouchableOpacity
                 activeOpacity={0.9}
                 onPress={() => setSelectedUserId(currentCard.id)}
@@ -266,7 +306,7 @@ export default function DiscoverScreen() {
                   >
                     <Image
                       source={{ uri: currentCard.fotoUrl || currentCard.foto }}
-                      style={styles.avatarPhoto}
+                      style={[styles.avatarPhoto, { backgroundColor: colors.inputBg }]}
                       resizeMode="cover"
                     />
                   </TouchableOpacity>
@@ -283,7 +323,7 @@ export default function DiscoverScreen() {
 
                 {/* Info */}
                 <View style={styles.cardInfo}>
-                  <Text style={styles.cardName}>{currentCard.nombre}</Text>
+                  <Text style={[styles.cardName, { color: colors.text }]}>{currentCard.nombre}</Text>
                   <View style={styles.rolBadge}>
                     <Text style={styles.rolBadgeText}>
                       {currentCard.rol ? (currentCard.rol.charAt(0).toUpperCase() + currentCard.rol.slice(1)) : 'Aprendiz'}
@@ -298,20 +338,20 @@ export default function DiscoverScreen() {
                   ) : null}
 
                   {currentCard.bio ? (
-                    <Text style={styles.bio} numberOfLines={3}>{currentCard.bio}</Text>
+                    <Text style={[styles.bio, { color: colors.textSub }]} numberOfLines={3}>{currentCard.bio}</Text>
                   ) : null}
 
                   {currentCard.programa ? (
                     <View style={styles.infoRow}>
                       <Text style={styles.infoLabel}>📚</Text>
-                      <Text style={styles.infoValue}>{currentCard.programa}</Text>
+                      <Text style={[styles.infoValue, { color: colors.textSub }]}>{currentCard.programa}</Text>
                     </View>
                   ) : null}
 
                   {currentCard.jornada ? (
                     <View style={styles.infoRow}>
                       <Text style={styles.infoLabel}>🕐</Text>
-                      <Text style={styles.infoValue}>Jornada {currentCard.jornada}</Text>
+                      <Text style={[styles.infoValue, { color: colors.textSub }]}>Jornada {currentCard.jornada}</Text>
                     </View>
                   ) : null}
 
@@ -319,14 +359,14 @@ export default function DiscoverScreen() {
                   {Array.isArray(currentCard.intereses) && currentCard.intereses.length > 0 && (
                     <View style={styles.tagsRow}>
                       {currentCard.intereses.slice(0, 4).map((tag: string, i: number) => (
-                        <View key={i} style={styles.tag}>
-                          <Text style={styles.tagText}>{tag}</Text>
+                        <View key={i} style={[styles.tag, { backgroundColor: colors.chipBg, borderColor: colors.cardBorder }]}>
+                          <Text style={[styles.tagText, { color: colors.textSub }]}>{tag}</Text>
                         </View>
                       ))}
                     </View>
                   )}
 
-                  <Text style={styles.hintTouch}>Toca para ver perfil completo ℹ️</Text>
+                  <Text style={[styles.hintTouch, { color: colors.textMuted }]}>Toca para ver perfil completo ℹ️</Text>
                 </View>
               </TouchableOpacity>
             </Animated.View>
@@ -336,7 +376,7 @@ export default function DiscoverScreen() {
           <View style={styles.actions}>
             {descartesHistorial.length > 0 ? (
               <TouchableOpacity
-                style={styles.undoRoundBtn}
+                style={[styles.undoRoundBtn, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
                 onPress={handleDeshacer}
                 disabled={deshaciendo}
                 activeOpacity={0.75}
@@ -346,13 +386,13 @@ export default function DiscoverScreen() {
             ) : null}
 
             <TouchableOpacity
-              style={styles.passBtn}
+              style={[styles.passBtn, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
               onPress={() => handleSwipe('pass')}
               activeOpacity={0.75}
               disabled={swipeMutation.isPending}
             >
               <Text style={styles.passBtnEmoji}>👋</Text>
-              <Text style={styles.passBtnText}>Pasar</Text>
+              <Text style={[styles.passBtnText, { color: colors.textSub }]}>Pasar</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -375,12 +415,12 @@ export default function DiscoverScreen() {
         transparent={true}
         onRequestClose={() => setMatchData(null)}
       >
-        <View style={styles.matchOverlay}>
-          <View style={styles.matchCard}>
+        <View style={[styles.matchOverlay, { backgroundColor: colors.modalOverlay }]}>
+          <View style={[styles.matchCard, { backgroundColor: colors.card, borderColor: ACCENT }]}>
             <Text style={styles.matchBadge}>¡CONEXIÓN SENA MATCH!</Text>
             <Text style={styles.matchEmoji}>🎉</Text>
-            <Text style={styles.matchTitle}>¡Hicieron Match!</Text>
-            <Text style={styles.matchSubtitle}>
+            <Text style={[styles.matchTitle, { color: colors.text }]}>¡Hicieron Match!</Text>
+            <Text style={[styles.matchSubtitle, { color: colors.textSub }]}>
               Tú y {matchData?.otroUsuario?.nombre || 'tu compañero'} tienen afinidad mutua.
             </Text>
 
@@ -408,7 +448,7 @@ export default function DiscoverScreen() {
                 style={styles.matchContinueBtn}
                 onPress={() => setMatchData(null)}
               >
-                <Text style={styles.matchContinueText}>Seguir descubriendo</Text>
+                <Text style={[styles.matchContinueText, { color: colors.textSub }]}>Seguir descubriendo</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -439,13 +479,14 @@ export default function DiscoverScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: BG },
+function makeStyles(colors: import('../app/context/ThemeContext').ThemeColors) {
+  return StyleSheet.create({
+  container: { flex: 1 },
   center: {
-    flex: 1, backgroundColor: BG,
+    flex: 1,
     justifyContent: 'center', alignItems: 'center', padding: 32,
   },
-  loadingText: { color: '#8D83A0', marginTop: 16, fontSize: 15 },
+  loadingText: { marginTop: 16, fontSize: 15 },
 
   // Header
   header: {
@@ -460,7 +501,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14, paddingVertical: 8,
     borderRadius: 10, borderWidth: 1, borderColor: 'rgba(57,169,0,0.3)',
   },
-  switchModeText: { color: ACCENT, fontSize: 13, fontWeight: '700' },
+  switchModeText: { color: colors.accent, fontSize: 13, fontWeight: '700' },
 
   // Filtros
   filtersScrollWrap: {
@@ -470,78 +511,78 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24, gap: 8, flexDirection: 'row',
   },
   filterChip: {
-    backgroundColor: '#161B22',
+    backgroundColor: colors.card,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#263238',
+    borderColor: colors.cardBorder,
   },
   filterChipActive: {
-    borderColor: ACCENT,
+    borderColor: colors.accent,
     backgroundColor: 'rgba(57,169,0,0.15)',
   },
   filterText: {
-    color: '#8D83A0',
+    color: colors.textSub,
     fontSize: 12,
     fontWeight: '600',
   },
   filterTextActive: {
-    color: ACCENT,
+    color: colors.accent,
     fontWeight: '700',
   },
 
   // Empty & Error
   emptyEmoji: { fontSize: 56, marginBottom: 16 },
-  emptyTitle: { fontSize: 20, fontWeight: '700', color: '#F0ECF6', marginBottom: 8, textAlign: 'center' },
-  emptySubtitle: { fontSize: 14, color: '#8D83A0', textAlign: 'center', lineHeight: 22, maxWidth: 360 },
+  emptyTitle: { fontSize: 20, fontWeight: '700', color: colors.text, marginBottom: 8, textAlign: 'center' },
+  emptySubtitle: { fontSize: 14, color: colors.textSub, textAlign: 'center', lineHeight: 22, maxWidth: 360 },
   emptyActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 24, justifyContent: 'center', alignItems: 'center' },
   retryBtn: {
-    backgroundColor: '#1E252F',
+    backgroundColor: colors.chipBg,
     paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12,
-    borderWidth: 1, borderColor: '#2D3748',
+    borderWidth: 1, borderColor: colors.inputBorder,
   },
-  retryText: { color: '#F0ECF6', fontWeight: '700', fontSize: 14 },
+  retryText: { color: colors.text, fontWeight: '700', fontSize: 14 },
   communityBtn: {
-    backgroundColor: ACCENT,
+    backgroundColor: colors.accent,
     paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12,
-    shadowColor: ACCENT, shadowOpacity: 0.3, shadowRadius: 8, elevation: 3,
+    shadowColor: colors.accent, shadowOpacity: 0.3, shadowRadius: 8, elevation: 3,
   },
   communityBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
   undoBtn: {
     backgroundColor: 'rgba(57,169,0,0.15)',
-    borderWidth: 1, borderColor: ACCENT,
+    borderWidth: 1, borderColor: colors.accent,
     paddingHorizontal: 18, paddingVertical: 12, borderRadius: 12,
   },
   undoBtnText: {
-    color: ACCENT, fontWeight: '700', fontSize: 14,
+    color: colors.accent, fontWeight: '700', fontSize: 14,
   },
 
   // Card
   cardContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
   card: {
-    backgroundColor: CARD, borderRadius: 24,
+    borderRadius: 24,
     width: CARD_W, overflow: 'hidden',
-    borderWidth: 1, borderColor: CARD_BORDER,
+    borderWidth: 1,
     shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 20, elevation: 8,
   },
   avatarPhoto: {
     width: '100%',
     height: 200,
-    backgroundColor: '#1E252F',
+    backgroundColor: colors.inputBg,
   },
   avatarArea: {
     height: 140, justifyContent: 'center', alignItems: 'center',
   },
   avatarEmoji: { fontSize: 64 },
   cardInfo: { padding: 22 },
-  cardName: { fontSize: 22, fontWeight: '800', color: '#F0ECF6' },
+  cardName: { fontSize: 22, fontWeight: '800', color: colors.text },
   rolBadge: {
     alignSelf: 'flex-start', marginTop: 6,
     backgroundColor: 'rgba(57,169,0,0.15)',
     paddingHorizontal: 10, paddingVertical: 3, borderRadius: 6,
   },
-  rolBadgeText: { color: ACCENT, fontSize: 11, fontWeight: '700' },
+  rolBadgeText: { color: colors.accent, fontSize: 11, fontWeight: '700' },
   afinidadBox: {
     backgroundColor: 'rgba(0, 229, 163, 0.1)',
     paddingHorizontal: 10, paddingVertical: 4,
@@ -577,21 +618,21 @@ const styles = StyleSheet.create({
   },
   undoRoundBtn: {
     width: 48, height: 48, borderRadius: 24,
-    backgroundColor: '#1E252F', borderWidth: 1, borderColor: '#2D3748',
+    backgroundColor: colors.chipBg, borderWidth: 1, borderColor: colors.inputBorder,
     justifyContent: 'center', alignItems: 'center',
   },
   undoRoundEmoji: { fontSize: 18 },
   passBtn: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 8, backgroundColor: '#1E252F', padding: 15, borderRadius: 14,
-    borderWidth: 1, borderColor: '#2D3748',
+    gap: 8, backgroundColor: colors.chipBg, padding: 15, borderRadius: 14,
+    borderWidth: 1, borderColor: colors.inputBorder,
   },
   passBtnEmoji: { fontSize: 20 },
-  passBtnText: { color: '#B9B1C9', fontSize: 15, fontWeight: '700' },
+  passBtnText: { color: colors.textSub, fontSize: 15, fontWeight: '700' },
   likeBtn: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 8, backgroundColor: ACCENT, padding: 15, borderRadius: 14,
-    shadowColor: ACCENT, shadowOpacity: 0.4, shadowRadius: 10, elevation: 3,
+    gap: 8, backgroundColor: colors.accent, padding: 15, borderRadius: 14,
+    shadowColor: colors.accent, shadowOpacity: 0.4, shadowRadius: 10, elevation: 3,
   },
   likeBtnEmoji: { fontSize: 20 },
   likeBtnText: { color: '#fff', fontSize: 15, fontWeight: '800' },
@@ -602,13 +643,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center', padding: 20,
   },
   matchCard: {
-    backgroundColor: '#161B22', borderRadius: 24,
+    backgroundColor: colors.card, borderRadius: 24,
     padding: 28, maxWidth: 440, width: '100%',
-    alignItems: 'center', borderWidth: 1, borderColor: ACCENT,
-    shadowColor: ACCENT, shadowOpacity: 0.5, shadowRadius: 25, elevation: 12,
+    alignItems: 'center', borderWidth: 1, borderColor: colors.accent,
+    shadowColor: colors.accent, shadowOpacity: 0.5, shadowRadius: 25, elevation: 12,
   },
   matchBadge: {
-    fontSize: 11, fontWeight: '800', color: ACCENT, letterSpacing: 1,
+    fontSize: 11, fontWeight: '800', color: colors.accent, letterSpacing: 1,
     marginBottom: 8,
   },
   matchEmoji: { fontSize: 56, marginBottom: 8 },
@@ -619,17 +660,18 @@ const styles = StyleSheet.create({
     fontSize: 14, color: '#B9B1C9', textAlign: 'center', lineHeight: 20, marginBottom: 12,
   },
   matchIcebreaker: {
-    fontSize: 13, color: '#5FE0B4', textAlign: 'center', fontStyle: 'italic',
+    fontSize: 13, color: colors.success, textAlign: 'center', fontStyle: 'italic',
     marginBottom: 20, paddingHorizontal: 12,
   },
   matchActions: { width: '100%', gap: 10 },
   matchChatBtn: {
-    backgroundColor: ACCENT, paddingVertical: 14, borderRadius: 12,
+    backgroundColor: colors.accent, paddingVertical: 14, borderRadius: 12,
     alignItems: 'center',
   },
   matchChatBtnText: { color: '#fff', fontWeight: '800', fontSize: 15 },
   matchContinueBtn: {
     paddingVertical: 12, alignItems: 'center',
   },
-  matchContinueText: { color: '#8D83A0', fontWeight: '600', fontSize: 14 },
-});
+  matchContinueText: { color: colors.textSub, fontWeight: '600', fontSize: 14 },
+  });
+}
