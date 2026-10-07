@@ -8,6 +8,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 
 import SenaMatchLogo from './SenaMatchLogo';
+import NavIcon from './NavIcon';
 import NotificacionesModal from './NotificacionesModal';
 import AdminPanelModal from './AdminPanelModal';
 import InitialPostModal from './InitialPostModal';
@@ -22,12 +23,12 @@ declare const Notification: any;
 
 const ACCENT = '#39A900';
 
-const TABS_META: Record<string, { title: string; emoji: string }> = {
-  index: { title: 'Inicio', emoji: '🏠' },
-  descubrir: { title: 'Descubrir', emoji: '🔍' },
-  parches: { title: 'Parches', emoji: '🎯' },
-  chats: { title: 'Chats', emoji: '💬' },
-  perfil: { title: 'Perfil', emoji: '👤' },
+const TABS_META: Record<string, { title: string; icon: 'home' | 'discover' | 'parches' | 'chats' | 'profile' }> = {
+  index:     { title: 'Inicio',    icon: 'home'     },
+  descubrir: { title: 'Descubrir', icon: 'discover'  },
+  parches:   { title: 'Parches',   icon: 'parches'   },
+  chats:     { title: 'Chats',     icon: 'chats'     },
+  perfil:    { title: 'Perfil',    icon: 'profile'   },
 };
 
 interface ToastAviso {
@@ -102,7 +103,12 @@ function ResponsiveTabBar({
                   activeOpacity={0.8}
                 >
                   <View style={{ position: 'relative' }}>
-                    <Text style={styles.desktopTabEmoji}>{meta.emoji}</Text>
+                    <NavIcon
+                      name={meta.icon}
+                      size={20}
+                      color={isFocused ? ACCENT : colors.textSub}
+                      strokeWidth={isFocused ? 2.5 : 1.8}
+                    />
                     {isChatsTab && unreadChats > 0 ? (
                       <View style={styles.desktopTabBadge}>
                         <Text style={styles.desktopTabBadgeText}>
@@ -125,13 +131,18 @@ function ResponsiveTabBar({
               );
             })}
 
-            {/* Botón de Notificaciones en Desktop 🔔 */}
+            {/* Botón de Notificaciones en Desktop */}
             <TouchableOpacity
               onPress={onOpenNotifs}
               style={styles.desktopNotifBtn}
               activeOpacity={0.8}
             >
-              <Text style={styles.desktopTabEmoji}>🔔</Text>
+              <NavIcon
+                name="bell"
+                size={20}
+                color={unreadNotifs > 0 ? ACCENT : colors.textSub}
+                strokeWidth={unreadNotifs > 0 ? 2.5 : 1.8}
+              />
               {unreadNotifs > 0 ? (
                 <View style={styles.desktopNotifBadge}>
                   <Text style={styles.desktopNotifBadgeText}>
@@ -148,7 +159,8 @@ function ResponsiveTabBar({
                 style={[styles.desktopAdminBtn, { backgroundColor: colors.isDark ? '#1E281E' : 'rgba(57, 169, 0, 0.1)' }]}
                 activeOpacity={0.85}
               >
-                <Text style={styles.desktopAdminText}>🛡️ Panel Admin</Text>
+                <NavIcon name="shield" size={16} color={ACCENT} strokeWidth={2} />
+                <Text style={styles.desktopAdminText}> Panel Admin</Text>
               </TouchableOpacity>
             ) : null}
           </View>
@@ -190,7 +202,12 @@ function ResponsiveTabBar({
                 isFocused && styles.mobileIconWrapActive,
               ]}
             >
-              <Text style={styles.mobileIconText}>{meta.emoji}</Text>
+              <NavIcon
+                name={meta.icon}
+                size={22}
+                color={isFocused ? ACCENT : colors.textSub}
+                strokeWidth={isFocused ? 2.5 : 1.8}
+              />
               {isChatsTab && unreadChats > 0 ? (
                 <View style={styles.mobileNotifBadge}>
                   <Text style={styles.mobileNotifBadgeText}>
@@ -212,14 +229,19 @@ function ResponsiveTabBar({
         );
       })}
 
-      {/* Botón de Notificaciones Móvil 🔔 */}
+      {/* Botón de Notificaciones Móvil */}
       <TouchableOpacity
         onPress={onOpenNotifs}
         style={styles.mobileTabItem}
         activeOpacity={0.7}
       >
         <View style={styles.mobileIconWrap}>
-          <Text style={styles.mobileIconText}>🔔</Text>
+          <NavIcon
+            name="bell"
+            size={22}
+            color={unreadNotifs > 0 ? ACCENT : colors.textSub}
+            strokeWidth={unreadNotifs > 0 ? 2.5 : 1.8}
+          />
           {unreadNotifs > 0 ? (
             <View style={styles.mobileNotifBadge}>
               <Text style={styles.mobileNotifBadgeText}>
@@ -456,7 +478,7 @@ export default function TabsLayout() {
           style={[styles.toastBanner, { backgroundColor: colors.card, borderColor: ACCENT }]}
         >
           <View style={styles.toastIconWrap}>
-            <Text style={{ fontSize: 20 }}>💬</Text>
+            <NavIcon name="chats" size={20} color={ACCENT} strokeWidth={2.2} />
           </View>
           <View style={styles.toastBody}>
             <Text style={[styles.toastTitle, { color: colors.text }]} numberOfLines={1}>
@@ -560,8 +582,9 @@ const styles = StyleSheet.create({
   desktopTabItemActive: {
     backgroundColor: 'rgba(57, 169, 0, 0.12)',
   },
-  desktopTabEmoji: {
-    fontSize: 18,
+  desktopTabIconWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   desktopTabText: {
     fontSize: 14,
@@ -615,6 +638,9 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 10,
     marginLeft: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   desktopAdminText: {
     color: ACCENT,
@@ -652,8 +678,9 @@ const styles = StyleSheet.create({
   mobileIconWrapActive: {
     backgroundColor: 'rgba(57, 169, 0, 0.15)',
   },
-  mobileIconText: {
-    fontSize: 20,
+  mobileIconSvg: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   mobileTabLabel: {
     fontSize: 11,
