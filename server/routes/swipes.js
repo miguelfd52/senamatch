@@ -139,8 +139,8 @@ router.post('/registrar', auth, async (req, res) => {
       miembros: { $all: [yoId, otroId], $size: 2 }
     });
 
-    const mensajeBienvenida = '🎉 ¡Hicieron Match! Ahora pueden comenzar a conocerse.';
-    const msgIcebreaker = '💡 Para romper el hielo: ¿Qué te llevó a unirte al SENA?';
+    const mensajeBienvenida = '¡Hicieron Match! Ahora pueden comenzar a conocerse.';
+    const msgIcebreaker = 'Para romper el hielo: ¿Qué te llevó a unirte al SENA?';
 
     if (!chat) {
       chat = await Chat.create({
@@ -211,7 +211,7 @@ router.post('/registrar', auth, async (req, res) => {
             $setOnInsert: {
               recipientId: yoId,
               type: 'nuevo_match',
-              title: '¡Nuevo Match! 🎉',
+              title: '¡Nuevo Match!',
               message: `¡Hiciste Match con ${otro.nombre}! Ahora pueden comenzar a conocerse.`,
               reference: String(chat._id),
               read: false,
@@ -226,7 +226,7 @@ router.post('/registrar', auth, async (req, res) => {
             $setOnInsert: {
               recipientId: otroId,
               type: 'nuevo_match',
-              title: '¡Nuevo Match! 🎉',
+              title: '¡Nuevo Match!',
               message: `¡Hiciste Match con ${yo.nombre}! Ahora pueden comenzar a conocerse.`,
               reference: String(chat._id),
               read: false,

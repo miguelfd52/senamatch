@@ -157,7 +157,7 @@ router.post('/', auth, async (req, res) => {
       mensajes: [{
         id: 'm_' + crypto.randomUUID().replace(/-/g, '').slice(0, 16),
         de: null,
-        txt: `¡Parche creado! 🎯 ${d.titulo.trim()} · Lugar: ${d.lugar.trim()}`,
+        txt: `¡Parche creado! ${d.titulo.trim()} · Lugar: ${d.lugar.trim()}`,
         ts: Date.now(),
         leidoPor: [String(yo._id)]
       }],
@@ -241,7 +241,7 @@ router.post('/:id/entrar', auth, async (req, res) => {
       crearNotificacion({
         recipientId: String(parche.anfitrion),
         type: 'union_parche',
-        title: 'Nuevo participante en tu parche 🎉',
+        title: 'Nuevo participante en tu parche',
         message: `${yo.nombre} se unió a "${parche.titulo}".`,
         reference: String(parche._id)
       }).catch(err => console.error(err));
@@ -367,7 +367,7 @@ router.post('/:id/cancelar', auth, async (req, res) => {
       crearNotificacion({
         recipientId: pId,
         type: 'cancelacion_parche',
-        title: 'Parche cancelado ⚠️',
+        title: 'Parche cancelado',
         message: `El parche "${parche.titulo}" ha sido cancelado por su anfitrión.`,
         reference: String(parche._id)
       }).catch(err => console.error(err));

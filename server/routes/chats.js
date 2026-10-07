@@ -192,7 +192,7 @@ router.post('/directo', auth, async (req, res) => {
           senderId: null,
           senderNombre: 'SENA Match',
           nombre: 'SENA Match',
-          txt: `Conversación iniciada con ${targetUser.nombre}. ¡Saluda a tu compañero! 👋`,
+          txt: `Conversación iniciada con ${targetUser.nombre}. ¡Saluda a tu compañero!`,
           ts: Date.now(),
           leidoPor: [uid, String(targetUserId)]
         }],

@@ -344,7 +344,9 @@ export default function TabsLayout() {
 
             playNotificationSound();
 
-            const avisoTitulo = (n.title || '¡Nuevo Match!').replace(/^🎉\s*/, '');
+            const avisoTitulo = (n.title || '¡Nuevo Match!')
+              .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]\uFE0F?/gu, '')
+              .trim();
             setToastAviso({
               id: n.id,
               titulo: avisoTitulo,
@@ -389,7 +391,9 @@ export default function TabsLayout() {
               continue;
             }
 
-            const avisoTitulo = (n.title || 'Nuevo mensaje').replace(/^💬\s*/, '');
+            const avisoTitulo = (n.title || 'Nuevo mensaje')
+              .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]\uFE0F?/gu, '')
+              .trim();
             setToastAviso({
               id: n.id,
               titulo: avisoTitulo,
